@@ -204,9 +204,6 @@ class WalletState(BaseModel):
     quorum: int
 
 
-# --- plans ----------------------------------------------------------------
-
-
 class TravelMode(str, Enum):
     WALK = "walk"
     BIKE = "bike"

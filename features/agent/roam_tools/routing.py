@@ -1,5 +1,3 @@
-"""Distance matrix and a small route optimizer. The model does not do this arithmetic."""
-
 from __future__ import annotations
 
 import os

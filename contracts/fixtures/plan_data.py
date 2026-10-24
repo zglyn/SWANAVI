@@ -1,5 +1,3 @@
-"""Kyoto plan fixtures. generate.py is the only writer; this module only builds models."""
-
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

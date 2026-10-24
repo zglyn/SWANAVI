@@ -1,5 +1,3 @@
-"""Registered-shop directory. One MCP server for the whole city, plus the per-merchant mounts."""
-
 from __future__ import annotations
 
 import json
@@ -14,9 +12,8 @@ from roam_contracts.signing import quote_signing_bytes
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "contracts" / "fixtures"
-# Stable demo key. The pubkey is published on every profile this process serves.
-SIGNING_KEY = SigningKey(bytes.fromhex("11" * 32))
-PUBLIC_KEY = SIGNING_KEY.verify_key.encode().hex()
+DEMO_SIGNING_KEY = SigningKey(bytes.fromhex("11" * 32))
+PUBLIC_KEY = DEMO_SIGNING_KEY.verify_key.encode().hex()
 
 
 def _load() -> tuple[list[MerchantProfile], list[Quote]]:
@@ -29,7 +26,7 @@ def _load() -> tuple[list[MerchantProfile], list[Quote]]:
 
 def sign_quote(quote: Quote) -> Quote:
     body = quote.model_copy(update={"merchant_signature": "00", "merchant_verified": None})
-    signature = SIGNING_KEY.sign(quote_signing_bytes(body)).signature.hex()
+    signature = DEMO_SIGNING_KEY.sign(quote_signing_bytes(body)).signature.hex()
     return body.model_copy(update={"merchant_signature": signature, "merchant_verified": quote.merchant_verified})
 
 
@@ -90,4 +87,4 @@ class Directory:
 
 
 class FakeMerchantDirectory(Directory):
-    """Same directory behaviour, built from the fixtures, for the agent to import."""
+    pass

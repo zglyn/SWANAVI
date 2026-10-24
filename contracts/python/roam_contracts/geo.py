@@ -1,5 +1,3 @@
-"""Great-circle distance. Shared so merchants and the agent do not import each other."""
-
 from __future__ import annotations
 
 from math import asin, cos, radians, sin, sqrt

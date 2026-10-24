@@ -1,11 +1,9 @@
-"""MCP server for every non-merchant tool. `python -m roam_tools.server`."""
-
 from __future__ import annotations
 
 from fastmcp import FastMCP
 
 from roam_tools.attractions import search_attractions
-from roam_tools.flights import lookup_flight
+from roam_tools.flights import lookup_fixture_flight
 from roam_tools.routing import get_travel_matrix, optimize_route
 from roam_tools.transport import get_transport_profile
 from roam_tools.weather import get_weather
@@ -47,7 +45,7 @@ def weather(place_or_point: dict | str, date: str) -> dict:
 
 @mcp.tool(description="Look up a flight number on a date. Returns a travel segment. Unverified when the number is not in the fixture table. This is not the paid flight API.")
 def flight(number: str, date: str) -> dict:
-    return lookup_flight(number, date).model_dump(mode="json")
+    return lookup_fixture_flight(number, date).model_dump(mode="json")
 
 
 def main() -> None:

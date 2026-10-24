@@ -1,5 +1,3 @@
-"""Two-phase planner. Plain functions. FastAPI is only a caller."""
-
 from __future__ import annotations
 
 import json

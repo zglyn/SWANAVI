@@ -1,5 +1,3 @@
-"""Attraction search. Curated Kyoto data first, Overpass for everywhere else."""
-
 from __future__ import annotations
 
 import json

@@ -1,5 +1,3 @@
-"""Plan state. Memory now. A later store can replace this without touching the planner."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field

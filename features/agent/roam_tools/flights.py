@@ -1,5 +1,3 @@
-"""Fixture flight lookup. The paid provider is ticket 12 and is not wired here."""
-
 from __future__ import annotations
 
 import json
@@ -11,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[3]
 FLIGHTS = ROOT / "contracts" / "fixtures" / "flights.json"
 
 
-def lookup_flight(number: str, date: str) -> TravelSegment:
+def lookup_fixture_flight(number: str, date: str) -> TravelSegment:
     if FLIGHTS.exists():
         payload = json.loads(FLIGHTS.read_text())
         for segment in payload.values():

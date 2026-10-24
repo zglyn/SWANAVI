@@ -1,5 +1,3 @@
-"""Gateway. Planning functions stay in plan.py and do not import this module."""
-
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +21,7 @@ from roam_contracts.models import (
 )
 from roam_agent.plan import collect_candidates, plan as build_plan, revise
 from roam_agent.store import MemoryPlanStore, PlanRecord
-from roam_tools.flights import lookup_flight
+from roam_tools.flights import lookup_fixture_flight
 
 app = FastAPI(title="Roam402 gateway")
 app.add_middleware(
@@ -159,7 +157,7 @@ def revise_plan(plan_id: str, revision: PlanRevision) -> Ok:
 
 @app.get("/api/flights/lookup")
 def flights(number: str, date: str):
-    segment = lookup_flight(number, date)
+    segment = lookup_fixture_flight(number, date)
     if segment.status.value == "unverified":
         raise HTTPException(404, "flight lookup is not configured for that number")
     return segment

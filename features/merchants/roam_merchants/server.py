@@ -1,5 +1,3 @@
-"""Directory MCP plus a small HTTP registry. `python -m roam_merchants.server`."""
-
 from __future__ import annotations
 
 from datetime import datetime

@@ -1,5 +1,3 @@
-"""Popular ways of getting around a city, including airport transfers."""
-
 from __future__ import annotations
 
 import json

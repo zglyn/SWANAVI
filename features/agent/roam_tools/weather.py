@@ -1,5 +1,3 @@
-"""Hourly forecast. Open-Meteo when the network works, a clear empty summary when it does not."""
-
 from __future__ import annotations
 
 import httpx
