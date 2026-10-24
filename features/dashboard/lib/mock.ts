@@ -8,12 +8,22 @@ import type {
   EventSource,
   EventType,
   InspectorEvent,
+  Itinerary,
+  PlanRevision,
+  PlanSelection,
+  PlanView,
   PolicyConfig,
   PolicyDecision,
   Quote,
+  TravelSegment,
+  TripBrief,
   Violation,
   WalletState,
 } from "@contracts/api";
+import candidatesFx from "@fixtures/candidates_kyoto.json";
+import flightsFx from "@fixtures/flights.json";
+import itineraryFx from "@fixtures/itinerary_kyoto.json";
+import planEventsFx from "@fixtures/plan_events.json";
 import policyFx from "@fixtures/policy.json";
 import quotesFx from "@fixtures/quotes.json";
 import type { RoamClient } from "./client";
@@ -199,6 +209,59 @@ async function rainstorm() {
   await checkout([RAMEN]);
 }
 
+const PLAN_EVENTS = planEventsFx as InspectorEvent[];
+const PLANS = new Map<string, { status: PlanView["status"]; itinerary: Itinerary | null }>();
+
+function rememberPlan(id: string, row: { status: PlanView["status"]; itinerary: Itinerary | null }) {
+  PLANS.set(id, row);
+  if (typeof sessionStorage !== "undefined") sessionStorage.setItem(`roam.plan.${id}`, JSON.stringify(row));
+}
+
+function recallPlan(id: string) {
+  const live = PLANS.get(id);
+  if (live) return live;
+  if (typeof sessionStorage === "undefined") return undefined;
+  const raw = sessionStorage.getItem(`roam.plan.${id}`);
+  if (!raw) return undefined;
+  const row = JSON.parse(raw) as { status: PlanView["status"]; itinerary: Itinerary | null };
+  PLANS.set(id, row);
+  return row;
+}
+
+async function replay(events: InspectorEvent[]) {
+  for (const event of events) {
+    state.listeners.forEach((listener) => listener(event));
+    await sleep(160);
+  }
+}
+
+function withMustVisits(selection: PlanSelection): Itinerary {
+  const itinerary = structuredClone(itineraryFx) as Itinerary;
+  itinerary.selection = selection;
+  const have = new Set(itinerary.days.flatMap((day) => day.stops.map((stop) => stop.id)));
+  const candidates = candidatesFx as { candidates: { id: string; attraction?: Itinerary["days"][number]["stops"][number]["attraction"]; quote?: Quote }[] };
+  for (const id of selection.must_visit) {
+    if (have.has(id)) continue;
+    const candidate = candidates.candidates.find((item) => item.id === id);
+    if (!candidate) continue;
+    const attraction = candidate.attraction;
+    const quote = candidate.quote;
+    itinerary.days[1].stops.push({
+      id,
+      kind: attraction ? "attraction" : "merchant",
+      start: "2026-11-15T18:00:00+09:00",
+      end: "2026-11-15T19:00:00+09:00",
+      location: attraction?.location ?? quote?.location ?? { lat: 35.01, lng: 135.76 },
+      title: attraction?.name ?? quote?.title ?? id,
+      attraction: attraction ?? null,
+      quote: quote ?? null,
+      required: true,
+      status: "proposed",
+    });
+  }
+  return itinerary;
+}
+
 export const mockClient: RoamClient = {
   mode: "mock",
   getPolicy: async () => structuredClone(state.policy),
@@ -226,6 +289,58 @@ export const mockClient: RoamClient = {
     }
   },
   getWallet: async () => wallet(),
+  async createPlan(brief: TripBrief) {
+    const id = "kyoto-demo";
+    rememberPlan(id, { status: "collecting_candidates", itinerary: null });
+    await replay(PLAN_EVENTS.slice(0, 4));
+    rememberPlan(id, { status: "candidates_ready", itinerary: null });
+    void brief;
+    return { plan_id: id };
+  },
+  async getPlan(id: string): Promise<PlanView> {
+    const row = recallPlan(id);
+    if (!row) return { status: "failed", error: "This plan is not on this browser yet.", candidates: null, itinerary: null };
+    return {
+      status: row.status,
+      candidates: row.status === "collecting_candidates" ? null : (candidatesFx as PlanView["candidates"]),
+      itinerary: row.itinerary,
+      error: null,
+    };
+  },
+  async submitSelection(id: string, selection: PlanSelection) {
+    rememberPlan(id, { status: "planning", itinerary: null });
+    await replay(PLAN_EVENTS.slice(4));
+    const itinerary = withMustVisits(selection);
+    rememberPlan(id, { status: "ready", itinerary });
+    return { ok: true };
+  },
+  async revisePlan(id: string, revision: PlanRevision) {
+    const row = recallPlan(id);
+    const itinerary = structuredClone(row?.itinerary ?? (itineraryFx as Itinerary));
+    const removed = new Set(revision.actions.filter((action) => action.action === "remove").map((action) => action.stop_id));
+    const accepted = new Set(revision.actions.filter((action) => action.action === "accept").map((action) => action.stop_id));
+    itinerary.days = itinerary.days.map((day) => ({
+      ...day,
+      stops: day.stops
+        .filter((stop) => stop.required || !removed.has(stop.id))
+        .map((stop) => (accepted.has(stop.id) ? { ...stop, status: "accepted" as const } : stop)),
+    }));
+    for (const action of revision.actions) {
+      if (action.action !== "swap") continue;
+      const title = itinerary.days.flatMap((day) => day.stops).find((stop) => stop.id === action.stop_id)?.title ?? action.stop_id;
+      itinerary.warnings = [...itinerary.warnings, `Asked to swap ${title}`];
+    }
+    if (revision.feedback) itinerary.warnings = [...itinerary.warnings, revision.feedback];
+    rememberPlan(id, { status: "ready", itinerary });
+    await replay([PLAN_EVENTS[PLAN_EVENTS.length - 1]]);
+    return { ok: true };
+  },
+  async lookupFlight(number: string, date: string) {
+    const table = flightsFx as { arrival: TravelSegment; departure: TravelSegment };
+    const match = [table.arrival, table.departure].find((segment) => segment.number === number && segment.depart_at.startsWith(date));
+    if (!match) throw new Error("flight lookup failed");
+    return match;
+  },
   subscribe(onEvent) {
     state.listeners.add(onEvent);
     return () => state.listeners.delete(onEvent);

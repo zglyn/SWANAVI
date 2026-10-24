@@ -1,0 +1,8 @@
+ts	phase	decision	why	evidence	result
+2026-10-24T21:10:44Z	start	Picked up the unfinished ticket branch and resumed at the dashboard typecheck	The Python planner and the pages were already in the working tree. The pages had never been typechecked.	branch cursor/plan-tickets-through-11-57c2 at 9a4b945	open
+2026-10-24T21:10:44Z	dashboard	Added leaflet 1.9.4 and simplified the arrival status type	The map imports leaflet, and the conditional cast was harder to read than SegmentStatus.	features/dashboard/package.json	typecheck passed
+2026-10-24T21:10:44Z	planner	Candidate collection runs in a FastAPI background task	The previous line always called the work inline because of a false condition. The response can return the plan id first.	features/agent/roam_agent/app.py	pytest 18 passed
+2026-10-24T21:10:44Z	brief	A lodging night with no stay shows a warning and still submits	Ticket 8 asks to warn on gaps, not to block the form.	features/dashboard/app/plan/page.tsx	browser warning No lodging on 2026-11-14
+2026-10-24T21:10:44Z	itinerary	Swap appends a warning and does not replace the stop	StopRevision has no replacement id, so a real swap has nothing to point at.	features/agent/roam_agent/plan.py revise	browser revise showed more food
+2026-10-24T21:10:44Z	scope	Left paid flight lookup and AgentCore deploy unimplemented	Those are tickets 12 and 13. Flight numbers still resolve from flights.json.	GitHub issues 12 and 13	out of scope
+2026-10-24T21:10:44Z	verify	Clicked the mock path from the brief through Book these	The exit check is a traveller finishing a Kyoto plan and seeing the quote on the dashboard.	http://127.0.0.1:3000 computerUse bc-e4a23f34	19 candidates, both must-visits, Private tea ceremony on the dashboard

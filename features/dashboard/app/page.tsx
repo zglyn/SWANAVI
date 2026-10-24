@@ -42,7 +42,10 @@ export default function Landing() {
         <nav className="flex items-center gap-6 text-sm text-ink-2">
           <a href="#how" className="hidden hover:text-ink sm:inline">How it works</a>
           <a href="#leash" className="hidden hover:text-ink sm:inline">Guardrails</a>
-          <Link href="/dashboard" className="rounded-full bg-ink px-4 py-2 font-medium text-paper hover:bg-ink/85">
+          <Link href="/plan" className="rounded-full bg-ink px-4 py-2 font-medium text-paper hover:bg-ink/85">
+            Plan a trip
+          </Link>
+          <Link href="/dashboard" className="rounded-full border border-line px-4 py-2 font-medium hover:border-ink-3">
             Open demo
           </Link>
         </nav>
@@ -62,8 +65,8 @@ export default function Landing() {
             25% aggregator cut and pass up to 15% back to you. The AI can't spend outside your rules.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/dashboard" className="rounded-full bg-torii px-6 py-3 font-medium text-white shadow-sm hover:bg-torii/90">
-              Try the live demo →
+            <Link href="/plan" className="rounded-full bg-torii px-6 py-3 font-medium text-white shadow-sm hover:bg-torii/90">
+              Plan a trip
             </Link>
             <a href="#how" className="rounded-full border border-line bg-card px-6 py-3 font-medium hover:border-ink-3">
               How it works

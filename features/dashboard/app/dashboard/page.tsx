@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { Inspector } from "@/components/dashboard/Inspector";
 import { ChatPanel, PolicyCard, QuoteList } from "@/components/dashboard/TravellerPanel";
@@ -8,8 +9,15 @@ import { fmt } from "@/lib/format";
 import { useDemo } from "@/lib/useDemo";
 
 export default function Dashboard() {
-  const { client, state, sendChat, checkout, scenario, getPolicy, putPolicy } = useDemo();
+  const { client, state, sendChat, checkout, scenario, getPolicy, putPolicy, seedQuotes } = useDemo();
   const w = state.wallet;
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("roam.booking");
+    if (!raw) return;
+    sessionStorage.removeItem("roam.booking");
+    seedQuotes(JSON.parse(raw));
+  }, [seedQuotes]);
 
   return (
     <div className="flex min-h-screen flex-col lg:h-screen">
