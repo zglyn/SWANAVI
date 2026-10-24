@@ -1,6 +1,8 @@
 # Roam402 — Hackathon MVP Spec
 
 > Status: **Draft v0.1** — open questions at the bottom must be answered before the contracts freeze (Hour 2).
+>
+> User flow: [`docs/USER_FLOW.md`](USER_FLOW.md)
 
 ## 1. Goal of the demo
 
