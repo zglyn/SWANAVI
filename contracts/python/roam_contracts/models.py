@@ -38,6 +38,8 @@ class MerchantProfile(BaseModel):
     xrpl_address: str
     mcp_url: str
     pubkey_ed25519: str  # hex; verifies Quote.merchant_signature
+    city: str | None = None
+    country: str | None = None
 
 
 class CatalogItem(BaseModel):
@@ -202,6 +204,212 @@ class WalletState(BaseModel):
     quorum: int
 
 
+# --- plans ----------------------------------------------------------------
+
+
+class TravelMode(str, Enum):
+    WALK = "walk"
+    BIKE = "bike"
+    TRANSIT = "transit"
+    TAXI = "taxi"
+    CAR = "car"
+
+
+class SegmentMode(str, Enum):
+    FLIGHT = "flight"
+    TRAIN = "train"
+    BUS = "bus"
+    CAR = "car"
+
+
+class SegmentStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    DELAYED = "delayed"
+    CANCELLED = "cancelled"
+    UNVERIFIED = "unverified"
+
+
+class PlaceRef(BaseModel):
+    code: str | None = None
+    name: str
+    location: GeoPoint | None = None
+
+
+class TravelSegment(BaseModel):
+    mode: SegmentMode
+    carrier: str | None = None
+    number: str | None = None
+    from_place: PlaceRef
+    to_place: PlaceRef
+    depart_at: datetime
+    arrive_at: datetime
+    status: SegmentStatus = SegmentStatus.SCHEDULED
+    source: str = "user"
+
+
+class Lodging(BaseModel):
+    name: str
+    address: str | None = None
+    location: GeoPoint | None = None
+    check_in: datetime
+    check_out: datetime
+
+
+class Pace(str, Enum):
+    RELAXED = "relaxed"
+    BALANCED = "balanced"
+    PACKED = "packed"
+
+
+class TripBrief(BaseModel):
+    destination: str
+    timezone: str
+    arrival: TravelSegment | None = None
+    departure: TravelSegment | None = None
+    lodging: list[Lodging] = Field(default_factory=list)
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    budget: Money = Decimal("200")
+    interests: list[str] = Field(default_factory=list)
+    pace: Pace = Pace.BALANCED
+    preferred_modes: list[TravelMode] = Field(default_factory=lambda: [TravelMode.WALK, TravelMode.TRANSIT])
+    daily_start: str = "09:00"
+    daily_end: str = "21:00"
+
+
+class Attraction(BaseModel):
+    id: str
+    name: str
+    category: str
+    location: GeoPoint
+    area: str | None = None
+    description: str
+    image_url: str | None = None
+    popularity: float = Field(ge=0, le=1)
+    typical_duration_min: int
+    opening_hours: str | None = None
+    price: Money | None = None
+    free: bool = True
+    source: Literal["curated", "osm", "llm"] = "curated"
+
+
+class CandidateKind(str, Enum):
+    ATTRACTION = "attraction"
+    MERCHANT = "merchant"
+
+
+class Candidate(BaseModel):
+    id: str
+    kind: CandidateKind
+    attraction: Attraction | None = None
+    merchant: MerchantProfile | None = None
+    item: CatalogItem | None = None
+    quote: Quote | None = None
+
+
+class CandidateSet(BaseModel):
+    plan_id: str
+    candidates: list[Candidate]
+    available_hours: float
+
+
+class PlanSelection(BaseModel):
+    must_visit: list[str] = Field(default_factory=list)
+    maybe: list[str] = Field(default_factory=list)
+    excluded: list[str] = Field(default_factory=list)
+
+
+class LegSource(str, Enum):
+    ORS = "ors"
+    GOOGLE = "google"
+    ESTIMATE = "estimate"
+
+
+class Leg(BaseModel):
+    from_stop_id: str
+    to_stop_id: str
+    mode: TravelMode
+    minutes: int
+    distance_km: float
+    cost: Money | None = None
+    source: LegSource = LegSource.ESTIMATE
+
+
+class StopKind(str, Enum):
+    ATTRACTION = "attraction"
+    MERCHANT = "merchant"
+    ARRIVAL = "arrival"
+    DEPARTURE = "departure"
+    LODGING = "lodging"
+
+
+class StopStatus(str, Enum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    REMOVED = "removed"
+
+
+class Stop(BaseModel):
+    id: str
+    kind: StopKind
+    start: datetime
+    end: datetime
+    location: GeoPoint
+    title: str
+    attraction: Attraction | None = None
+    quote: Quote | None = None
+    required: bool = False
+    status: StopStatus = StopStatus.PROPOSED
+
+
+class ItineraryDay(BaseModel):
+    date: str
+    stops: list[Stop]
+    legs: list[Leg]
+
+
+class Itinerary(BaseModel):
+    plan_id: str
+    brief: TripBrief
+    selection: PlanSelection
+    days: list[ItineraryDay]
+    transport_summary: str
+    estimated_total: Money
+    bookable_total: Money
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PlanStatus(str, Enum):
+    COLLECTING = "collecting_candidates"
+    CANDIDATES_READY = "candidates_ready"
+    PLANNING = "planning"
+    READY = "ready"
+    FAILED = "failed"
+
+
+class RevisionAction(str, Enum):
+    ACCEPT = "accept"
+    SWAP = "swap"
+    REMOVE = "remove"
+
+
+class StopRevision(BaseModel):
+    stop_id: str
+    action: RevisionAction
+
+
+class PlanRevision(BaseModel):
+    actions: list[StopRevision] = Field(default_factory=list)
+    feedback: str | None = None
+
+
+class PlanView(BaseModel):
+    status: PlanStatus
+    candidates: CandidateSet | None = None
+    itinerary: Itinerary | None = None
+    error: str | None = None
+
+
 # --- inspector events (gateway -> dashboard via SSE) ----------------------
 
 
@@ -239,6 +447,11 @@ EVENT_TYPES = (
     "weather.alert",
     "wallet.updated",      # data: {wallet: WalletState}
     "system.reset",
+    "plan.tool_call",      # data: {plan_id, tool, summary}
+    "plan.candidates",     # data: {candidates: CandidateSet}
+    "plan.ready",          # data: {itinerary: Itinerary}
+    "plan.invalid",        # data: {plan_id, errors: list[str]}
+    "plan.failed",         # data: {plan_id, error}
 )
 
 # On-ledger conventions shared by ledger (writes), merchants and guardrail (read/verify).

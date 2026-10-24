@@ -1,0 +1,600 @@
+{
+  "plan_id": "kyoto-demo",
+  "candidates": [
+    {
+      "id": "bamboo-grove",
+      "kind": "attraction",
+      "attraction": {
+        "id": "bamboo-grove",
+        "name": "Arashiyama Bamboo Grove",
+        "category": "nature",
+        "location": {
+          "lat": 35.017,
+          "lng": 135.6716
+        },
+        "area": "Arashiyama",
+        "description": "A walking path through towering bamboo.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Bamboo_grove_arashiyama.jpg/640px-Bamboo_grove_arashiyama.jpg",
+        "popularity": 0.95,
+        "typical_duration_min": 45,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "tenryuji",
+      "kind": "attraction",
+      "attraction": {
+        "id": "tenryuji",
+        "name": "Tenry\u016b-ji",
+        "category": "temples",
+        "location": {
+          "lat": 35.0156,
+          "lng": 135.6737
+        },
+        "area": "Arashiyama",
+        "description": "A Zen temple garden beside the bamboo grove.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Tenryuji_Kyoto05s3s4592.jpg/640px-Tenryuji_Kyoto05s3s4592.jpg",
+        "popularity": 0.9,
+        "typical_duration_min": 60,
+        "opening_hours": "09:00-17:00",
+        "price": "5.00",
+        "free": false,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "fushimi-inari",
+      "kind": "attraction",
+      "attraction": {
+        "id": "fushimi-inari",
+        "name": "Fushimi Inari",
+        "category": "temples",
+        "location": {
+          "lat": 34.9671,
+          "lng": 135.7727
+        },
+        "area": "Fushimi",
+        "description": "Thousands of torii gates climbing the mountain.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/FushimiInari_Torii.jpg/640px-FushimiInari_Torii.jpg",
+        "popularity": 0.98,
+        "typical_duration_min": 90,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "kinkakuji",
+      "kind": "attraction",
+      "attraction": {
+        "id": "kinkakuji",
+        "name": "Kinkaku-ji",
+        "category": "temples",
+        "location": {
+          "lat": 35.0394,
+          "lng": 135.7292
+        },
+        "area": "Kita",
+        "description": "The gold-leaf pavilion over a reflecting pond.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Kinkaku-ji_the_Golden_Pavilion_in_Kyoto.jpg/640px-Kinkaku-ji_the_Golden_Pavilion_in_Kyoto.jpg",
+        "popularity": 0.97,
+        "typical_duration_min": 50,
+        "opening_hours": "09:00-17:00",
+        "price": "5.00",
+        "free": false,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "kiyomizu",
+      "kind": "attraction",
+      "attraction": {
+        "id": "kiyomizu",
+        "name": "Kiyomizu-dera",
+        "category": "temples",
+        "location": {
+          "lat": 34.9949,
+          "lng": 135.785
+        },
+        "area": "Higashiyama",
+        "description": "A wooden stage looking over the city.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Kiyomizu.jpg/640px-Kiyomizu.jpg",
+        "popularity": 0.93,
+        "typical_duration_min": 70,
+        "opening_hours": "09:00-17:00",
+        "price": "5.00",
+        "free": false,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "philosophers-path",
+      "kind": "attraction",
+      "attraction": {
+        "id": "philosophers-path",
+        "name": "Philosopher's Path",
+        "category": "nature",
+        "location": {
+          "lat": 35.027,
+          "lng": 135.798
+        },
+        "area": "Higashiyama",
+        "description": "A canal walk lined with cherry trees.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Philosopher%27s_Walk_Kyoto.jpg/640px-Philosopher%27s_Walk_Kyoto.jpg",
+        "popularity": 0.8,
+        "typical_duration_min": 50,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "gion",
+      "kind": "attraction",
+      "attraction": {
+        "id": "gion",
+        "name": "Gion",
+        "category": "nightlife",
+        "location": {
+          "lat": 35.0037,
+          "lng": 135.7758
+        },
+        "area": "Gion",
+        "description": "Lanterned streets of teahouses.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Gion_Kyoto.jpg/640px-Gion_Kyoto.jpg",
+        "popularity": 0.88,
+        "typical_duration_min": 60,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "nishiki",
+      "kind": "attraction",
+      "attraction": {
+        "id": "nishiki",
+        "name": "Nishiki Market",
+        "category": "food",
+        "location": {
+          "lat": 35.005,
+          "lng": 135.7649
+        },
+        "area": "Downtown",
+        "description": "A covered market of pickles, tofu and seafood.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Nishiki_Market.jpg/640px-Nishiki_Market.jpg",
+        "popularity": 0.86,
+        "typical_duration_min": 45,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "nijo",
+      "kind": "attraction",
+      "attraction": {
+        "id": "nijo",
+        "name": "Nij\u014d Castle",
+        "category": "museums",
+        "location": {
+          "lat": 35.0142,
+          "lng": 135.7481
+        },
+        "area": "Nakagyo",
+        "description": "A shogun's palace with nightingale floors.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Nijo_Castle.jpg/640px-Nijo_Castle.jpg",
+        "popularity": 0.84,
+        "typical_duration_min": 75,
+        "opening_hours": "09:00-17:00",
+        "price": "5.00",
+        "free": false,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "pontocho",
+      "kind": "attraction",
+      "attraction": {
+        "id": "pontocho",
+        "name": "Pontocho",
+        "category": "food",
+        "location": {
+          "lat": 35.0038,
+          "lng": 135.7712
+        },
+        "area": "Pontocho",
+        "description": "A narrow alley of restaurants along the river.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Pontocho.jpg/640px-Pontocho.jpg",
+        "popularity": 0.82,
+        "typical_duration_min": 40,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "arashiyama-park",
+      "kind": "attraction",
+      "attraction": {
+        "id": "arashiyama-park",
+        "name": "Arashiyama Park",
+        "category": "nature",
+        "location": {
+          "lat": 35.0152,
+          "lng": 135.6788
+        },
+        "area": "Arashiyama",
+        "description": "Riverbank park with views of the Togetsukyo bridge.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Togetsukyo_Bridge.jpg/640px-Togetsukyo_Bridge.jpg",
+        "popularity": 0.7,
+        "typical_duration_min": 40,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "imperial-palace",
+      "kind": "attraction",
+      "attraction": {
+        "id": "imperial-palace",
+        "name": "Kyoto Imperial Palace",
+        "category": "museums",
+        "location": {
+          "lat": 35.0254,
+          "lng": 135.7621
+        },
+        "area": "Nakagyo",
+        "description": "Gardens of the former imperial residence.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Kyoto_Imperial_Palace.jpg/640px-Kyoto_Imperial_Palace.jpg",
+        "popularity": 0.75,
+        "typical_duration_min": 60,
+        "opening_hours": "09:00-17:00",
+        "price": null,
+        "free": true,
+        "source": "curated"
+      },
+      "merchant": null,
+      "item": null,
+      "quote": null
+    },
+    {
+      "id": "bamboo-bikes",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "bamboo-bikes",
+        "name": "Arashiyama Bamboo Bike Rentals",
+        "category": "activity",
+        "location": {
+          "lat": 35.017,
+          "lng": 135.6713
+        },
+        "xrpl_address": "rbamboobikesPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/bamboo-bikes/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "B65D7B500D2CCFAF9FAC717F5D4DB31AAB496C09BFB4340449DFC2E7ADD1034D",
+        "merchant_id": "bamboo-bikes",
+        "merchant_name": "Arashiyama Bamboo Bike Rentals",
+        "merchant_address": "rbamboobikesPLACEHOLDER",
+        "sku": "BIKE-2H",
+        "title": "2-hour bamboo grove bike rental",
+        "category": "activity",
+        "amount": "15.00",
+        "currency": "RLUSD",
+        "viator_price": "17.65",
+        "slot_start": "2026-11-14T14:00:00+09:00",
+        "slot_end": "2026-11-14T16:00:00+09:00",
+        "location": {
+          "lat": 35.017,
+          "lng": 135.6713
+        },
+        "cancel_after": "2026-11-14T13:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "kissa-matcha",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "kissa-matcha",
+        "name": "Kissa Master Matcha Workshop",
+        "category": "food",
+        "location": {
+          "lat": 35.0136,
+          "lng": 135.6779
+        },
+        "xrpl_address": "rkissamatchaPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/kissa-matcha/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "813F54FF6A26996A03913A962CC8B884A03999BC716DFCEEED0735867142ED73",
+        "merchant_id": "kissa-matcha",
+        "merchant_name": "Kissa Master Matcha Workshop",
+        "merchant_address": "rkissamatchaPLACEHOLDER",
+        "sku": "MATCHA-WS",
+        "title": "Matcha whisking workshop",
+        "category": "food",
+        "amount": "30.00",
+        "currency": "RLUSD",
+        "viator_price": "35.29",
+        "slot_start": "2026-11-14T16:00:00+09:00",
+        "slot_end": "2026-11-14T17:00:00+09:00",
+        "location": {
+          "lat": 35.0136,
+          "lng": 135.6779
+        },
+        "cancel_after": "2026-11-14T15:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "ramen-tasting",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "ramen-tasting",
+        "name": "Gion Ramen Tasting",
+        "category": "food",
+        "location": {
+          "lat": 35.0037,
+          "lng": 135.7788
+        },
+        "xrpl_address": "rramentastingPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/ramen-tasting/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "90893245FEE4F15D610106DC7DD035962207F471B312BC34E9642F389DCDBB9E",
+        "merchant_id": "ramen-tasting",
+        "merchant_name": "Gion Ramen Tasting",
+        "merchant_address": "rramentastingPLACEHOLDER",
+        "sku": "RAMEN-5",
+        "title": "5-bowl ramen tasting",
+        "category": "food",
+        "amount": "20.00",
+        "currency": "RLUSD",
+        "viator_price": "23.53",
+        "slot_start": "2026-11-14T14:00:00+09:00",
+        "slot_end": "2026-11-14T16:00:00+09:00",
+        "location": {
+          "lat": 35.0037,
+          "lng": 135.7788
+        },
+        "cancel_after": "2026-11-14T13:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "gion-tea",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "gion-tea",
+        "name": "Gion Tea House",
+        "category": "food",
+        "location": {
+          "lat": 35.0036,
+          "lng": 135.775
+        },
+        "xrpl_address": "rgionteaPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/gion-tea/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "A22BF5ADC8D3E65B40578B1D01D25F6831FA6C8481CC6F9BAA5A6B032D821265",
+        "merchant_id": "gion-tea",
+        "merchant_name": "Gion Tea House",
+        "merchant_address": "rgionteaPLACEHOLDER",
+        "sku": "TEA-SET",
+        "title": "Private tea ceremony",
+        "category": "food",
+        "amount": "28.00",
+        "currency": "RLUSD",
+        "viator_price": "32.00",
+        "slot_start": "2026-11-14T15:00:00+09:00",
+        "slot_end": "2026-11-14T16:00:00+09:00",
+        "location": {
+          "lat": 35.0036,
+          "lng": 135.775
+        },
+        "cancel_after": "2026-11-14T14:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "fushimi-sake",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "fushimi-sake",
+        "name": "Fushimi Sake Brewery Tour",
+        "category": "food",
+        "location": {
+          "lat": 34.9256,
+          "lng": 135.7614
+        },
+        "xrpl_address": "rfushimisakePLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/fushimi-sake/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "A731588B2BA233C9AF95D76E7E0FA0D07D6F9C64BF4DC44122583DE8A5EF25F4",
+        "merchant_id": "fushimi-sake",
+        "merchant_name": "Fushimi Sake Brewery Tour",
+        "merchant_address": "rfushimisakePLACEHOLDER",
+        "sku": "SAKE-TOUR",
+        "title": "Brewery tasting tour",
+        "category": "food",
+        "amount": "35.00",
+        "currency": "RLUSD",
+        "viator_price": "41.00",
+        "slot_start": "2026-11-14T11:00:00+09:00",
+        "slot_end": "2026-11-14T13:00:00+09:00",
+        "location": {
+          "lat": 34.9256,
+          "lng": 135.7614
+        },
+        "cancel_after": "2026-11-14T10:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "nishiki-walk",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "nishiki-walk",
+        "name": "Nishiki Market Food Walk",
+        "category": "food",
+        "location": {
+          "lat": 35.005,
+          "lng": 135.7649
+        },
+        "xrpl_address": "rnishikiwalkPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/nishiki-walk/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "CCC815B7DFB829079484FF1A73A6363A85BE21EC95BBDC5D0060B2D5DFDD3495",
+        "merchant_id": "nishiki-walk",
+        "merchant_name": "Nishiki Market Food Walk",
+        "merchant_address": "rnishikiwalkPLACEHOLDER",
+        "sku": "NISHIKI-WALK",
+        "title": "Guided market tasting",
+        "category": "food",
+        "amount": "22.00",
+        "currency": "RLUSD",
+        "viator_price": "26.00",
+        "slot_start": "2026-11-14T12:00:00+09:00",
+        "slot_end": "2026-11-14T14:00:00+09:00",
+        "location": {
+          "lat": 35.005,
+          "lng": 135.7649
+        },
+        "cancel_after": "2026-11-14T11:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    },
+    {
+      "id": "arashiyama-boat",
+      "kind": "merchant",
+      "attraction": null,
+      "merchant": {
+        "merchant_id": "arashiyama-boat",
+        "name": "Arashiyama River Boat",
+        "category": "activity",
+        "location": {
+          "lat": 35.0148,
+          "lng": 135.6765
+        },
+        "xrpl_address": "rarashiyamaboatPLACEHOLDER",
+        "mcp_url": "http://localhost:8001/m/arashiyama-boat/mcp",
+        "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+        "city": "Kyoto",
+        "country": "Japan"
+      },
+      "item": null,
+      "quote": {
+        "invoice_id": "61BBAF0705D75BC51F98E5D2974F5F3461FA6CF497BCFFB8CBB12E1E522E6DC4",
+        "merchant_id": "arashiyama-boat",
+        "merchant_name": "Arashiyama River Boat",
+        "merchant_address": "rarashiyamaboatPLACEHOLDER",
+        "sku": "BOAT-45",
+        "title": "45-minute river boat",
+        "category": "activity",
+        "amount": "18.00",
+        "currency": "RLUSD",
+        "viator_price": "21.00",
+        "slot_start": "2026-11-14T15:00:00+09:00",
+        "slot_end": "2026-11-14T16:00:00+09:00",
+        "location": {
+          "lat": 35.0148,
+          "lng": 135.6765
+        },
+        "cancel_after": "2026-11-14T14:00:00+09:00",
+        "expires_at": "2026-11-16T23:00:00+09:00",
+        "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "merchant_verified": true
+      }
+    }
+  ],
+  "available_hours": 18.0
+}
