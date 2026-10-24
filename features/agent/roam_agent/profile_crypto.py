@@ -32,13 +32,18 @@ def profile_key() -> bytes:
     return _PROCESS_KEY
 
 
+def _parts(secret: bytes) -> tuple[bytes, bytes]:
+    return hmac.new(secret, b"enc", hashlib.sha256).digest(), hmac.new(secret, b"mac", hashlib.sha256).digest()
+
+
 def seal(plain: str, key: bytes | None = None) -> str:
     secret = key or profile_key()
+    enc_key, mac_key = _parts(secret)
     nonce = os.urandom(16)
     data = plain.encode()
-    stream = _stream(secret, nonce, len(data))
+    stream = _stream(enc_key, nonce, len(data))
     cipher = bytes(left ^ right for left, right in zip(data, stream))
-    mac = hmac.new(secret, nonce + cipher, hashlib.sha256).digest()
+    mac = hmac.new(mac_key, nonce + cipher, hashlib.sha256).digest()
     return "enc:" + (nonce + mac + cipher).hex()
 
 
@@ -46,12 +51,13 @@ def open_secret(token: str, key: bytes | None = None) -> str:
     if not token.startswith("enc:"):
         return token
     secret = key or profile_key()
+    enc_key, mac_key = _parts(secret)
     blob = bytes.fromhex(token[4:])
     nonce, mac, cipher = blob[:16], blob[16:48], blob[48:]
-    expected = hmac.new(secret, nonce + cipher, hashlib.sha256).digest()
+    expected = hmac.new(mac_key, nonce + cipher, hashlib.sha256).digest()
     if not hmac.compare_digest(mac, expected):
         raise ValueError("profile field failed its integrity check")
-    stream = _stream(secret, nonce, len(cipher))
+    stream = _stream(enc_key, nonce, len(cipher))
     return bytes(left ^ right for left, right in zip(cipher, stream)).decode()
 
 

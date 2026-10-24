@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from typing import Protocol
 
@@ -38,6 +39,8 @@ class MemoryProfileStore:
 
 class SqliteProfileStore:
     def __init__(self, path: str, key: bytes | None = None) -> None:
+        if key is None and not os.environ.get("ROAM_PROFILE_KEY"):
+            raise RuntimeError("ROAM_PROFILE_KEY is required to store profiles on disk")
         self.key = key
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.execute("create table if not exists profiles (user_id text primary key, payload text)")

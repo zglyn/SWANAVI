@@ -3,6 +3,8 @@ import logging
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from roam_agent.auth import MemoryAuth
@@ -60,6 +62,12 @@ def test_profile_fixture_roundtrip_and_sealed_secrets(tmp_path):
     assert "JL998877" not in json.dumps(view)
     assert "address" not in view["home"]
     assert view["flights"]["loyalty"][0]["member"] is True
+
+
+def test_sqlite_refuses_to_start_without_a_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("ROAM_PROFILE_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        SqliteProfileStore(str(tmp_path / "profiles.sqlite"))
 
 
 def test_flight_search_ranks_jal_and_caches():
