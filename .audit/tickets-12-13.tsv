@@ -1,0 +1,4 @@
+ts	phase	decision	why	evidence	result
+2026-10-24T21:43:00Z	start	Only tickets 12 and 13 were still open and unimplemented	Tickets 1 through 11 already have code on dev. This run does those two.	gh issue list zglyn/SWANAVI	open
+2026-10-24T21:43:00Z	flights	Chose AeroDataBox and kept fixture as the default provider	The ticket names AeroDataBox as the cheap flight-number lookup. No FLIGHT_API_KEY is in this environment, so a live call cannot run.	features/agent/roam_tools/flights.py	tests parse a recorded response, cache, cap, and missing key
+2026-10-24T21:43:00Z	agentcore	Wrapped plan() in the AgentCore entry point and a DynamoDB store	The runtime contract is POST /invocations and GET /ping on port 8080, arm64. No AWS credentials are present, so nothing was deployed.	features/agent/roam_agent/agentcore_app.py	30 pytest passed, docker not installed

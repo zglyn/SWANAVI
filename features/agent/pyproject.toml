@@ -2,7 +2,18 @@
 name = "roam-agent"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["roam-contracts", "fastapi", "uvicorn", "sse-starlette", "httpx", "fastmcp", "anthropic", "roam-ledger"]
+dependencies = [
+    "roam-contracts",
+    "fastapi",
+    "uvicorn",
+    "sse-starlette",
+    "httpx",
+    "fastmcp",
+    "anthropic",
+    "roam-ledger",
+    "bedrock-agentcore>=1.25.0",
+    "boto3>=1.43.118",
+]
 
 [tool.uv.sources]
 roam-contracts = { workspace = true }
