@@ -49,6 +49,8 @@ _DEMO_NOW = {
 # The loop also calls check_budget, authorize_spend(10, 12, USD),
 # refund_booking, check_conflicts, and trip_notice. A missing guard package
 # is recorded as <tool>_not_installed and the demo still finishes.
+# Assist tools run the same way: a missing package is <tool>_not_installed
+# and the demo still finishes. watch_trip is polled at the start of every tick.
 # The sample flight, hotel, and temple are not one same-day chain. The demo
 # adds a morning briefing (keeps the loop open), an afternoon garden after the
 # temple, and a farewell tea after hotel checkout. Those are the later segments
@@ -148,6 +150,7 @@ def _with_later_segments(payload: dict) -> dict:
                 "date": "2026-11-03",
                 "partySize": 1,
                 "time": "13:00",
+                "outdoor": True,
             },
             {
                 "segmentId": "attraction-4",
@@ -157,6 +160,9 @@ def _with_later_segments(payload: dict) -> dict:
                 "date": "2026-11-06",
                 "partySize": 1,
                 "time": "12:00",
+                "meal": True,
+                "reservationAt": "2026-11-06T11:00:00Z",
+                "arriveAt": "2026-11-06T12:00:00Z",
             },
         ]
     )
@@ -175,6 +181,17 @@ def _with_replan_signal(report: object, tick: object) -> object:
     merged = dict(report)
     merged["updates"] = [*(updates if isinstance(updates, list) else []), dict(signal)]
     return merged
+
+
+def _demo_signals(plan: dict, clock: dict) -> list:
+    """The scripted replan signal for this tick, passed through to watch_trip."""
+
+    del plan
+    tick = clock.get("tick") if isinstance(clock, dict) else None
+    signal = _REPLAN_SIGNALS.get(tick)
+    if signal is None:
+        return []
+    return [dict(signal)]
 
 
 def _demo_progress(original):
@@ -201,8 +218,10 @@ def invoke_runtime(payload: dict) -> dict:
 
     original_clock = master_service._clock
     original_progress = master_service.trip_progress
+    original_signals = master_service._signals
     master_service._clock = _demo_clock(original_clock)
     master_service.trip_progress = _demo_progress(original_progress)
+    master_service._signals = _demo_signals
     port = _free_port()
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", access_log=False)
     server = uvicorn.Server(config)
@@ -227,6 +246,7 @@ def invoke_runtime(payload: dict) -> dict:
         thread.join(timeout=5)
         master_service._clock = original_clock
         master_service.trip_progress = original_progress
+        master_service._signals = original_signals
     if not isinstance(body, dict):
         raise RuntimeError("AgentCore runtime returned a non-object response")
     return body
@@ -252,6 +272,9 @@ def write_trace(result: dict, stream: object | None = None) -> None:
             f"spend payAmount={spend.get('payAmount')} reason={spend.get('reason')}",
             file=out,
         )
+    for label in ("entry", "fx", "tip", "emergency", "weather", "transfer", "luggage", "table", "checkout"):
+        if label in result:
+            print(f"{label}={result.get(label)}", file=out)
     print(f"master loop stopped={stopped} ticks={len(ticks)} maxTicks={result.get('maxTicks')}", file=out)
     for tick in ticks:
         if not isinstance(tick, dict):
@@ -264,6 +287,20 @@ def write_trace(result: dict, stream: object | None = None) -> None:
         )
         if "notice" in tick:
             print(f"  notice={tick.get('notice')}", file=out)
+        if "watch" in tick:
+            print(f"  watch={tick.get('watch')}", file=out)
+        if "airport" in tick:
+            print(f"  airport={tick.get('airport')}", file=out)
+        if "afterDark" in tick:
+            print(f"  afterDark={tick.get('afterDark')}", file=out)
+        if "phrase" in tick:
+            print(f"  phrase={tick.get('phrase')}", file=out)
+        if "rides" in tick:
+            print(f"  rides={tick.get('rides')}", file=out)
+        if "wallet" in tick:
+            print(f"  wallet={tick.get('wallet')}", file=out)
+        if tick.get("warnings"):
+            print(f"  warnings={tick.get('warnings')}", file=out)
         for update in updates:
             if not isinstance(update, dict):
                 continue

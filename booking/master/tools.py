@@ -1,8 +1,8 @@
 """Tool names the master calls.
 
 Each function forwards to a capability package. None of them books a supplier,
-parses an inbox, decides whether the trip is on track, shifts the day, or
-decides a guard outcome.
+parses an inbox, decides whether the trip is on track, shifts the day, decides
+a guard outcome, or decides an assist outcome.
 """
 
 from __future__ import annotations
@@ -14,28 +14,73 @@ from booking.master.capabilities import (
     AUTHORIZE_SPEND_NOT_INSTALLED,
     CHECK_BUDGET_NOT_INSTALLED,
     CHECK_CONFLICTS_NOT_INSTALLED,
+    CHECK_ENTRY_NOT_INSTALLED,
+    CHECK_HOURS_NOT_INSTALLED,
+    CHECK_TRANSFER_NOT_INSTALLED,
+    CHECK_WEATHER_NOT_INSTALLED,
+    EMERGENCY_CARD_NOT_INSTALLED,
+    HOLD_TABLE_NOT_INSTALLED,
+    LUGGAGE_DROP_NOT_INSTALLED,
     PROGRESS_NOT_INSTALLED,
     PROVIDER_NOT_INSTALLED,
+    QUOTE_FX_NOT_INSTALLED,
     REFUND_BOOKING_NOT_INSTALLED,
     REPLAN_NOT_INSTALLED,
+    REQUEST_RIDE_NOT_INSTALLED,
     TRIP_NOTICE_NOT_INSTALLED,
+    TRIP_WALLET_NOT_INSTALLED,
     VERIFIER_NOT_INSTALLED,
+    WATCH_NOT_INSTALLED,
+    AFTER_DARK_NOT_INSTALLED,
+    AIRPORT_LEAVE_NOT_INSTALLED,
+    LATE_CHECKOUT_NOT_INSTALLED,
+    PHRASE_CARD_NOT_INSTALLED,
+    TIP_POLICY_NOT_INSTALLED,
     ProgressNotInstalled,
+    load_after_dark,
+    load_airport_leave,
     load_authorize_spend,
     load_book,
     load_check_budget,
     load_check_conflicts,
+    load_check_entry,
+    load_check_hours,
+    load_check_transfer,
+    load_check_weather,
+    load_emergency_card,
+    load_hold_table,
+    load_late_checkout,
+    load_luggage_drop,
+    load_phrase_card,
+    load_quote_fx,
     load_refund_booking,
     load_replan,
+    load_request_ride,
+    load_tip_policy,
     load_trip_notice,
     load_trip_progress,
+    load_trip_wallet,
     load_verifier,
+    load_watch_trip,
 )
 
 # One scripted demo charge. The spend guard decides payAmount and reason.
 SCRIPTED_AUTHORIZED_AMOUNT = 10
 SCRIPTED_REQUESTED_AMOUNT = 12
 SCRIPTED_CURRENCY = "USD"
+
+# Scripted assist inputs. The assist packages decide the outcomes.
+SCRIPTED_FX_AMOUNT = 1000
+SCRIPTED_FX_FROM = "JPY"
+SCRIPTED_FX_TO = "USD"
+SCRIPTED_VISA_ON_FILE = False
+SCRIPTED_PASSPORT_DAYS_AFTER_TRIP_END = 30
+SCRIPTED_WEATHER_CONDITION = "storm"
+SCRIPTED_HOURS_OPEN = "09:00"
+SCRIPTED_HOURS_CLOSE = "17:00"
+SCRIPTED_HOURS_CLOSED_WEEKDAYS: list[int] = []
+SCRIPTED_TRAVEL_MINUTES = 30
+SCRIPTED_EMERGENCY_COUNTRY = "Japan"
 
 BOOK_TOOL_BY_KIND = {
     "flight": "book_flight",
@@ -341,6 +386,406 @@ def trip_notice(trip_id: str, event: dict[str, Any]) -> Any:
 _NOTICE_EVENTS = frozenset({"cancelled", "ended_early", "ended_late", "booked", "over_capture_rejected"})
 
 
+def check_entry(
+    destinationCountry: str,
+    passportExpiry: str,
+    tripEnd: str,
+    visaOnFile: bool = SCRIPTED_VISA_ON_FILE,
+) -> Any:
+    """Call booking.assist.entry.check_entry once before the trip starts.
+
+    The master scripts passportExpiry and visaOnFile. Returns the tool result,
+    or ``check_entry_not_installed`` when that function cannot be imported.
+    """
+
+    return _assist(
+        load_check_entry,
+        CHECK_ENTRY_NOT_INSTALLED,
+        {
+            "destinationCountry": destinationCountry,
+            "passportExpiry": passportExpiry,
+            "tripEnd": tripEnd,
+            "visaOnFile": visaOnFile,
+        },
+    )
+
+
+def check_hours(
+    segmentId: str,
+    start: str,
+    end: str,
+    open: str = SCRIPTED_HOURS_OPEN,
+    close: str = SCRIPTED_HOURS_CLOSE,
+    closedWeekdays: list[int] | None = None,
+) -> Any:
+    """Call booking.assist.hours.check_hours for one attraction after a replan."""
+
+    return _assist(
+        load_check_hours,
+        CHECK_HOURS_NOT_INSTALLED,
+        {
+            "segmentId": segmentId,
+            "start": start,
+            "end": end,
+            "open": open,
+            "close": close,
+            "closedWeekdays": list(SCRIPTED_HOURS_CLOSED_WEEKDAYS if closedWeekdays is None else closedWeekdays),
+        },
+    )
+
+
+def check_transfer(
+    fromSegmentId: str,
+    toSegmentId: str,
+    fromEnd: str,
+    toStart: str,
+    travelMinutes: int = SCRIPTED_TRAVEL_MINUTES,
+) -> Any:
+    """Call booking.assist.transfers.check_transfer between two consecutive stops."""
+
+    return _assist(
+        load_check_transfer,
+        CHECK_TRANSFER_NOT_INSTALLED,
+        {
+            "fromSegmentId": fromSegmentId,
+            "toSegmentId": toSegmentId,
+            "fromEnd": fromEnd,
+            "toStart": toStart,
+            "travelMinutes": travelMinutes,
+        },
+    )
+
+
+def quote_fx(
+    amount: int = SCRIPTED_FX_AMOUNT,
+    fromCurrency: str = SCRIPTED_FX_FROM,
+    toCurrency: str = SCRIPTED_FX_TO,
+) -> Any:
+    """Call booking.assist.fx.quote_fx before authorize_spend.
+
+    The scripted quote is 1000 JPY into USD.
+    """
+
+    return _assist(
+        load_quote_fx,
+        QUOTE_FX_NOT_INSTALLED,
+        {"amount": amount, "fromCurrency": fromCurrency, "toCurrency": toCurrency},
+    )
+
+
+def check_weather(segmentId: str, outdoor: bool, condition: str = SCRIPTED_WEATHER_CONDITION) -> Any:
+    """Call booking.assist.weather.check_weather for one outdoor segment."""
+
+    return _assist(
+        load_check_weather,
+        CHECK_WEATHER_NOT_INSTALLED,
+        {"segmentId": segmentId, "outdoor": outdoor, "condition": condition},
+    )
+
+
+def emergency_card(country: str = SCRIPTED_EMERGENCY_COUNTRY, travelerName: str = "") -> Any:
+    """Call booking.assist.emergency.emergency_card for Japan."""
+
+    return _assist(
+        load_emergency_card,
+        EMERGENCY_CARD_NOT_INSTALLED,
+        {"country": country, "travelerName": travelerName},
+    )
+
+
+def request_ride(
+    pickupAt: str,
+    dropoffName: str,
+    segmentId: str = "",
+    toSegmentId: str = "",
+    tripId: str = "",
+) -> Any:
+    """Call booking.assist.ride.request_ride. The package returns any SANDBOX-RIDE- code."""
+
+    return _assist(
+        load_request_ride,
+        REQUEST_RIDE_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "segmentId": segmentId,
+            "fromSegmentId": segmentId,
+            "toSegmentId": toSegmentId,
+            "pickupAt": pickupAt,
+            "dropoffName": dropoffName,
+        },
+    )
+
+
+def hold_table(
+    segmentId: str,
+    arriveAt: str,
+    reservationAt: str,
+    tripId: str = "",
+    name: str = "",
+    partySize: int | None = None,
+) -> Any:
+    """Call booking.assist.table.hold_table when a meal arrival is after the reservation."""
+
+    fields: dict[str, Any] = {
+        "tripId": tripId,
+        "trip_id": tripId,
+        "segmentId": segmentId,
+        "name": name,
+        "arriveAt": arriveAt,
+        "reservationAt": reservationAt,
+    }
+    if partySize is not None:
+        fields["partySize"] = partySize
+    return _assist(load_hold_table, HOLD_TABLE_NOT_INSTALLED, fields)
+
+
+def luggage_drop(
+    arrivalAt: str,
+    checkIn: str,
+    segmentId: str = "",
+    flightSegmentId: str = "",
+    tripId: str = "",
+) -> Any:
+    """Call booking.assist.luggage.luggage_drop when arrival is before hotel check-in."""
+
+    return _assist(
+        load_luggage_drop,
+        LUGGAGE_DROP_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "segmentId": segmentId,
+            "hotelSegmentId": segmentId,
+            "flightSegmentId": flightSegmentId,
+            "arrivalAt": arrivalAt,
+            "checkIn": checkIn,
+        },
+    )
+
+
+def airport_leave(
+    tripId: str,
+    segmentId: str,
+    date: str,
+    now: str,
+    origin: str = "",
+    destination: str = "",
+) -> Any:
+    """Call booking.assist.airport.airport_leave on a flight day."""
+
+    return _assist(
+        load_airport_leave,
+        AIRPORT_LEAVE_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "segmentId": segmentId,
+            "date": date,
+            "now": now,
+            "from": origin,
+            "to": destination,
+            "origin": origin,
+            "destination": destination,
+        },
+    )
+
+
+def after_dark(
+    segmentId: str,
+    name: str,
+    start: str,
+    end: str,
+    now: str = "",
+    tripId: str = "",
+) -> Any:
+    """Call booking.assist.afterdark.after_dark for one walk leg."""
+
+    return _assist(
+        load_after_dark,
+        AFTER_DARK_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "segmentId": segmentId,
+            "name": name,
+            "start": start,
+            "end": end,
+            "now": now,
+            "leg": "walk",
+        },
+    )
+
+
+def late_checkout(
+    tripId: str,
+    flightSegmentId: str,
+    hotelSegmentId: str,
+    date: str,
+    checkOut: str,
+) -> Any:
+    """Call booking.assist.checkout.late_checkout when a flight shares the checkout day."""
+
+    return _assist(
+        load_late_checkout,
+        LATE_CHECKOUT_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "flightSegmentId": flightSegmentId,
+            "hotelSegmentId": hotelSegmentId,
+            "segmentId": hotelSegmentId,
+            "date": date,
+            "checkOut": checkOut,
+        },
+    )
+
+
+def tip_policy(tripId: str, country: str, currency: str, requestedAmount: int) -> Any:
+    """Call booking.assist.tip.tip_policy before authorize_spend."""
+
+    return _assist(
+        load_tip_policy,
+        TIP_POLICY_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "country": country,
+            "currency": currency,
+            "requestedAmount": requestedAmount,
+            "amount": requestedAmount,
+        },
+    )
+
+
+def phrase_card(
+    tripId: str,
+    country: str,
+    dropoffName: str,
+    pickupAt: str,
+    segmentId: str = "",
+) -> Any:
+    """Call booking.assist.phrase.phrase_card when a ride is requested."""
+
+    return _assist(
+        load_phrase_card,
+        PHRASE_CARD_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "country": country,
+            "dropoffName": dropoffName,
+            "pickupAt": pickupAt,
+            "segmentId": segmentId,
+            "situation": "ride",
+        },
+    )
+
+
+def trip_wallet(tripId: str, codes: list[str]) -> Any:
+    """Call booking.assist.wallet.trip_wallet with the codes the master already has."""
+
+    return _assist(
+        load_trip_wallet,
+        TRIP_WALLET_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "trip_id": tripId,
+            "codes": list(codes),
+            "confirmationCodes": list(codes),
+        },
+    )
+
+
+def watch_trip(
+    now: str,
+    plan: dict[str, Any],
+    rides: list[Any],
+    signals: list[Any],
+    tripId: str = "",
+) -> Any:
+    """Call booking.assist.watch.watch_trip at the start of a tick.
+
+    Returns the tool result, or ``watch_not_installed`` when that function
+    cannot be imported. The master does not decide which warnings to raise.
+    """
+
+    return _assist(
+        load_watch_trip,
+        WATCH_NOT_INSTALLED,
+        {
+            "now": now,
+            "plan": plan,
+            "rides": rides,
+            "signals": signals,
+            "tripId": tripId,
+            "trip_id": tripId,
+        },
+    )
+
+
+def _assist(load: Any, missing: str, fields: dict[str, Any]) -> Any:
+    fn = load()
+    if fn is None:
+        return missing
+    try:
+        return _invoke(fn, fields)
+    except Exception as exc:
+        return {"error": _message(exc)}
+
+
+def _invoke(fn: Any, fields: dict[str, Any]) -> Any:
+    """Call ``fn`` with the argument names that function already accepts."""
+
+    try:
+        signature = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return fn(fields)
+    params = list(signature.parameters.values())
+    var_kw = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params)
+    named = [
+        param
+        for param in params
+        if param.kind
+        in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    ]
+    if len(named) == 1 and named[0].name not in fields and not var_kw:
+        return fn(fields)
+    if var_kw and not named:
+        return fn(**fields)
+    kwargs: dict[str, Any] = {}
+    for param in named:
+        if param.name in fields:
+            kwargs[param.name] = fields[param.name]
+            continue
+        camel = _camel(param.name)
+        if camel in fields:
+            kwargs[param.name] = fields[camel]
+    if var_kw:
+        for key, value in fields.items():
+            kwargs.setdefault(key, value)
+        return fn(**kwargs)
+    missing = [
+        param.name
+        for param in named
+        if param.name not in kwargs and param.default is inspect.Parameter.empty
+    ]
+    if missing and len(named) == 1:
+        return fn(fields)
+    return fn(**kwargs)
+
+
+def _camel(name: str) -> str:
+    parts = name.split("_")
+    if len(parts) == 1:
+        return name
+    return parts[0] + "".join(part[:1].upper() + part[1:] for part in parts[1:] if part)
+
+
 def _param_names(fn: Any) -> list[str]:
     try:
         return list(inspect.signature(fn).parameters)
@@ -440,4 +885,20 @@ RUNTIME_TOOLS = {
     "refund_booking": refund_booking,
     "check_conflicts": check_conflicts,
     "trip_notice": trip_notice,
+    "check_entry": check_entry,
+    "check_hours": check_hours,
+    "check_transfer": check_transfer,
+    "quote_fx": quote_fx,
+    "check_weather": check_weather,
+    "emergency_card": emergency_card,
+    "request_ride": request_ride,
+    "hold_table": hold_table,
+    "luggage_drop": luggage_drop,
+    "watch_trip": watch_trip,
+    "airport_leave": airport_leave,
+    "after_dark": after_dark,
+    "late_checkout": late_checkout,
+    "tip_policy": tip_policy,
+    "phrase_card": phrase_card,
+    "trip_wallet": trip_wallet,
 }

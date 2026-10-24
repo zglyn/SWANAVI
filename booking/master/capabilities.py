@@ -1,7 +1,8 @@
 """Import capability packages owned by other agents.
 
 Missing packages are reported by the caller. This module does not implement
-booking, email parsing, trip progress, replanning, or the guard tools.
+booking, email parsing, trip progress, replanning, the guard tools, or the
+assist tools.
 """
 
 from __future__ import annotations
@@ -30,6 +31,22 @@ AUTHORIZE_SPEND_NOT_INSTALLED = "authorize_spend_not_installed"
 REFUND_BOOKING_NOT_INSTALLED = "refund_booking_not_installed"
 CHECK_CONFLICTS_NOT_INSTALLED = "check_conflicts_not_installed"
 TRIP_NOTICE_NOT_INSTALLED = "trip_notice_not_installed"
+CHECK_ENTRY_NOT_INSTALLED = "check_entry_not_installed"
+CHECK_HOURS_NOT_INSTALLED = "check_hours_not_installed"
+CHECK_TRANSFER_NOT_INSTALLED = "check_transfer_not_installed"
+QUOTE_FX_NOT_INSTALLED = "quote_fx_not_installed"
+CHECK_WEATHER_NOT_INSTALLED = "check_weather_not_installed"
+EMERGENCY_CARD_NOT_INSTALLED = "emergency_card_not_installed"
+REQUEST_RIDE_NOT_INSTALLED = "request_ride_not_installed"
+HOLD_TABLE_NOT_INSTALLED = "hold_table_not_installed"
+LUGGAGE_DROP_NOT_INSTALLED = "luggage_drop_not_installed"
+WATCH_NOT_INSTALLED = "watch_not_installed"
+AIRPORT_LEAVE_NOT_INSTALLED = "airport_leave_not_installed"
+AFTER_DARK_NOT_INSTALLED = "after_dark_not_installed"
+LATE_CHECKOUT_NOT_INSTALLED = "late_checkout_not_installed"
+TIP_POLICY_NOT_INSTALLED = "tip_policy_not_installed"
+PHRASE_CARD_NOT_INSTALLED = "phrase_card_not_installed"
+TRIP_WALLET_NOT_INSTALLED = "trip_wallet_not_installed"
 
 PROVIDER_MODULES = {
     "flight": "booking.providers.flights",
@@ -79,6 +96,40 @@ REFUND_MODULE = "booking.refund"
 REFUND_EXPORT = "refund_booking"
 NOTIFY_MODULE = "booking.notify"
 NOTIFY_EXPORT = "trip_notice"
+
+# Assist tools live in their own packages. The master only calls them.
+ENTRY_MODULE = "booking.assist.entry"
+ENTRY_EXPORT = "check_entry"
+HOURS_MODULE = "booking.assist.hours"
+HOURS_EXPORT = "check_hours"
+TRANSFERS_MODULE = "booking.assist.transfers"
+TRANSFERS_EXPORT = "check_transfer"
+FX_MODULE = "booking.assist.fx"
+FX_EXPORT = "quote_fx"
+WEATHER_MODULE = "booking.assist.weather"
+WEATHER_EXPORT = "check_weather"
+EMERGENCY_MODULE = "booking.assist.emergency"
+EMERGENCY_EXPORT = "emergency_card"
+RIDE_MODULE = "booking.assist.ride"
+RIDE_EXPORT = "request_ride"
+TABLE_MODULE = "booking.assist.table"
+TABLE_EXPORT = "hold_table"
+LUGGAGE_MODULE = "booking.assist.luggage"
+LUGGAGE_EXPORT = "luggage_drop"
+WATCH_MODULE = "booking.assist.watch"
+WATCH_EXPORT = "watch_trip"
+AIRPORT_MODULE = "booking.assist.airport"
+AIRPORT_EXPORT = "airport_leave"
+AFTER_DARK_MODULE = "booking.assist.afterdark"
+AFTER_DARK_EXPORT = "after_dark"
+CHECKOUT_MODULE = "booking.assist.checkout"
+CHECKOUT_EXPORT = "late_checkout"
+TIP_MODULE = "booking.assist.tip"
+TIP_EXPORT = "tip_policy"
+PHRASE_MODULE = "booking.assist.phrase"
+PHRASE_EXPORT = "phrase_card"
+WALLET_MODULE = "booking.assist.wallet"
+WALLET_EXPORT = "trip_wallet"
 
 
 class ProgressNotInstalled(Exception):
@@ -178,6 +229,102 @@ def load_trip_notice() -> NoticeFn | None:
     """Return trip_notice, or None when booking.notify is not importable."""
 
     return _load_callable(NOTIFY_MODULE, NOTIFY_EXPORT)
+
+
+def load_check_entry() -> Any | None:
+    """Return check_entry, or None when booking.assist.entry is not importable."""
+
+    return _load_callable(ENTRY_MODULE, ENTRY_EXPORT)
+
+
+def load_check_hours() -> Any | None:
+    """Return check_hours, or None when booking.assist.hours is not importable."""
+
+    return _load_callable(HOURS_MODULE, HOURS_EXPORT)
+
+
+def load_check_transfer() -> Any | None:
+    """Return check_transfer, or None when booking.assist.transfers is not importable."""
+
+    return _load_callable(TRANSFERS_MODULE, TRANSFERS_EXPORT)
+
+
+def load_quote_fx() -> Any | None:
+    """Return quote_fx, or None when booking.assist.fx is not importable."""
+
+    return _load_callable(FX_MODULE, FX_EXPORT)
+
+
+def load_check_weather() -> Any | None:
+    """Return check_weather, or None when booking.assist.weather is not importable."""
+
+    return _load_callable(WEATHER_MODULE, WEATHER_EXPORT)
+
+
+def load_emergency_card() -> Any | None:
+    """Return emergency_card, or None when booking.assist.emergency is not importable."""
+
+    return _load_callable(EMERGENCY_MODULE, EMERGENCY_EXPORT)
+
+
+def load_request_ride() -> Any | None:
+    """Return request_ride, or None when booking.assist.ride is not importable."""
+
+    return _load_callable(RIDE_MODULE, RIDE_EXPORT)
+
+
+def load_hold_table() -> Any | None:
+    """Return hold_table, or None when booking.assist.table is not importable."""
+
+    return _load_callable(TABLE_MODULE, TABLE_EXPORT)
+
+
+def load_luggage_drop() -> Any | None:
+    """Return luggage_drop, or None when booking.assist.luggage is not importable."""
+
+    return _load_callable(LUGGAGE_MODULE, LUGGAGE_EXPORT)
+
+
+def load_watch_trip() -> Any | None:
+    """Return watch_trip, or None when booking.assist.watch is not importable."""
+
+    return _load_callable(WATCH_MODULE, WATCH_EXPORT)
+
+
+def load_airport_leave() -> Any | None:
+    """Return airport_leave, or None when booking.assist.airport is not importable."""
+
+    return _load_callable(AIRPORT_MODULE, AIRPORT_EXPORT)
+
+
+def load_after_dark() -> Any | None:
+    """Return after_dark, or None when booking.assist.afterdark is not importable."""
+
+    return _load_callable(AFTER_DARK_MODULE, AFTER_DARK_EXPORT)
+
+
+def load_late_checkout() -> Any | None:
+    """Return late_checkout, or None when booking.assist.checkout is not importable."""
+
+    return _load_callable(CHECKOUT_MODULE, CHECKOUT_EXPORT)
+
+
+def load_tip_policy() -> Any | None:
+    """Return tip_policy, or None when booking.assist.tip is not importable."""
+
+    return _load_callable(TIP_MODULE, TIP_EXPORT)
+
+
+def load_phrase_card() -> Any | None:
+    """Return phrase_card, or None when booking.assist.phrase is not importable."""
+
+    return _load_callable(PHRASE_MODULE, PHRASE_EXPORT)
+
+
+def load_trip_wallet() -> Any | None:
+    """Return trip_wallet, or None when booking.assist.wallet is not importable."""
+
+    return _load_callable(WALLET_MODULE, WALLET_EXPORT)
 
 
 def _load_callable(module_name: str, export: str) -> Any | None:

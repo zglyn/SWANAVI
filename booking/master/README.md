@@ -1,6 +1,6 @@
 # Master booking agent
 
-The planner calls this runtime and no other booking entry. The master manages the trip by calling capability agents. Flight booking, hotel booking, attraction booking, confirmation-email verification, trip progress, replanning, and the guard tools each live in their own package. This folder does not implement those capabilities. The master calls one replan agent per event: cancellation, an early finish, or a late finish. It calls `check_budget`, `authorize_spend`, `refund_booking`, `check_conflicts`, and `trip_notice` when those packages import.
+The planner calls this runtime and no other booking entry. The master manages the trip by calling capability agents. Flight booking, hotel booking, attraction booking, confirmation-email verification, trip progress, replanning, the guard tools, and the assist tools each live in their own package. This folder does not implement those capabilities. The master calls one replan agent per event: cancellation, an early finish, or a late finish. It calls `check_budget`, `authorize_spend`, `refund_booking`, `check_conflicts`, and `trip_notice` when those packages import. Assist tools run on [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html). The master calls them so the day stays ahead of the traveler.
 
 The runtime is one [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html) app: `BedrockAgentCoreApp` in `booking/master/main.py`. A finished trip plan is posted to that runtime. The entrypoint books every segment, checks the sandbox provider email for each booked segment, then runs a control loop of at most five ticks.
 
@@ -25,6 +25,22 @@ Nothing in this folder has been deployed to AWS. The local demo needs no AWS cre
 | Segment `event` `cancelled` | `refund_booking` | `booking.refund` | `refund_booking(trip_id, segment_id, confirmation_code)` |
 | Replan returned `changed: true` | `check_conflicts` | `booking.guard.conflicts` | `check_conflicts(trip_id, plan)` |
 | After a replan, or an over-capture rejection | `trip_notice` | `booking.notify` | `trip_notice(trip_id, event)` |
+| Start of the run | `check_entry` | `booking.assist.entry` | `check_entry({destinationCountry, passportExpiry, tripEnd, visaOnFile})` |
+| After a replan, one attraction | `check_hours` | `booking.assist.hours` | `check_hours(segmentId, start, end, open, close, closedWeekdays)` |
+| Two consecutive stops | `check_transfer` | `booking.assist.transfers` | `check_transfer(fromSegmentId, toSegmentId, fromEnd, toStart, travelMinutes)` |
+| Before `authorize_spend` | `quote_fx` | `booking.assist.fx` | `quote_fx(1000, "JPY", "USD")` |
+| One outdoor segment | `check_weather` | `booking.assist.weather` | `check_weather(segmentId, outdoor=True, condition="storm")` |
+| Destination Japan | `emergency_card` | `booking.assist.emergency` | `emergency_card("Japan", travelerName)` |
+| Attraction ending, next stop follows | `request_ride` | `booking.assist.ride` | `request_ride(pickupAt, dropoffName)` |
+| Meal arrival after the reservation | `hold_table` | `booking.assist.table` | `hold_table(segmentId, arriveAt, reservationAt)` |
+| Arrival before hotel check-in | `luggage_drop` | `booking.assist.luggage` | `luggage_drop(arrivalAt, checkIn)` |
+| Start of every tick | `watch_trip` | `booking.assist.watch` | `watch_trip(now, plan, rides, signals)` |
+| Tick falls on a flight day | `airport_leave` | `booking.assist.airport` | `airport_leave(tripId, segmentId, date, now)` |
+| A walk leg | `after_dark` | `booking.assist.afterdark` | `after_dark(segmentId, name, start, end, now)` |
+| Flight on the hotel checkout day | `late_checkout` | `booking.assist.checkout` | `late_checkout(tripId, flightSegmentId, hotelSegmentId, date, checkOut)` |
+| Before `authorize_spend` | `tip_policy` | `booking.assist.tip` | `tip_policy(tripId, country, currency, requestedAmount)` |
+| A ride is requested | `phrase_card` | `booking.assist.phrase` | `phrase_card(tripId, country, dropoffName, pickupAt)` |
+| End of every tick | `trip_wallet` | `booking.assist.wallet` | `trip_wallet(tripId, codes)` |
 
 Provider tool input is the segment object from the plan (`from` stays `from` on flights), the traveler list `[{id, name}, ...]`, and `tripId`.
 
@@ -97,6 +113,41 @@ The master calls each guard when that package imports. When the import fails, or
 | `trip_notice` | After a handled replan, and when `authorize_spend` records `reason` `over_capture_rejected` | Tick `notice` is `trip_notice_not_installed`. | `trip_notice(trip_id, event)`. The return value is kept on that tick as `notice`. Two notices on one tick are a list. |
 
 `event` for a replan is `{type: "replan", segmentId, kind, event, replan, notes}`. `event` for an over-capture rejection is `{type: "over_capture_rejected", authorizedAmount, requestedAmount, currency, payAmount}`.
+
+### Assist tools
+
+These tools run on Bedrock AgentCore. The master only calls them. It does not decide passport rules, opening hours, transfer gaps, exchange rates, forecasts, emergency numbers, ride dispatch, table holds, luggage, what is wrong with the day, airport timing, after-dark walks, checkout, tips, phrases, or the wallet. When a package cannot be imported, or it does not export the function, the master records `<tool>_not_installed` and continues. The cap stays five ticks. Book, email verify, progress, replan, and guard behavior stay as they are.
+
+The master polls `watch_trip` every tick on Bedrock AgentCore so cancellations, weather, tight transfers, and a missing ride are handled before they become a missed stop. The call is at the start of the tick. Input is `now`, the plan, rides already requested, and any signals. Output is `{ok, warnings: [{segmentId, issue, severity, action}]}`. A missing package sets that tick's `watch` to `watch_not_installed` and the tick continues. When `ok` is false, every warning with severity `act` is handled in that same tick, before `trip_progress` runs:
+
+| `action` | What the master does |
+| --- | --- |
+| `replan` | The existing replan path for that warning's event |
+| `shift` | `check_weather` for that segment with condition `storm`, then the existing replan path (`ended_late` when the warning does not name an event) |
+| `request_ride` | `request_ride` |
+| `check_transfer` | `check_transfer` between that stop and the next one |
+
+Each warning is stored on the tick. The loop does not wait for the next tick.
+
+| Tool | When | Missing package | Installed call |
+| --- | --- | --- | --- |
+| `check_entry` | Once, before booking | Envelope `entry` is `check_entry_not_installed`. | Passport expiry is 30 days after `dates.end`. `visaOnFile` is false. |
+| `check_hours` | After a handled replan, for one attraction | Update `hours` is `check_hours_not_installed`. | `segmentId`, `start`, `end`, and a scripted window `open` `09:00`, `close` `17:00`, `closedWeekdays` `[]`, unless the attraction already has those fields. |
+| `check_transfer` | Once, for the first two stops in time order, and again when a watch warning says `check_transfer` | Envelope `transfer` is `check_transfer_not_installed`. | `fromEnd`, `toStart`, and scripted `travelMinutes` 30. |
+| `quote_fx` | Immediately before `authorize_spend` | Envelope `fx` is `quote_fx_not_installed`. `authorize_spend` still runs. | `amount` 1000, `fromCurrency` `JPY`, `toCurrency` `USD`. |
+| `check_weather` | One outdoor segment (`outdoor: true`, or a garden, park, or walk) | Envelope `weather` is `check_weather_not_installed` when that segment exists. | `outdoor` true and condition `storm`. A result whose `action` is `shift` is handed to the replan path. |
+| `emergency_card` | Destination is Japan | Envelope `emergency` is `emergency_card_not_installed`. | `country` `Japan` and the traveler name. |
+| `request_ride` | An attraction's end is at or before `now` and another stop follows, or a watch warning or `after_dark` says `request_ride` | The ride `result` is `request_ride_not_installed`. | `pickupAt` is the attraction end. `dropoffName` is the next stop. A `SANDBOX-RIDE-` code in the result is stored as `rideCode`. |
+| `hold_table` | The next stop is a meal and `arriveAt` is after `reservationAt` | Envelope `table` is `hold_table_not_installed`. | Those two instants and the meal's `segmentId`. |
+| `luggage_drop` | Flight arrival is before hotel check-in | Envelope `luggage` is `luggage_drop_not_installed`. | `arrivalAt` and `checkIn`. |
+| `airport_leave` | The tick's date is a flight depart or return day | Tick `airport` is `airport_leave_not_installed`. | The flight's segment id, that date, and `now`. When the result has `ok: false`, it is kept on the tick. |
+| `after_dark` | A walk leg (`walk: true`, or the name contains "walk") | Tick `afterDark` is `after_dark_not_installed`. | That leg's window. When the result `action` is `request_ride`, the master calls `request_ride`. |
+| `late_checkout` | A flight depart or return date is the hotel checkout date | Envelope `checkout` is `late_checkout_not_installed`. | The flight id, the hotel id, and that date. |
+| `tip_policy` | Immediately before `authorize_spend`, after `quote_fx` | Envelope `tip` is `tip_policy_not_installed`. The scripted ceiling stays 10. | Country, `USD`, and requested amount 12. `authorizedAmount` on the result is the spend ceiling passed to `authorize_spend`. |
+| `phrase_card` | Each time a ride is requested | Tick `phrase` is `phrase_card_not_installed`. | Country, `dropoffName`, and `pickupAt`. The card stays on that tick. |
+| `trip_wallet` | End of every tick | Tick `wallet` is `trip_wallet_not_installed`. | The confirmation codes and `SANDBOX-RIDE-` codes already on the run. |
+
+The same run still calls `authorize_spend`. With the assist packages absent, the demo still finishes.
 
 `spend` on a finished run is `{authorizedAmount, requestedAmount, currency, payAmount, reason}` plus any other fields the spend tool returned.
 
@@ -178,4 +229,4 @@ Tests:
 PYTHONPATH=. python3 -m unittest booking.master.tests.test_master
 ```
 
-The tests cover a missing verifier (`emailVerified` false, process still returns), a missing progress agent (one recorded update, loop ends, at most five ticks), a missing replan package (`replan_not_installed` recorded, loop continues, cap still five), a fake replan tool that shifts a segment (`changed: true` replaces the plan and the notes are recorded), missing guard packages (the loop still returns and records each `<tool>_not_installed`), and a fake `authorize_spend` result (`payAmount` 10 and `reason` `over_capture_rejected` recorded on `spend`, with the notice kept on the tick).
+The tests cover a missing verifier (`emailVerified` false, process still returns), a missing progress agent (one recorded update, loop ends, at most five ticks), a missing replan package (`replan_not_installed` recorded, loop continues, cap still five), a fake replan tool that shifts a segment (`changed: true` replaces the plan and the notes are recorded), missing guard packages (the loop still returns and records each `<tool>_not_installed`), a fake `authorize_spend` result (`payAmount` 10 and `reason` `over_capture_rejected` recorded on `spend`, with the notice kept on the tick), missing assist packages (the loop still returns and records each `<tool>_not_installed`, including a missing `request_ride`), and a `watch_trip` result whose `ok` is false (severity `act` warnings are handled in that same tick).
