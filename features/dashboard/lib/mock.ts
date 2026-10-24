@@ -27,6 +27,7 @@ import planEventsFx from "@fixtures/plan_events.json";
 import policyFx from "@fixtures/policy.json";
 import quotesFx from "@fixtures/quotes.json";
 import type { RoamClient } from "./client";
+import { swanMock } from "./swanMock";
 
 const QUOTES = quotesFx as Quote[];
 const bySku = (sku: string) => QUOTES.find((q) => q.sku === sku)!;
@@ -345,4 +346,5 @@ export const mockClient: RoamClient = {
     state.listeners.add(onEvent);
     return () => state.listeners.delete(onEvent);
   },
+  ...swanMock,
 };
