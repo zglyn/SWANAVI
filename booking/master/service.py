@@ -1,7 +1,8 @@
 """Control loop for one finished trip plan.
 
-The loop calls capability tools. It does not replan the itinerary, book a
-supplier itself, or parse confirmation mail.
+The loop calls capability tools. It does not book a supplier itself, parse
+confirmation mail, or decide how to shift the day. One replan agent is called
+per disruption event. Those agents live in booking.replan.
 """
 
 from __future__ import annotations
@@ -14,14 +15,20 @@ from typing import Any
 from pydantic import ValidationError
 
 from booking.contract import TripPlan
-from booking.master.capabilities import PROGRESS_NOT_INSTALLED, ProgressNotInstalled, load_trip_progress
-from booking.master.tools import BOOK_TOOLS, VERIFY_TOOLS, trip_progress
+from booking.master.capabilities import (
+    PROGRESS_NOT_INSTALLED,
+    REPLAN_NOT_INSTALLED,
+    ProgressNotInstalled,
+    load_trip_progress,
+)
+from booking.master.tools import BOOK_TOOLS, REPLAN_TOOLS, VERIFY_TOOLS, trip_progress
 
 logger = logging.getLogger(__name__)
 
 MAX_TICKS = 5
 _STATUSES = {"booked", "failed", "needs_user"}
-_ACTIONS = {"none", "rebook", "verify_email"}
+_ACTIONS = {"none", "rebook", "verify_email", "replan"}
+_REPLAN_EVENTS = {"cancelled", "ended_early", "ended_late"}
 _KINDS = ("flight", "hotel", "attraction")
 _LISTS = {"flight": "flights", "hotel": "hotels", "attraction": "attractions"}
 
@@ -132,10 +139,87 @@ def _control_loop(
             elif update["action"] == "verify_email":
                 acted = True
                 _verify_again(update, located, results, travelers, trip_id)
+            elif update["action"] == "replan":
+                _replan(update, plan, located, trip_id, clock)
         if on_track is True and not acted:
             stopped = "on_track"
             break
     return ticks, stopped
+
+
+def _replan(
+    update: dict[str, Any],
+    plan: dict[str, Any],
+    located: dict[str, list[dict[str, Any]]],
+    trip_id: str,
+    clock: dict[str, Any],
+) -> None:
+    """Call one replan agent for this event. A missing package does not end the loop."""
+
+    event = update.get("event")
+    tool = REPLAN_TOOLS.get(event) if isinstance(event, str) else None
+    if tool is None:
+        return
+    disruption = {
+        "segmentId": update.get("segmentId"),
+        "kind": update.get("kind"),
+        "event": event,
+        "deltaMinutes": update.get("deltaMinutes"),
+    }
+    try:
+        raw = tool(trip_id, _now(clock), copy.deepcopy(plan), disruption)
+    except Exception as exc:
+        logger.warning("replan %s failed on %s: %s", event, update.get("segmentId"), exc)
+        update["replan"] = "unchanged"
+        return
+    if not isinstance(raw, dict):
+        update["replan"] = "unchanged"
+        return
+    if raw.get("changed") is True and isinstance(raw.get("plan"), dict):
+        _replace_plan(plan, raw["plan"], located)
+        update["replan"] = "changed"
+        update["notes"] = _recorded_notes(raw.get("notes"))
+        return
+    if raw.get("error") == REPLAN_NOT_INSTALLED:
+        update["replan"] = REPLAN_NOT_INSTALLED
+        return
+    update["replan"] = "unchanged"
+
+
+def _replace_plan(
+    plan: dict[str, Any],
+    replacement: dict[str, Any],
+    located: dict[str, list[dict[str, Any]]],
+) -> None:
+    """Swap in the plan a replan agent returned, and point later rebooks at it."""
+
+    incoming = copy.deepcopy(replacement)
+    plan.clear()
+    plan.update(incoming)
+    current: dict[str, dict[str, Any]] = {}
+    for _kind, segment in _segments(plan):
+        segment_id = segment.get("segmentId")
+        if isinstance(segment_id, str):
+            current[segment_id] = segment
+    for segment_id, matches in located.items():
+        segment = current.get(segment_id)
+        if segment is None:
+            continue
+        for match in matches:
+            match["segment"] = copy.deepcopy(segment)
+
+
+def _recorded_notes(notes: object) -> str | list[str]:
+    if isinstance(notes, str):
+        return notes
+    if isinstance(notes, list):
+        return [item for item in notes if isinstance(item, str)]
+    return []
+
+
+def _now(clock: dict[str, Any]) -> str:
+    now = clock.get("now") if isinstance(clock, dict) else None
+    return now if isinstance(now, str) else ""
 
 
 def _rebook(
@@ -145,7 +229,7 @@ def _rebook(
     travelers: list[Any],
     trip_id: str,
 ) -> None:
-    """Call that segment's book_* tool again. The plan itself stays as the planner wrote it."""
+    """Call that segment's book_* tool again. Rebook does not edit the plan."""
 
     matches = located.get(update["segmentId"] or "")
     if not matches:
@@ -243,7 +327,18 @@ def _normalize_update(raw: object) -> dict[str, Any]:
     segment_id = raw.get("segmentId") if isinstance(raw.get("segmentId"), str) and raw.get("segmentId") else None
     kind = raw.get("kind") if raw.get("kind") in _KINDS else None
     issue = raw.get("issue") if isinstance(raw.get("issue"), str) else ""
-    return _update(segment_id, kind, issue, action)
+    update = _update(segment_id, kind, issue, action)
+    event = raw.get("event")
+    if action == "replan" and event in _REPLAN_EVENTS:
+        update["event"] = event
+        update["deltaMinutes"] = _delta_minutes(raw.get("deltaMinutes"))
+    return update
+
+
+def _delta_minutes(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 def _update(segment_id: str | None, kind: str | None, issue: str, action: str) -> dict[str, Any]:

@@ -37,6 +37,35 @@ _SANDBOX_ENV = (
 # as ``now``. Later ticks stay on the service clock. The cap stays five ticks.
 _DEMO_LATE_TICK = 1
 _DEMO_LATE_NOW = "2026-11-03T10:00:00Z"
+# One scripted replan signal per tick, on top of whatever trip_progress reports.
+# ended_early is 60 minutes. ended_late is 45 minutes. A missing replan package
+# is recorded as replan_not_installed and the demo still finishes.
+_REPLAN_SIGNALS = {
+    1: {
+        "segmentId": "flight-1",
+        "kind": "flight",
+        "issue": "segment cancelled",
+        "action": "replan",
+        "event": "cancelled",
+        "deltaMinutes": None,
+    },
+    2: {
+        "segmentId": "hotel-1",
+        "kind": "hotel",
+        "issue": "segment ended early",
+        "action": "replan",
+        "event": "ended_early",
+        "deltaMinutes": 60,
+    },
+    3: {
+        "segmentId": "attraction-1",
+        "kind": "attraction",
+        "issue": "segment ended late",
+        "action": "replan",
+        "event": "ended_late",
+        "deltaMinutes": 45,
+    },
+}
 
 
 def _free_port() -> int:
@@ -72,12 +101,30 @@ def _demo_clock(original):
     return clock
 
 
+def _with_replan_signal(report: object, tick: object) -> object:
+    """Append the scripted replan update for this tick. Leave any other report alone."""
+
+    if not isinstance(report, dict) or not isinstance(tick, int):
+        return report
+    signal = _REPLAN_SIGNALS.get(tick)
+    if signal is None:
+        return report
+    updates = report.get("updates")
+    merged = dict(report)
+    merged["updates"] = [*(updates if isinstance(updates, list) else []), dict(signal)]
+    return merged
+
+
 def _demo_progress(original):
-    """Forward the clock's ``now`` string. ``trip_progress`` does not read a clock object."""
+    """Forward the clock's ``now`` string, then add this tick's scripted replan signal.
+
+    ``trip_progress`` does not read a clock object.
+    """
 
     def progress(plan: dict, results: list, clock: dict):
         now = clock.get("now") if isinstance(clock, dict) else clock
-        return original(plan, results, now)
+        tick = clock.get("tick") if isinstance(clock, dict) else None
+        return _with_replan_signal(original(plan, results, now), tick)
 
     return progress
 
@@ -150,10 +197,18 @@ def write_trace(result: dict, stream: object | None = None) -> None:
         for update in updates:
             if not isinstance(update, dict):
                 continue
+            suffix = ""
+            if update.get("action") == "replan" or "replan" in update:
+                suffix = (
+                    f" event={update.get('event')} deltaMinutes={update.get('deltaMinutes')}"
+                    f" replan={update.get('replan')}"
+                )
+                if "notes" in update:
+                    suffix += f" notes={update.get('notes')}"
             print(
                 "  update "
                 f"segmentId={update.get('segmentId')} kind={update.get('kind')} "
-                f"issue={update.get('issue')} action={update.get('action')}",
+                f"issue={update.get('issue')} action={update.get('action')}{suffix}",
                 file=out,
             )
 

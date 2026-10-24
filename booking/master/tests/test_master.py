@@ -277,6 +277,163 @@ class ControlLoopTests(_Modules):
         self.assertEqual(calls["flight"], ["flight-1"])
         self.assertEqual(result["loopStopped"], "on_track")
 
+    def test_missing_replan_package_records_and_continues(self) -> None:
+        calls = self._providers()
+        self.hide(
+            "booking.replan",
+            "booking.replan.cancel",
+            "booking.replan.early",
+            "booking.replan.late",
+        )
+        signals = [
+            ("cancelled", "flight-1", "flight", None),
+            ("ended_early", "hotel-1", "hotel", 60),
+            ("ended_late", "attraction-1", "attraction", 45),
+        ]
+        seen: list[str] = []
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del results
+            seen.append(plan["hotels"][0]["checkOut"])
+            tick = clock["tick"]
+            if tick > len(signals):
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            event, segment_id, kind, delta = signals[tick - 1]
+            update: dict[str, Any] = {
+                "segmentId": segment_id,
+                "kind": kind,
+                "issue": event,
+                "action": "replan",
+                "event": event,
+            }
+            if delta is not None:
+                update["deltaMinutes"] = delta
+            return {"phase": "in_progress", "onTrack": False, "updates": [update]}
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(len(result["ticks"]), len(signals) + 1)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(seen, ["2026-11-06"] * (len(signals) + 1))
+        self.assertEqual(calls["flight"], ["flight-1"])
+        self.assertEqual(calls["hotel"], ["hotel-1"])
+        self.assertEqual(calls["attraction"], ["attraction-1"])
+        for tick, (event, segment_id, kind, delta) in zip(result["ticks"], signals):
+            update = tick["updates"][0]
+            self.assertEqual(update["action"], "replan")
+            self.assertEqual(update["event"], event)
+            self.assertEqual(update["segmentId"], segment_id)
+            self.assertEqual(update["kind"], kind)
+            self.assertEqual(update.get("deltaMinutes"), delta)
+            self.assertEqual(update["replan"], "replan_not_installed")
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+
+    def test_replan_tool_shifts_a_segment(self) -> None:
+        self._providers()
+        booked_times: list[str] = []
+
+        def book_attraction(segment: dict[str, Any], travelers: list[Any], trip_id: str) -> dict[str, Any]:
+            booked_times.append(segment["time"])
+            return _booked(segment, travelers, trip_id)
+
+        self.install(
+            "booking.providers.attractions",
+            book=book_attraction,
+            book_attraction=book_attraction,
+        )
+        calls: list[tuple[Any, ...]] = []
+
+        def replan_late(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            calls.append((trip_id, now, disruption, plan["attractions"][0]["time"]))
+            shifted = json.loads(json.dumps(plan))
+            hour, minute = shifted["attractions"][0]["time"].split(":")
+            total = int(hour) * 60 + int(minute) + disruption["deltaMinutes"]
+            shifted["attractions"][0]["time"] = f"{total // 60:02d}:{total % 60:02d}"
+            return {
+                "changed": True,
+                "plan": shifted,
+                "notes": ["shifted attraction-1 by 45 minutes"],
+            }
+
+        self.install("booking.replan")
+        self.install("booking.replan.late", replan_late=replan_late)
+        seen: list[str] = []
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del results
+            seen.append(plan["attractions"][0]["time"])
+            if clock["tick"] == 1:
+                return {
+                    "phase": "in_progress",
+                    "onTrack": False,
+                    "updates": [
+                        {
+                            "segmentId": "attraction-1",
+                            "kind": "attraction",
+                            "issue": "segment ended late",
+                            "action": "replan",
+                            "event": "ended_late",
+                            "deltaMinutes": 45,
+                        }
+                    ],
+                }
+            if clock["tick"] == 2:
+                return {
+                    "phase": "in_progress",
+                    "onTrack": False,
+                    "updates": [
+                        {
+                            "segmentId": "attraction-1",
+                            "kind": "attraction",
+                            "issue": "book the shifted visit",
+                            "action": "rebook",
+                        }
+                    ],
+                }
+            return {"phase": "in_progress", "onTrack": True, "updates": []}
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(SAMPLE["attractions"][0]["time"], "09:00")
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "sample-kyoto",
+                    "2026-11-02T08:00:00Z",
+                    {
+                        "segmentId": "attraction-1",
+                        "kind": "attraction",
+                        "event": "ended_late",
+                        "deltaMinutes": 45,
+                    },
+                    "09:00",
+                )
+            ],
+        )
+        self.assertEqual(seen, ["09:00", "09:45", "09:45"])
+        self.assertEqual(booked_times, ["09:00", "09:45"])
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        shifted = result["ticks"][0]["updates"][0]
+        self.assertEqual(shifted["replan"], "changed")
+        self.assertEqual(shifted["notes"], ["shifted attraction-1 by 45 minutes"])
+        self.assertEqual(result["results"][2]["reason"], "rebooked")
+        self.assertFalse(segment_accepted(result["results"][2]))
+        self.assertTrue(segment_accepted(result["results"][0]))
+        self.assertTrue(segment_accepted(result["results"][1]))
+
     def test_loop_caps_at_five_ticks(self) -> None:
         calls = self._providers()
 
@@ -362,6 +519,9 @@ class RuntimeTests(unittest.TestCase):
                 "verify_hotel_email",
                 "verify_attraction_email",
                 "trip_progress",
+                "replan_cancel",
+                "replan_early",
+                "replan_late",
             },
         )
         result = invoke(SAMPLE, context=None)
@@ -393,8 +553,32 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotEqual(printed["loopStopped"], "progress_not_installed")
         updates = [update for tick in printed["ticks"] for update in tick["updates"] if isinstance(update, dict)]
         self.assertTrue(any(update.get("action") == "rebook" for update in updates))
+        replan_updates = [
+            (tick.get("tick"), update)
+            for tick in printed["ticks"]
+            if isinstance(tick, dict)
+            for update in tick.get("updates", [])
+            if isinstance(update, dict) and update.get("action") == "replan"
+        ]
+        self.assertEqual(
+            [
+                (tick, update.get("event"), update.get("deltaMinutes"), update.get("replan"))
+                for tick, update in replan_updates
+            ],
+            [
+                (1, "cancelled", None, "replan_not_installed"),
+                (2, "ended_early", 60, "replan_not_installed"),
+                (3, "ended_late", 45, "replan_not_installed"),
+            ],
+        )
         self.assertIn("tick 1", trace)
         self.assertIn("action=rebook", trace)
+        self.assertIn("event=cancelled", trace)
+        self.assertIn("event=ended_early", trace)
+        self.assertIn("event=ended_late", trace)
+        self.assertIn("deltaMinutes=60", trace)
+        self.assertIn("deltaMinutes=45", trace)
+        self.assertIn("replan=replan_not_installed", trace)
         self.assertNotIn("progress_not_installed", trace)
         self.assertNotIn("verifier_not_installed", trace)
         for item in printed["results"]:

@@ -4,7 +4,8 @@ Local: ``python -m booking.master.main`` serves ``/invocations`` and ``/ping``.
 That path does not need AWS credentials or Amadeus keys.
 
 The planner calls this entrypoint. The entrypoint calls book_flight,
-book_hotel, book_attraction, the verify_*_email tools, and trip_progress.
+book_hotel, book_attraction, the verify_*_email tools, trip_progress, and
+one replan tool per event: replan_cancel, replan_early, or replan_late.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """Tool names the master calls.
 
 Each function forwards to a capability package. None of them books a supplier,
-parses an inbox, or decides whether the trip is on track.
+parses an inbox, decides whether the trip is on track, or shifts the day.
 """
 
 from __future__ import annotations
@@ -11,9 +11,11 @@ from typing import Any
 from booking.master.capabilities import (
     PROGRESS_NOT_INSTALLED,
     PROVIDER_NOT_INSTALLED,
+    REPLAN_NOT_INSTALLED,
     VERIFIER_NOT_INSTALLED,
     ProgressNotInstalled,
     load_book,
+    load_replan,
     load_trip_progress,
     load_verifier,
 )
@@ -160,6 +162,44 @@ def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: di
     return progress(plan, results, clock)
 
 
+def _call_replan(
+    event: str,
+    trip_id: str,
+    now: str,
+    plan: dict[str, Any],
+    disruption: dict[str, Any],
+) -> Any:
+    """Forward one disruption to that event's replan agent."""
+
+    replan = load_replan(event)
+    if replan is None:
+        return {
+            "changed": False,
+            "plan": None,
+            "notes": [],
+            "error": REPLAN_NOT_INSTALLED,
+        }
+    return replan(trip_id, now, plan, disruption)
+
+
+def replan_cancel(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> Any:
+    """Call booking.replan.cancel.replan_cancel. One agent for a cancellation."""
+
+    return _call_replan("cancelled", trip_id, now, plan, disruption)
+
+
+def replan_early(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> Any:
+    """Call booking.replan.early.replan_early. One agent for an early finish."""
+
+    return _call_replan("ended_early", trip_id, now, plan, disruption)
+
+
+def replan_late(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> Any:
+    """Call booking.replan.late.replan_late. One agent for a late finish."""
+
+    return _call_replan("ended_late", trip_id, now, plan, disruption)
+
+
 BOOK_TOOLS = {
     "flight": book_flight,
     "hotel": book_hotel,
@@ -172,6 +212,12 @@ VERIFY_TOOLS = {
     "attraction": verify_attraction_email,
 }
 
+REPLAN_TOOLS = {
+    "cancelled": replan_cancel,
+    "ended_early": replan_early,
+    "ended_late": replan_late,
+}
+
 RUNTIME_TOOLS = {
     "book_flight": book_flight,
     "book_hotel": book_hotel,
@@ -180,4 +226,7 @@ RUNTIME_TOOLS = {
     "verify_hotel_email": verify_hotel_email,
     "verify_attraction_email": verify_attraction_email,
     "trip_progress": trip_progress,
+    "replan_cancel": replan_cancel,
+    "replan_early": replan_early,
+    "replan_late": replan_late,
 }

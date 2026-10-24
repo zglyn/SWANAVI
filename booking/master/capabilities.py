@@ -1,7 +1,7 @@
 """Import capability packages owned by other agents.
 
 Missing packages are reported by the caller. This module does not implement
-booking, email parsing, or trip progress.
+booking, email parsing, trip progress, or replanning.
 """
 
 from __future__ import annotations
@@ -14,10 +14,12 @@ BookFn = Callable[[dict[str, Any], list[Any], str], Any]
 SampleEmailFn = Callable[[dict[str, Any], str, list[Any], str], Any]
 VerifyFn = Callable[[dict[str, Any], dict[str, Any], str, list[Any]], Any]
 ProgressFn = Callable[[dict[str, Any], list[dict[str, Any]], dict[str, Any]], Any]
+ReplanFn = Callable[[str, str, dict[str, Any], dict[str, Any]], Any]
 
 PROVIDER_NOT_INSTALLED = "provider_not_installed"
 VERIFIER_NOT_INSTALLED = "verifier_not_installed"
 PROGRESS_NOT_INSTALLED = "progress_not_installed"
+REPLAN_NOT_INSTALLED = "replan_not_installed"
 
 PROVIDER_MODULES = {
     "flight": "booking.providers.flights",
@@ -41,6 +43,20 @@ VERIFY_MODULES = {
 
 PROGRESS_MODULE = "booking.progress"
 PROGRESS_EXPORT = "trip_progress"
+
+# One package per disruption event. The master calls that event's tool and
+# does not shift the day itself.
+REPLAN_MODULES = {
+    "cancelled": "booking.replan.cancel",
+    "ended_early": "booking.replan.early",
+    "ended_late": "booking.replan.late",
+}
+
+REPLAN_EXPORTS = {
+    "cancelled": "replan_cancel",
+    "ended_early": "replan_early",
+    "ended_late": "replan_late",
+}
 
 
 class ProgressNotInstalled(Exception):
@@ -94,6 +110,22 @@ def load_trip_progress() -> ProgressFn | None:
     if not callable(progress):
         return None
     return progress
+
+
+def load_replan(event: str) -> ReplanFn | None:
+    """Return that event's replan tool, or None when its package is not importable."""
+
+    module_name = REPLAN_MODULES.get(event)
+    export = REPLAN_EXPORTS.get(event)
+    if module_name is None or export is None:
+        return None
+    module = _import(module_name)
+    if module is None:
+        return None
+    replan = getattr(module, export, None)
+    if not callable(replan):
+        return None
+    return replan
 
 
 def _import(module_name: str) -> Any | None:
