@@ -17,7 +17,7 @@
       "lng": 135.6713
     },
     "cancel_after": "2026-11-14T13:00:00+09:00",
-    "expires_at": "2026-11-14T23:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
     "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "merchant_verified": true
   },
@@ -39,7 +39,7 @@
       "lng": 135.6779
     },
     "cancel_after": "2026-11-14T15:00:00+09:00",
-    "expires_at": "2026-11-14T23:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
     "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "merchant_verified": true
   },
@@ -61,7 +61,7 @@
       "lng": 135.7788
     },
     "cancel_after": "2026-11-14T13:00:00+09:00",
-    "expires_at": "2026-11-14T23:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
     "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "merchant_verified": true
   },
@@ -83,8 +83,96 @@
       "lng": 135.674
     },
     "cancel_after": "2026-11-14T12:00:00+09:00",
-    "expires_at": "2026-11-14T23:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
     "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "merchant_verified": false
+  },
+  {
+    "invoice_id": "A22BF5ADC8D3E65B40578B1D01D25F6831FA6C8481CC6F9BAA5A6B032D821265",
+    "merchant_id": "gion-tea",
+    "merchant_name": "Gion Tea House",
+    "merchant_address": "rgionteaPLACEHOLDER",
+    "sku": "TEA-SET",
+    "title": "Private tea ceremony",
+    "category": "food",
+    "amount": "28.00",
+    "currency": "RLUSD",
+    "viator_price": "32.00",
+    "slot_start": "2026-11-14T15:00:00+09:00",
+    "slot_end": "2026-11-14T16:00:00+09:00",
+    "location": {
+      "lat": 35.0036,
+      "lng": 135.775
+    },
+    "cancel_after": "2026-11-14T14:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
+    "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "merchant_verified": true
+  },
+  {
+    "invoice_id": "A731588B2BA233C9AF95D76E7E0FA0D07D6F9C64BF4DC44122583DE8A5EF25F4",
+    "merchant_id": "fushimi-sake",
+    "merchant_name": "Fushimi Sake Brewery Tour",
+    "merchant_address": "rfushimisakePLACEHOLDER",
+    "sku": "SAKE-TOUR",
+    "title": "Brewery tasting tour",
+    "category": "food",
+    "amount": "35.00",
+    "currency": "RLUSD",
+    "viator_price": "41.00",
+    "slot_start": "2026-11-14T11:00:00+09:00",
+    "slot_end": "2026-11-14T13:00:00+09:00",
+    "location": {
+      "lat": 34.9256,
+      "lng": 135.7614
+    },
+    "cancel_after": "2026-11-14T10:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
+    "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "merchant_verified": true
+  },
+  {
+    "invoice_id": "CCC815B7DFB829079484FF1A73A6363A85BE21EC95BBDC5D0060B2D5DFDD3495",
+    "merchant_id": "nishiki-walk",
+    "merchant_name": "Nishiki Market Food Walk",
+    "merchant_address": "rnishikiwalkPLACEHOLDER",
+    "sku": "NISHIKI-WALK",
+    "title": "Guided market tasting",
+    "category": "food",
+    "amount": "22.00",
+    "currency": "RLUSD",
+    "viator_price": "26.00",
+    "slot_start": "2026-11-14T12:00:00+09:00",
+    "slot_end": "2026-11-14T14:00:00+09:00",
+    "location": {
+      "lat": 35.005,
+      "lng": 135.7649
+    },
+    "cancel_after": "2026-11-14T11:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
+    "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "merchant_verified": true
+  },
+  {
+    "invoice_id": "61BBAF0705D75BC51F98E5D2974F5F3461FA6CF497BCFFB8CBB12E1E522E6DC4",
+    "merchant_id": "arashiyama-boat",
+    "merchant_name": "Arashiyama River Boat",
+    "merchant_address": "rarashiyamaboatPLACEHOLDER",
+    "sku": "BOAT-45",
+    "title": "45-minute river boat",
+    "category": "activity",
+    "amount": "18.00",
+    "currency": "RLUSD",
+    "viator_price": "21.00",
+    "slot_start": "2026-11-14T15:00:00+09:00",
+    "slot_end": "2026-11-14T16:00:00+09:00",
+    "location": {
+      "lat": 35.0148,
+      "lng": 135.6765
+    },
+    "cancel_after": "2026-11-14T14:00:00+09:00",
+    "expires_at": "2026-11-16T23:00:00+09:00",
+    "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "merchant_verified": true
   }
 ]

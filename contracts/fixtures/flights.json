@@ -1,0 +1,46 @@
+{
+  "arrival": {
+    "mode": "flight",
+    "carrier": "JL",
+    "number": "JL3020",
+    "from_place": {
+      "code": "HND",
+      "name": "Tokyo Haneda",
+      "location": null
+    },
+    "to_place": {
+      "code": "KIX",
+      "name": "Kansai International",
+      "location": {
+        "lat": 34.4347,
+        "lng": 135.244
+      }
+    },
+    "depart_at": "2026-11-14T09:20:00+09:00",
+    "arrive_at": "2026-11-14T10:35:00+09:00",
+    "status": "scheduled",
+    "source": "fixture"
+  },
+  "departure": {
+    "mode": "flight",
+    "carrier": "JL",
+    "number": "JL3025",
+    "from_place": {
+      "code": "KIX",
+      "name": "Kansai International",
+      "location": {
+        "lat": 34.4347,
+        "lng": 135.244
+      }
+    },
+    "to_place": {
+      "code": "HND",
+      "name": "Tokyo Haneda",
+      "location": null
+    },
+    "depart_at": "2026-11-16T18:20:00+09:00",
+    "arrive_at": "2026-11-16T19:35:00+09:00",
+    "status": "scheduled",
+    "source": "fixture"
+  }
+}

@@ -9,7 +9,9 @@
     },
     "xrpl_address": "rbamboobikesPLACEHOLDER",
     "mcp_url": "http://localhost:8001/m/bamboo-bikes/mcp",
-    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
   },
   {
     "merchant_id": "kissa-matcha",
@@ -21,7 +23,9 @@
     },
     "xrpl_address": "rkissamatchaPLACEHOLDER",
     "mcp_url": "http://localhost:8001/m/kissa-matcha/mcp",
-    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
   },
   {
     "merchant_id": "ramen-tasting",
@@ -33,7 +37,9 @@
     },
     "xrpl_address": "rramentastingPLACEHOLDER",
     "mcp_url": "http://localhost:8001/m/ramen-tasting/mcp",
-    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
   },
   {
     "merchant_id": "lucky-souvenir",
@@ -45,6 +51,64 @@
     },
     "xrpl_address": "rluckysouvenirPLACEHOLDER",
     "mcp_url": "http://localhost:8001/m/lucky-souvenir/mcp",
-    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
+  },
+  {
+    "merchant_id": "gion-tea",
+    "name": "Gion Tea House",
+    "category": "food",
+    "location": {
+      "lat": 35.0036,
+      "lng": 135.775
+    },
+    "xrpl_address": "rgionteaPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/gion-tea/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
+  },
+  {
+    "merchant_id": "fushimi-sake",
+    "name": "Fushimi Sake Brewery Tour",
+    "category": "food",
+    "location": {
+      "lat": 34.9256,
+      "lng": 135.7614
+    },
+    "xrpl_address": "rfushimisakePLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/fushimi-sake/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
+  },
+  {
+    "merchant_id": "nishiki-walk",
+    "name": "Nishiki Market Food Walk",
+    "category": "food",
+    "location": {
+      "lat": 35.005,
+      "lng": 135.7649
+    },
+    "xrpl_address": "rnishikiwalkPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/nishiki-walk/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
+  },
+  {
+    "merchant_id": "arashiyama-boat",
+    "name": "Arashiyama River Boat",
+    "category": "activity",
+    "location": {
+      "lat": 35.0148,
+      "lng": 135.6765
+    },
+    "xrpl_address": "rarashiyamaboatPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/arashiyama-boat/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "Kyoto",
+    "country": "Japan"
   }
 ]

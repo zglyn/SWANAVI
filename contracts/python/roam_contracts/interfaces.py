@@ -9,10 +9,12 @@ from typing import Protocol
 from .models import (
     Booking,
     CatalogItem,
+    Category,
     CheckoutResult,
     CosignRequest,
     CosignResponse,
     EscrowRef,
+    GeoPoint,
     InspectorEvent,
     MerchantProfile,
     PaymentProof,
@@ -30,6 +32,14 @@ class MerchantDirectory(Protocol):
     """Owner A — features/merchants. Real impl talks MCP/HTTP to :8001."""
 
     def list_merchants(self) -> list[MerchantProfile]: ...
+    def find_merchants(
+        self,
+        city: str,
+        category: Category | None = None,
+        near: GeoPoint | None = None,
+        radius_km: float | None = None,
+        open_at: datetime | None = None,
+    ) -> list[MerchantProfile]: ...
     def search(self, query: str | None = None, date: datetime | None = None) -> list[CatalogItem]: ...
     def request_quote(self, merchant_id: str, sku: str, slot_start: datetime) -> Quote: ...
     def confirm(self, merchant_id: str, proof: PaymentProof) -> Booking: ...

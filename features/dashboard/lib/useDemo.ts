@@ -173,5 +173,23 @@ export function useDemo() {
     scenario: (name: ScenarioName) => run(() => client.runScenario(name)),
     getPolicy: () => client.getPolicy(),
     putPolicy: (p: PolicyConfig) => client.putPolicy(p),
+    seedQuotes: (quotes: Quote[]) => {
+      for (const quote of quotes) {
+        dispatch({
+          kind: "event",
+          event: {
+            id: `book-${quote.invoice_id}`,
+            ts: new Date().toISOString(),
+            source: "merchant",
+            level: "info",
+            type: "quote.received",
+            message: quote.title,
+            tx_hash: null,
+            explorer_url: null,
+            data: { quote },
+          },
+        });
+      }
+    },
   };
 }
