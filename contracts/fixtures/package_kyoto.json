@@ -1,0 +1,511 @@
+{
+  "plan_id": "kyoto-demo",
+  "outbound": {
+    "id": "out-jl",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL001",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T09:05:00-08:00",
+        "arrive_at": "2026-11-14T13:10:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "JL",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 665,
+    "price": "680.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 88.0,
+    "why": [
+      "your favourite airline",
+      "leaves in your morning window"
+    ],
+    "deep_link": "https://example.com/swan/flights/out-jl",
+    "direction": "outbound"
+  },
+  "return": {
+    "id": "ret-jl",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL002",
+        "from_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "to_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "depart_at": "2026-11-16T18:20:00+09:00",
+        "arrive_at": "2026-11-16T11:40:00-08:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "JL",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 620,
+    "price": "690.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 84.0,
+    "why": [
+      "your favourite airline",
+      "leaves in your evening window"
+    ],
+    "deep_link": "https://example.com/swan/flights/ret-jl",
+    "direction": "return"
+  },
+  "hotels": [
+    {
+      "offer": {
+        "id": "hyatt-arashiyama",
+        "name": "Hyatt Place Arashiyama",
+        "brand": "Hyatt",
+        "stars": 4.0,
+        "location": {
+          "lat": 35.0162,
+          "lng": 135.6784
+        },
+        "area": "Arashiyama",
+        "price_per_night": "180",
+        "total": "360",
+        "currency": "USD",
+        "amenities": [
+          "wifi",
+          "breakfast",
+          "gym"
+        ],
+        "refundable": true,
+        "avg_travel_min_to_attractions": 12,
+        "score": 91.0,
+        "why": [
+          "12 min average to your picks",
+          "Hyatt: you're a member"
+        ],
+        "image_url": null,
+        "source": "provider",
+        "quote": null,
+        "deep_link": "https://example.com/swan/hotels/hyatt-arashiyama",
+        "check_in": null,
+        "check_out": null
+      },
+      "check_in": "2026-11-14",
+      "check_out": "2026-11-16"
+    }
+  ],
+  "itinerary": {
+    "plan_id": "kyoto-demo",
+    "brief": {
+      "destination": "Kyoto, Japan",
+      "timezone": "Asia/Tokyo",
+      "arrival": {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL3020",
+        "from_place": {
+          "code": "HND",
+          "name": "Tokyo Haneda",
+          "location": null
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai International",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-14T09:20:00+09:00",
+        "arrive_at": "2026-11-14T10:35:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      },
+      "departure": {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL3025",
+        "from_place": {
+          "code": "KIX",
+          "name": "Kansai International",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "to_place": {
+          "code": "HND",
+          "name": "Tokyo Haneda",
+          "location": null
+        },
+        "depart_at": "2026-11-16T18:20:00+09:00",
+        "arrive_at": "2026-11-16T19:35:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      },
+      "lodging": [
+        {
+          "name": "Hotel Granvia Kyoto",
+          "address": "Kyoto Station",
+          "location": {
+            "lat": 34.9858,
+            "lng": 135.7588
+          },
+          "check_in": "2026-11-14T15:00:00+09:00",
+          "check_out": "2026-11-16T11:00:00+09:00"
+        }
+      ],
+      "start_date": "2026-11-14T00:00:00+09:00",
+      "end_date": "2026-11-16T00:00:00+09:00",
+      "budget": "200.00",
+      "interests": [
+        "temples",
+        "nature",
+        "food"
+      ],
+      "pace": "balanced",
+      "preferred_modes": [
+        "walk",
+        "transit",
+        "bike"
+      ],
+      "daily_start": "09:00",
+      "daily_end": "21:00"
+    },
+    "selection": {
+      "must_visit": [
+        "bamboo-grove",
+        "tenryuji"
+      ],
+      "maybe": [
+        "kissa-matcha",
+        "gion-tea"
+      ],
+      "excluded": [
+        "lucky-souvenir"
+      ]
+    },
+    "days": [
+      {
+        "date": "2026-11-14",
+        "stops": [
+          {
+            "id": "arrival",
+            "kind": "arrival",
+            "start": "2026-11-14T10:35:00+09:00",
+            "end": "2026-11-14T10:55:00+09:00",
+            "location": {
+              "lat": 34.4347,
+              "lng": 135.244
+            },
+            "title": "Arrive JL3020 at KIX",
+            "attraction": null,
+            "quote": null,
+            "required": false,
+            "status": "proposed"
+          },
+          {
+            "id": "check-in",
+            "kind": "lodging",
+            "start": "2026-11-14T15:00:00+09:00",
+            "end": "2026-11-14T15:30:00+09:00",
+            "location": {
+              "lat": 34.9858,
+              "lng": 135.7588
+            },
+            "title": "Check in at Hotel Granvia Kyoto",
+            "attraction": null,
+            "quote": null,
+            "required": false,
+            "status": "proposed"
+          },
+          {
+            "id": "bamboo-grove",
+            "kind": "attraction",
+            "start": "2026-11-14T16:00:00+09:00",
+            "end": "2026-11-14T16:45:00+09:00",
+            "location": {
+              "lat": 35.017,
+              "lng": 135.6716
+            },
+            "title": "Arashiyama Bamboo Grove",
+            "attraction": {
+              "id": "bamboo-grove",
+              "name": "Arashiyama Bamboo Grove",
+              "category": "nature",
+              "location": {
+                "lat": 35.017,
+                "lng": 135.6716
+              },
+              "area": "Arashiyama",
+              "description": "A walking path through towering bamboo.",
+              "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Bamboo_grove_arashiyama.jpg/640px-Bamboo_grove_arashiyama.jpg",
+              "popularity": 0.95,
+              "typical_duration_min": 45,
+              "opening_hours": "09:00-17:00",
+              "price": null,
+              "free": true,
+              "source": "curated"
+            },
+            "quote": null,
+            "required": true,
+            "status": "proposed"
+          },
+          {
+            "id": "kissa-matcha",
+            "kind": "merchant",
+            "start": "2026-11-14T17:15:00+09:00",
+            "end": "2026-11-14T18:15:00+09:00",
+            "location": {
+              "lat": 35.0136,
+              "lng": 135.6779
+            },
+            "title": "Matcha workshop",
+            "attraction": null,
+            "quote": {
+              "invoice_id": "813F54FF6A26996A03913A962CC8B884A03999BC716DFCEEED0735867142ED73",
+              "merchant_id": "kissa-matcha",
+              "merchant_name": "Kissa Master Matcha Workshop",
+              "merchant_address": "rkissamatchaPLACEHOLDER",
+              "sku": "MATCHA-WS",
+              "title": "Matcha whisking workshop",
+              "category": "food",
+              "amount": "30.00",
+              "currency": "RLUSD",
+              "viator_price": "35.29",
+              "slot_start": "2026-11-14T16:00:00+09:00",
+              "slot_end": "2026-11-14T17:00:00+09:00",
+              "location": {
+                "lat": 35.0136,
+                "lng": 135.6779
+              },
+              "cancel_after": "2026-11-14T15:00:00+09:00",
+              "expires_at": "2026-11-16T23:00:00+09:00",
+              "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "merchant_verified": true
+            },
+            "required": false,
+            "status": "proposed"
+          }
+        ],
+        "legs": [
+          {
+            "from_stop_id": "arrival",
+            "to_stop_id": "check-in",
+            "mode": "transit",
+            "minutes": 75,
+            "distance_km": 45.0,
+            "cost": "20.00",
+            "source": "estimate"
+          },
+          {
+            "from_stop_id": "check-in",
+            "to_stop_id": "bamboo-grove",
+            "mode": "transit",
+            "minutes": 35,
+            "distance_km": 10.0,
+            "cost": null,
+            "source": "estimate"
+          },
+          {
+            "from_stop_id": "bamboo-grove",
+            "to_stop_id": "kissa-matcha",
+            "mode": "walk",
+            "minutes": 12,
+            "distance_km": 0.8,
+            "cost": null,
+            "source": "estimate"
+          }
+        ]
+      },
+      {
+        "date": "2026-11-15",
+        "stops": [
+          {
+            "id": "tenryuji",
+            "kind": "attraction",
+            "start": "2026-11-15T09:30:00+09:00",
+            "end": "2026-11-15T10:30:00+09:00",
+            "location": {
+              "lat": 35.0156,
+              "lng": 135.6737
+            },
+            "title": "Tenry\u016b-ji",
+            "attraction": {
+              "id": "tenryuji",
+              "name": "Tenry\u016b-ji",
+              "category": "temples",
+              "location": {
+                "lat": 35.0156,
+                "lng": 135.6737
+              },
+              "area": "Arashiyama",
+              "description": "A Zen temple garden beside the bamboo grove.",
+              "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Tenryuji_Kyoto05s3s4592.jpg/640px-Tenryuji_Kyoto05s3s4592.jpg",
+              "popularity": 0.9,
+              "typical_duration_min": 60,
+              "opening_hours": "09:00-17:00",
+              "price": "5.00",
+              "free": false,
+              "source": "curated"
+            },
+            "quote": null,
+            "required": true,
+            "status": "proposed"
+          },
+          {
+            "id": "gion-tea",
+            "kind": "merchant",
+            "start": "2026-11-15T15:00:00+09:00",
+            "end": "2026-11-15T16:00:00+09:00",
+            "location": {
+              "lat": 35.0036,
+              "lng": 135.775
+            },
+            "title": "Tea ceremony",
+            "attraction": null,
+            "quote": {
+              "invoice_id": "A22BF5ADC8D3E65B40578B1D01D25F6831FA6C8481CC6F9BAA5A6B032D821265",
+              "merchant_id": "gion-tea",
+              "merchant_name": "Gion Tea House",
+              "merchant_address": "rgionteaPLACEHOLDER",
+              "sku": "TEA-SET",
+              "title": "Private tea ceremony",
+              "category": "food",
+              "amount": "28.00",
+              "currency": "RLUSD",
+              "viator_price": "32.00",
+              "slot_start": "2026-11-14T15:00:00+09:00",
+              "slot_end": "2026-11-14T16:00:00+09:00",
+              "location": {
+                "lat": 35.0036,
+                "lng": 135.775
+              },
+              "cancel_after": "2026-11-14T14:00:00+09:00",
+              "expires_at": "2026-11-16T23:00:00+09:00",
+              "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "merchant_verified": true
+            },
+            "required": false,
+            "status": "proposed"
+          }
+        ],
+        "legs": [
+          {
+            "from_stop_id": "tenryuji",
+            "to_stop_id": "gion-tea",
+            "mode": "transit",
+            "minutes": 40,
+            "distance_km": 12.0,
+            "cost": null,
+            "source": "estimate"
+          }
+        ]
+      },
+      {
+        "date": "2026-11-16",
+        "stops": [
+          {
+            "id": "check-out",
+            "kind": "lodging",
+            "start": "2026-11-16T11:00:00+09:00",
+            "end": "2026-11-16T11:20:00+09:00",
+            "location": {
+              "lat": 34.9858,
+              "lng": 135.7588
+            },
+            "title": "Check out",
+            "attraction": null,
+            "quote": null,
+            "required": false,
+            "status": "proposed"
+          },
+          {
+            "id": "departure",
+            "kind": "departure",
+            "start": "2026-11-16T18:20:00+09:00",
+            "end": "2026-11-16T18:50:00+09:00",
+            "location": {
+              "lat": 34.4347,
+              "lng": 135.244
+            },
+            "title": "Depart JL3025 from KIX",
+            "attraction": null,
+            "quote": null,
+            "required": false,
+            "status": "proposed"
+          }
+        ],
+        "legs": [
+          {
+            "from_stop_id": "check-out",
+            "to_stop_id": "departure",
+            "mode": "transit",
+            "minutes": 75,
+            "distance_km": 45.0,
+            "cost": "20.00",
+            "source": "estimate"
+          }
+        ]
+      }
+    ],
+    "transport_summary": "Haruka limited express between KIX and Kyoto. Walk or bike inside Arashiyama. City bus elsewhere.",
+    "estimated_total": "86.00",
+    "bookable_total": "58.00",
+    "warnings": []
+  },
+  "totals": {
+    "flights": "1370.00",
+    "hotels": "360",
+    "activities": "58.00",
+    "total": "1788.00",
+    "currency": "USD",
+    "savings": "0"
+  },
+  "reasons": [
+    "JL001 is your favourite airline and leaves in the morning window.",
+    "Hyatt Place Arashiyama is a favourite brand near the western temples."
+  ]
+}

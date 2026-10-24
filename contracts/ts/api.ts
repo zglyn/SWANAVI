@@ -123,7 +123,8 @@ export type EventType =
   | "escrow.cancelled" | "escrow.finished"
   | "booking.confirmed" | "booking.cancelled"
   | "weather.alert" | "wallet.updated" | "system.reset"
-  | "plan.tool_call" | "plan.candidates" | "plan.ready" | "plan.invalid" | "plan.failed";
+  | "plan.tool_call" | "plan.candidates" | "plan.ready" | "plan.invalid" | "plan.failed"
+  | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready";
 
 export interface InspectorEvent {
   id: string;
@@ -155,6 +156,18 @@ export const API = {
   planSelection: (id: string) => `/api/plans/${id}/selection`, // POST PlanSelection -> {ok}
   planRevise: (id: string) => `/api/plans/${id}/revise`, // POST PlanRevision -> {ok}
   flightLookup: "/api/flights/lookup", // GET ?number=&date= -> TravelSegment
+  me: "/api/me/profile",
+  account: "/api/me",
+  authMagic: "/api/auth/magic-link",
+  authVerify: "/api/auth/verify",
+  authDemo: "/api/auth/demo",
+  tripRequest: "/api/trips/request",
+  planFlights: (id: string) => `/api/plans/${id}/flights`,
+  planHotels: (id: string) => `/api/plans/${id}/hotels`,
+  planChoices: (id: string) => `/api/plans/${id}/choices`,
+  planAttractions: (id: string) => `/api/plans/${id}/attractions`,
+  planPackage: (id: string) => `/api/plans/${id}/package`,
+  swan: (id: string) => `/api/plans/${id}/swan`,
 } as const;
 
 export type TravelMode = "walk" | "bike" | "transit" | "taxi" | "car";
@@ -284,3 +297,145 @@ export interface PlanView {
   error?: string | null;
 }
 export interface PlanCreated { plan_id: string }
+
+export type BudgetLevel = "budget" | "mid" | "premium" | "luxury";
+export type Autonomy = "swan_decides" | "i_choose";
+export type Cabin = "economy" | "premium_economy" | "business" | "first";
+export type SeatPref = "window" | "aisle" | "any";
+export type TimeOfDayWindow = "red_eye" | "early_morning" | "morning" | "afternoon" | "evening" | "any";
+export type AmountLevel = "none" | "a_little" | "some" | "lots";
+export type Density = "light" | "balanced" | "packed";
+export type Priority = "must" | "nice";
+export type HotelSource = "merchant_mcp" | "provider";
+export type SwanPhase = "waiting_attractions" | "waiting_flights" | "waiting_hotels" | "ready";
+
+export interface HomeBase { address: string; location: GeoPoint; airport_codes: string[] }
+export interface LoyaltyProgram { program: string; number?: string | null }
+export interface TravelPreferences {
+  interests: string[];
+  pace: Pace;
+  budget_level: BudgetLevel;
+  preferred_modes: TravelMode[];
+  dietary: string[];
+  accessibility: string[];
+  avoid: string[];
+}
+export interface SleepSchedule { wake_time: string; sleep_time: string; jet_lag_buffer: boolean }
+export interface HotelPreferences {
+  favourite_brands: string[];
+  min_stars?: number | null;
+  must_have: string[];
+  room_type?: string | null;
+  loyalty: LoyaltyProgram[];
+}
+export interface FlightPreferences {
+  favourite_airlines: string[];
+  alliances: string[];
+  cabin: Cabin;
+  max_stops: number;
+  seat: SeatPref;
+  loyalty: LoyaltyProgram[];
+  avoid_red_eye: boolean;
+}
+export interface AutonomyDefaults { attractions: Autonomy; hotels: Autonomy; flights: Autonomy }
+export interface UserProfile {
+  user_id: string;
+  name: string;
+  home: HomeBase;
+  currency: string;
+  travel: TravelPreferences;
+  sleep: SleepSchedule;
+  hotels: HotelPreferences;
+  flights: FlightPreferences;
+  autonomy: AutonomyDefaults;
+}
+export interface TripOrigin { from_home: boolean; place?: string | null; airport_codes: string[] }
+export interface TripRequest {
+  destination: string;
+  origin: TripOrigin;
+  start_date: string;
+  end_date: string;
+  outbound_window: TimeOfDayWindow;
+  return_window: TimeOfDayWindow;
+  travellers: number;
+  budget?: Money | null;
+  autonomy: AutonomyDefaults;
+  notes?: string | null;
+}
+export interface AttractionPick { candidate_id: string; priority: Priority }
+export interface CategoryAmount { category: string; level: AmountLevel }
+export interface AttractionSelection extends PlanSelection {
+  mode: Autonomy;
+  picks: AttractionPick[];
+  amounts: CategoryAmount[];
+  daily_density: Density;
+}
+export interface FareConditions { refundable: boolean; changeable: boolean }
+export interface FlightOffer {
+  id: string;
+  segments: TravelSegment[];
+  carrier: string;
+  cabin: Cabin;
+  stops: number;
+  duration_min: number;
+  price: Money;
+  currency: string;
+  fare_conditions: FareConditions;
+  score: number;
+  why: string[];
+  deep_link?: string | null;
+  direction: "outbound" | "return";
+}
+export interface HotelOffer {
+  id: string;
+  name: string;
+  brand?: string | null;
+  stars?: number | null;
+  location: GeoPoint;
+  area?: string | null;
+  price_per_night: Money;
+  total: Money;
+  currency: string;
+  amenities: string[];
+  refundable: boolean;
+  avg_travel_min_to_attractions: number;
+  score: number;
+  why: string[];
+  image_url?: string | null;
+  source: HotelSource;
+  quote?: Quote | null;
+  deep_link?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+}
+export interface HotelStay { offer: HotelOffer; check_in: string; check_out: string }
+export interface PackageTotals {
+  flights: Money;
+  hotels: Money;
+  activities: Money;
+  total: Money;
+  currency: string;
+  savings: Money;
+}
+export interface TravelPackage {
+  plan_id: string;
+  outbound?: FlightOffer | null;
+  return?: FlightOffer | null;
+  hotels: HotelStay[];
+  itinerary: Itinerary;
+  totals: PackageTotals;
+  reasons: string[];
+}
+export interface PackageChoices {
+  outbound_id?: string | null;
+  return_id?: string | null;
+  hotel_ids?: string[];
+}
+export interface SwanView {
+  plan_id: string;
+  phase: SwanPhase;
+  request: TripRequest;
+  flights: FlightOffer[];
+  hotels: HotelOffer[];
+  package?: TravelPackage | null;
+}

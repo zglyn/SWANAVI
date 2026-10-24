@@ -1,0 +1,272 @@
+[
+  {
+    "id": "out-jl",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL001",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T09:05:00-08:00",
+        "arrive_at": "2026-11-14T13:10:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "JL",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 665,
+    "price": "680.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/out-jl",
+    "direction": "outbound"
+  },
+  {
+    "id": "out-ua",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA875",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T09:30:00-08:00",
+        "arrive_at": "2026-11-14T14:05:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 695,
+    "price": "640.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/out-ua",
+    "direction": "outbound"
+  },
+  {
+    "id": "out-red",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA35",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T00:40:00-08:00",
+        "arrive_at": "2026-11-14T05:10:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 690,
+    "price": "590.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": false,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/out-red",
+    "direction": "outbound"
+  },
+  {
+    "id": "out-aa",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "AA",
+        "number": "AA173",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T15:10:00-08:00",
+        "arrive_at": "2026-11-14T20:40:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "AA",
+    "cabin": "economy",
+    "stops": 1,
+    "duration_min": 890,
+    "price": "610.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/out-aa",
+    "direction": "outbound"
+  },
+  {
+    "id": "ret-jl",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL002",
+        "from_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "to_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "depart_at": "2026-11-16T18:20:00+09:00",
+        "arrive_at": "2026-11-16T11:40:00-08:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "JL",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 620,
+    "price": "690.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/ret-jl",
+    "direction": "return"
+  },
+  {
+    "id": "ret-ua",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA876",
+        "from_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "to_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "depart_at": "2026-11-16T10:15:00+09:00",
+        "arrive_at": "2026-11-16T04:05:00-08:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 650,
+    "price": "640.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": false,
+      "changeable": true
+    },
+    "score": 0.0,
+    "why": [],
+    "deep_link": "https://example.com/swan/flights/ret-ua",
+    "direction": "return"
+  }
+]

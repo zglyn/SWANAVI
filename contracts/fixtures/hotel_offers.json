@@ -1,0 +1,136 @@
+[
+  {
+    "id": "inn-arashiyama",
+    "name": "Arashiyama Riverside Inn",
+    "brand": null,
+    "stars": 4.0,
+    "location": {
+      "lat": 35.0162,
+      "lng": 135.6784
+    },
+    "area": "Arashiyama",
+    "price_per_night": "180",
+    "total": "360",
+    "currency": "USD",
+    "amenities": [
+      "wifi",
+      "breakfast"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 0,
+    "score": 0.0,
+    "why": [],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": "https://example.com/swan/hotels/inn-arashiyama",
+    "check_in": null,
+    "check_out": null
+  },
+  {
+    "id": "hyatt-arashiyama",
+    "name": "Hyatt Place Arashiyama",
+    "brand": "Hyatt",
+    "stars": 4.0,
+    "location": {
+      "lat": 35.0162,
+      "lng": 135.6784
+    },
+    "area": "Arashiyama",
+    "price_per_night": "180",
+    "total": "360",
+    "currency": "USD",
+    "amenities": [
+      "wifi",
+      "breakfast",
+      "gym"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 0,
+    "score": 0.0,
+    "why": [],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": "https://example.com/swan/hotels/hyatt-arashiyama",
+    "check_in": null,
+    "check_out": null
+  },
+  {
+    "id": "gion-house",
+    "name": "Gion House",
+    "brand": null,
+    "stars": 3.0,
+    "location": {
+      "lat": 35.0037,
+      "lng": 135.7758
+    },
+    "area": "Gion",
+    "price_per_night": "90",
+    "total": "180",
+    "currency": "RLUSD",
+    "amenities": [
+      "wifi"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 0,
+    "score": 0.0,
+    "why": [],
+    "image_url": null,
+    "source": "merchant_mcp",
+    "quote": {
+      "invoice_id": "2F2BCBB408A9F9C012E896A1951045364778D05FE07521D285493F472C60C313",
+      "merchant_id": "gion-house",
+      "merchant_name": "Gion House, two nights",
+      "merchant_address": "rgion-housePLACEHOLDER",
+      "sku": "GION-ROOM",
+      "title": "Gion House, two nights",
+      "category": "lodging",
+      "amount": "180.00",
+      "currency": "RLUSD",
+      "viator_price": "220.00",
+      "slot_start": "2026-11-14T15:00:00+09:00",
+      "slot_end": "2026-11-16T15:00:00+09:00",
+      "location": {
+        "lat": 35.0037,
+        "lng": 135.7758
+      },
+      "cancel_after": "2026-11-13T15:00:00+09:00",
+      "expires_at": "2026-11-20T00:00:00+09:00",
+      "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "merchant_verified": true
+    },
+    "deep_link": null,
+    "check_in": null,
+    "check_out": null
+  },
+  {
+    "id": "osaka-hyatt",
+    "name": "Hyatt Regency Osaka",
+    "brand": "Hyatt",
+    "stars": 4.0,
+    "location": {
+      "lat": 34.6937,
+      "lng": 135.5023
+    },
+    "area": "Osaka",
+    "price_per_night": "160",
+    "total": "160",
+    "currency": "USD",
+    "amenities": [
+      "wifi",
+      "breakfast",
+      "pool"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 0,
+    "score": 0.0,
+    "why": [],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": "https://example.com/swan/hotels/osaka-hyatt",
+    "check_in": null,
+    "check_out": null
+  }
+]
