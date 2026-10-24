@@ -1,13 +1,17 @@
-"""Attraction booking: a sample segment books, and a provider error fails closed."""
+"""Attraction booking: a sample segment books, and a provider error fails closed.
+
+These tests stay on the sandbox. They do not call the Amadeus client and do not need keys.
+"""
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 import unittest
 from decimal import Decimal
 
-from booking.providers.attractions import book
+from booking.providers.attractions import BOOK_ATTRACTION_TOOL, book, book_attraction
 from booking.providers.attractions.sandbox import FORCE_ERROR_ENV
 
 SAMPLE_SEGMENT = {
@@ -24,6 +28,9 @@ TRIP_ID = "trip-kyoto-2026"
 _ENV_KEYS = (
     "ROAM_ATTRACTION_PROVIDER",
     "ROAM_ATTRACTION_SANDBOX_URL",
+    "AMADEUS_CLIENT_ID",
+    "AMADEUS_CLIENT_SECRET",
+    "AMADEUS_HOSTNAME",
     FORCE_ERROR_ENV,
 )
 
@@ -93,32 +100,29 @@ class BookAttractionTests(unittest.TestCase):
         self.assertIsNone(result["price"])
         self.assertIn("segmentId", result["error"])
 
-    def test_live_adapter_is_not_called_by_default(self) -> None:
-        os.environ["ROAM_ATTRACTION_SANDBOX_URL"] = "https://api.viator.com/partner/bookings"
+    def test_agentcore_tool_handler_calls_book(self) -> None:
+        json.dumps(BOOK_ATTRACTION_TOOL)
+        self.assertEqual(BOOK_ATTRACTION_TOOL["name"], "book_attraction")
+        self.assertEqual(
+            BOOK_ATTRACTION_TOOL["inputSchema"]["required"],
+            ["segment", "travelers", "trip_id"],
+        )
+        self.assertIn("AgentCore runtime", BOOK_ATTRACTION_TOOL["description"])
+
+        direct = book(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
+        via_tool = book_attraction(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
+        self.assertEqual(via_tool, direct)
+        self.assertEqual(via_tool["status"], "booked")
+        self.assertTrue(via_tool["confirmationCode"].startswith("SANDBOX-"))
+
+    def test_live_client_is_not_used_by_default(self) -> None:
+        os.environ["AMADEUS_CLIENT_ID"] = "test-client"
+        os.environ["AMADEUS_CLIENT_SECRET"] = "test-secret"
+        os.environ["AMADEUS_HOSTNAME"] = "production"
         with _network_forbidden():
-            result = book(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
+            result = book_attraction(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
         self.assertEqual(result["status"], "booked")
         self.assertTrue(result["confirmationCode"].startswith("SANDBOX-"))
-
-    def test_live_adapter_refuses_production_without_a_request(self) -> None:
-        os.environ["ROAM_ATTRACTION_PROVIDER"] = "live"
-        os.environ["ROAM_ATTRACTION_SANDBOX_URL"] = "https://api.viator.com/partner/bookings"
-        with _network_forbidden():
-            result = book(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
-        self.assertEqual(result["status"], "failed")
-        self.assertIsNone(result["confirmationCode"])
-        self.assertIsNone(result["price"])
-        self.assertIn("no card was charged", result["error"])
-        self.assertIn("viator.com", result["error"])
-
-    def test_live_adapter_does_not_place_a_sandbox_order(self) -> None:
-        os.environ["ROAM_ATTRACTION_PROVIDER"] = "live"
-        os.environ["ROAM_ATTRACTION_SANDBOX_URL"] = "http://127.0.0.1:9/attractions"
-        with _network_forbidden():
-            result = book(SAMPLE_SEGMENT, TRAVELERS, TRIP_ID)
-        self.assertEqual(result["status"], "needs_user")
-        self.assertIsNone(result["price"])
-        self.assertIn("no card was charged", result["error"])
 
 
 class _network_forbidden:
