@@ -60,6 +60,22 @@ INPUT_SCHEMA = {
             "type": "string",
             "description": "ISO-8601 timestamp supplied by the caller. This tool does not read the wall clock.",
         },
+        "signals": {
+            "type": "array",
+            "description": "Optional segment signals. Each one appends a replan update. Omit when there are none.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "segmentId": {"type": "string"},
+                    "event": {
+                        "type": "string",
+                        "enum": ["cancelled", "ended_early", "ended_late"],
+                    },
+                    "deltaMinutes": {"type": "number"},
+                },
+                "required": ["segmentId", "event", "deltaMinutes"],
+            },
+        },
     },
     "required": ["plan", "results", "now"],
 }
@@ -80,9 +96,18 @@ OUTPUT_SCHEMA = {
                     "segmentId": {"type": "string"},
                     "kind": {"type": "string"},
                     "issue": {"type": "string"},
+                    "event": {
+                        "type": "string",
+                        "enum": ["cancelled", "ended_early", "ended_late"],
+                        "description": "Present on replan updates from signals.",
+                    },
+                    "deltaMinutes": {
+                        "type": "number",
+                        "description": "Present on replan updates from signals.",
+                    },
                     "action": {
                         "type": "string",
-                        "enum": ["none", "rebook", "verify_email"],
+                        "enum": ["none", "rebook", "verify_email", "replan"],
                     },
                 },
                 "required": ["segmentId", "kind", "issue", "action"],
@@ -96,7 +121,8 @@ TOOL_SPEC = {
     "name": TOOL_NAME,
     "description": (
         "Report whether a booked trip is pre_trip, in_progress, or done, and which "
-        "segments need rebook or verify_email. The master agent calls this tool inside "
+        "segments need rebook, verify_email, or replan. Optional signals append replan "
+        "updates. The master agent calls this tool inside "
         "its loop on the Amazon Bedrock AgentCore runtime. This tool does not run that loop. "
         "Sandbox only: it compares segment times on the plan to the caller-supplied now "
         "and does not use the network or AWS."

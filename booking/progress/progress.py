@@ -13,24 +13,34 @@ GRACE = timedelta(minutes=45)
 
 ISSUE_REBOOK = "segment end is more than 45 minutes before now and the segment is not finished"
 ISSUE_EMAIL = "booked segment has emailVerified false"
+ISSUE_CANCELLED = "segment cancelled"
+ISSUE_ENDED_EARLY = "segment ended early"
+ISSUE_ENDED_LATE = "segment ended late"
 
-_ENVELOPE_KEYS = ("plan", "trip", "results", "bookings", "bookingResults", "now")
+_SIGNAL_ISSUES = {
+    "cancelled": ISSUE_CANCELLED,
+    "ended_early": ISSUE_ENDED_EARLY,
+    "ended_late": ISSUE_ENDED_LATE,
+}
+
+_ENVELOPE_KEYS = ("plan", "trip", "results", "bookings", "bookingResults", "now", "signals")
 
 
-def trip_progress(plan=None, results=None, now=None) -> dict:
+def trip_progress(plan=None, results=None, now=None, signals=None) -> dict:
     """Return ``phase``, ``onTrack``, and ``updates``. Never raises.
 
     ``plan`` may be the trip plan, or one object with ``plan``, ``results``,
-    and ``now``. ``now`` is an ISO-8601 timestamp from the caller.
+    ``now``, and optional ``signals``. ``now`` is an ISO-8601 timestamp from
+    the caller.
     """
     try:
-        plan, results, now = _normalize(plan, results, now)
-        return _evaluate(plan if isinstance(plan, dict) else {}, results, now)
+        plan, results, now, signals = _normalize(plan, results, now, signals)
+        return _evaluate(plan if isinstance(plan, dict) else {}, results, now, signals)
     except Exception:
         return _result("pre_trip", True, [])
 
 
-def _normalize(plan, results, now):
+def _normalize(plan, results, now, signals):
     if isinstance(plan, str):
         try:
             loaded = json.loads(plan)
@@ -38,7 +48,7 @@ def _normalize(plan, results, now):
             loaded = None
         if isinstance(loaded, dict):
             plan = loaded
-    if isinstance(plan, dict) and results is None and now is None:
+    if isinstance(plan, dict) and results is None and now is None and signals is None:
         source = plan
         arguments = plan.get("arguments")
         if isinstance(arguments, dict):
@@ -50,22 +60,24 @@ def _normalize(plan, results, now):
                 source.get("plan", source.get("trip")),
                 source.get("results", source.get("bookings", source.get("bookingResults"))),
                 source.get("now"),
+                source.get("signals"),
             )
-    return plan, results, now
+    return plan, results, now, signals
 
 
 def _looks_like_plan(value: dict) -> bool:
     return any(key in value for key in ("flights", "hotels", "attractions", "segments", "tripId"))
 
 
-def _evaluate(plan: dict, results, now) -> dict:
+def _evaluate(plan: dict, results, now, signals) -> dict:
     segments = _segments(plan)
     by_id = _results_by_id(results)
     now_at = _instant(now, as_end=False)
     windows = [_window(segment) for segment in segments]
+    signal_updates = _signal_updates(segments, by_id, signals)
 
     if segments and all(_done_segment(by_id.get(_segment_id(segment))) for segment in segments):
-        return _result("done", True, [])
+        return _result("done", True, signal_updates)
 
     updates = []
     for segment, (_start, end) in zip(segments, windows):
@@ -76,10 +88,55 @@ def _evaluate(plan: dict, results, now) -> dict:
             updates.append(_update(segment_id, kind, ISSUE_REBOOK, "rebook"))
         if _booked(result) and result.get("emailVerified") is False:
             updates.append(_update(segment_id, kind, ISSUE_EMAIL, "verify_email"))
+    updates.extend(signal_updates)
 
     on_track = not any(item["action"] == "rebook" for item in updates)
     phase = _phase(plan, segments, windows, now_at)
     return _result(phase, on_track, updates)
+
+
+def _signal_updates(segments: list, by_id: dict, signals) -> list:
+    if not isinstance(signals, list):
+        return []
+    kinds = {}
+    for segment in segments:
+        segment_id = _segment_id(segment)
+        if segment_id:
+            kinds[segment_id] = _kind(segment, by_id.get(segment_id))
+    updates = []
+    for signal in signals:
+        if not isinstance(signal, dict):
+            continue
+        event = signal.get("event")
+        if not isinstance(event, str) or event not in _SIGNAL_ISSUES:
+            continue
+        segment_id = signal.get("segmentId")
+        if not isinstance(segment_id, str):
+            segment_id = ""
+        kind = kinds.get(segment_id, "")
+        if not kind and segment_id:
+            result = by_id.get(segment_id)
+            if isinstance(result, dict):
+                kind = _kind({}, result)
+        updates.append(
+            {
+                "segmentId": segment_id,
+                "kind": kind,
+                "issue": _SIGNAL_ISSUES[event],
+                "event": event,
+                "deltaMinutes": _delta_minutes(signal.get("deltaMinutes")),
+                "action": "replan",
+            }
+        )
+    return updates
+
+
+def _delta_minutes(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
+        return None
+    return value
 
 
 def _phase(plan: dict, segments: list, windows: list, now_at: datetime | None) -> str:
