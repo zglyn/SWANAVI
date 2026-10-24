@@ -123,10 +123,18 @@ def _with_later_segments(payload: dict) -> dict:
     Cancellation pulls the hotel, which starts later the same day as the flight.
     The farewell tea starts after hotel checkout, so an early finish can pull it
     forward. The garden walk starts after the temple, so a late finish can push
-    it back. The morning briefing is what progress rebooks on tick 1.
+    it back.     The morning briefing is what progress rebooks on tick 1.
+    Tick 1 is 13:00Z, so the riverside pause ends within 20 minutes and the
+    night market is a later stop that same day. watch_trip warns, and the
+    master requests that ride in the same tick.
     """
 
     plan = json.loads(json.dumps(payload))
+    flights = plan.get("flights")
+    if isinstance(flights, list):
+        for flight in flights:
+            if isinstance(flight, dict) and not isinstance(flight.get("international"), bool):
+                flight["international"] = True
     attractions = plan.get("attractions")
     if not isinstance(attractions, list):
         attractions = []
@@ -163,6 +171,28 @@ def _with_later_segments(payload: dict) -> dict:
                 "meal": True,
                 "reservationAt": "2026-11-06T11:00:00Z",
                 "arriveAt": "2026-11-06T12:00:00Z",
+            },
+            {
+                "segmentId": "attraction-5",
+                "kind": "attraction",
+                "name": "Sample riverside pause",
+                "city": "Kyoto",
+                "date": "2026-11-02",
+                "partySize": 1,
+                "time": "13:00",
+                "start": "2026-11-02T12:55:00Z",
+                "end": "2026-11-02T13:10:00Z",
+            },
+            {
+                "segmentId": "attraction-6",
+                "kind": "attraction",
+                "name": "Sample night market",
+                "city": "Kyoto",
+                "date": "2026-11-02",
+                "partySize": 1,
+                "time": "18:00",
+                "start": "2026-11-02T18:00:00Z",
+                "end": "2026-11-02T19:00:00Z",
             },
         ]
     )

@@ -963,7 +963,14 @@ def _luggage_if_early(plan: dict[str, Any], trip_id: str) -> Any | None:
             hotel_id = _segment_id(stop["segment"])
     if arrival is None or check_in is None or not (arrival < check_in):
         return None
-    return luggage_drop(_iso(arrival), _iso(check_in), hotel_id, flight_id, trip_id)
+    return luggage_drop(
+        _iso(arrival),
+        _iso(check_in),
+        hotel_id,
+        flight_id,
+        trip_id,
+        travelerName=_traveler_name(plan),
+    )
 
 
 def _table_if_late(plan: dict[str, Any], trip_id: str) -> Any | None:
@@ -1087,7 +1094,18 @@ def _airport_on_day(plan: dict[str, Any], clock: dict[str, Any], trip_id: str) -
             continue
         origin = segment.get("from") if isinstance(segment.get("from"), str) else ""
         destination = segment.get("to") if isinstance(segment.get("to"), str) else ""
-        return airport_leave(trip_id, _segment_id(segment), day.isoformat(), _now(clock), origin, destination)
+        depart_at = _iso(start) if isinstance(start, datetime) else ""
+        international = segment.get("international") if isinstance(segment.get("international"), bool) else None
+        return airport_leave(
+            trip_id,
+            _segment_id(segment),
+            day.isoformat(),
+            _now(clock),
+            origin,
+            destination,
+            departAt=depart_at,
+            international=international,
+        )
     return None
 
 
@@ -1153,12 +1171,17 @@ def _checkout_if_same_day(plan: dict[str, Any], trip_id: str) -> Any | None:
             flight_days = [_parse_day(flight.get("departDate")), _parse_day(flight.get("returnDate"))]
             if checkout not in flight_days:
                 continue
+            _, hotel_end = _window("hotel", hotel)
+            flight_start, _flight_end = _window("flight", flight)
             return late_checkout(
                 trip_id,
                 _segment_id(flight),
                 _segment_id(hotel),
                 checkout.isoformat(),
                 checkout.isoformat(),
+                departAt=_iso(flight_start) if isinstance(flight_start, datetime) else "",
+                travelerName=_traveler_name(plan),
+                checkoutAt=_iso(hotel_end) if isinstance(hotel_end, datetime) else "",
             )
     return None
 

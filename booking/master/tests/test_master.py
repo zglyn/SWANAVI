@@ -512,6 +512,7 @@ class ControlLoopTests(_Modules):
             "booking.guard.conflicts",
             "booking.refund",
             "booking.notify",
+            "booking.assist.tip",
         )
 
         def replan_cancel(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
@@ -584,7 +585,7 @@ class ControlLoopTests(_Modules):
 
     def test_fake_authorize_spend_result_is_recorded(self) -> None:
         self._providers()
-        self.hide("booking.progress")
+        self.hide("booking.progress", "booking.assist.tip")
         seen: list[tuple[Any, ...]] = []
 
         def authorize_spend(authorizedAmount: int, requestedAmount: int, currency: str) -> dict[str, Any]:
@@ -618,7 +619,26 @@ class ControlLoopTests(_Modules):
 
 class AssistTests(_Modules):
     def test_missing_assist_packages_do_not_crash(self) -> None:
-        self.hide("booking.progress")
+        self.hide(
+            "booking.progress",
+            "booking.assist",
+            "booking.assist.entry",
+            "booking.assist.hours",
+            "booking.assist.transfers",
+            "booking.assist.fx",
+            "booking.assist.weather",
+            "booking.assist.emergency",
+            "booking.assist.ride",
+            "booking.assist.table",
+            "booking.assist.luggage",
+            "booking.assist.watch",
+            "booking.assist.airport",
+            "booking.assist.afterdark",
+            "booking.assist.checkout",
+            "booking.assist.tip",
+            "booking.assist.phrase",
+            "booking.assist.wallet",
+        )
         result = handle_payload(SAMPLE)
 
         self.assertIsNone(result["error"])

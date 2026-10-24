@@ -466,11 +466,16 @@ def quote_fx(
     The scripted quote is 1000 JPY into USD.
     """
 
-    return _assist(
+    quoted = _assist(
         load_quote_fx,
         QUOTE_FX_NOT_INSTALLED,
         {"amount": amount, "fromCurrency": fromCurrency, "toCurrency": toCurrency},
     )
+    if isinstance(quoted, dict):
+        quoted.setdefault("fromAmount", amount)
+        quoted.setdefault("fromCurrency", fromCurrency)
+        quoted.setdefault("toCurrency", toCurrency)
+    return quoted
 
 
 def check_weather(segmentId: str, outdoor: bool, condition: str = SCRIPTED_WEATHER_CONDITION) -> Any:
@@ -532,6 +537,7 @@ def hold_table(
         "trip_id": tripId,
         "segmentId": segmentId,
         "name": name,
+        "venue": name,
         "arriveAt": arriveAt,
         "reservationAt": reservationAt,
     }
@@ -546,6 +552,7 @@ def luggage_drop(
     segmentId: str = "",
     flightSegmentId: str = "",
     tripId: str = "",
+    travelerName: str = "",
 ) -> Any:
     """Call booking.assist.luggage.luggage_drop when arrival is before hotel check-in."""
 
@@ -559,7 +566,10 @@ def luggage_drop(
             "hotelSegmentId": segmentId,
             "flightSegmentId": flightSegmentId,
             "arrivalAt": arrivalAt,
+            "arriveAt": arrivalAt,
             "checkIn": checkIn,
+            "checkInAt": checkIn,
+            "travelerName": travelerName,
         },
     )
 
@@ -571,24 +581,31 @@ def airport_leave(
     now: str,
     origin: str = "",
     destination: str = "",
+    departAt: str = "",
+    international: bool | None = None,
+    hotelCheckoutAt: str = "",
 ) -> Any:
     """Call booking.assist.airport.airport_leave on a flight day."""
 
-    return _assist(
-        load_airport_leave,
-        AIRPORT_LEAVE_NOT_INSTALLED,
-        {
-            "tripId": tripId,
-            "trip_id": tripId,
-            "segmentId": segmentId,
-            "date": date,
-            "now": now,
-            "from": origin,
-            "to": destination,
-            "origin": origin,
-            "destination": destination,
-        },
-    )
+    fields: dict[str, Any] = {
+        "tripId": tripId,
+        "trip_id": tripId,
+        "segmentId": segmentId,
+        "flightSegmentId": segmentId,
+        "date": date,
+        "now": now,
+        "from": origin,
+        "to": destination,
+        "origin": origin,
+        "destination": destination,
+    }
+    if departAt:
+        fields["departAt"] = departAt
+    if isinstance(international, bool):
+        fields["international"] = international
+    if hotelCheckoutAt:
+        fields["hotelCheckoutAt"] = hotelCheckoutAt
+    return _assist(load_airport_leave, AIRPORT_LEAVE_NOT_INSTALLED, fields)
 
 
 def after_dark(
@@ -613,6 +630,7 @@ def after_dark(
             "end": end,
             "now": now,
             "leg": "walk",
+            "mode": "walk",
         },
     )
 
@@ -623,22 +641,27 @@ def late_checkout(
     hotelSegmentId: str,
     date: str,
     checkOut: str,
+    departAt: str = "",
+    travelerName: str = "",
+    checkoutAt: str = "",
 ) -> Any:
     """Call booking.assist.checkout.late_checkout when a flight shares the checkout day."""
 
-    return _assist(
-        load_late_checkout,
-        LATE_CHECKOUT_NOT_INSTALLED,
-        {
-            "tripId": tripId,
-            "trip_id": tripId,
-            "flightSegmentId": flightSegmentId,
-            "hotelSegmentId": hotelSegmentId,
-            "segmentId": hotelSegmentId,
-            "date": date,
-            "checkOut": checkOut,
-        },
-    )
+    fields: dict[str, Any] = {
+        "tripId": tripId,
+        "trip_id": tripId,
+        "flightSegmentId": flightSegmentId,
+        "hotelSegmentId": hotelSegmentId,
+        "segmentId": hotelSegmentId,
+        "date": date,
+        "checkOut": checkOut,
+        "checkoutAt": checkoutAt or checkOut,
+    }
+    if departAt:
+        fields["departAt"] = departAt
+    if travelerName:
+        fields["travelerName"] = travelerName
+    return _assist(load_late_checkout, LATE_CHECKOUT_NOT_INSTALLED, fields)
 
 
 def tip_policy(tripId: str, country: str, currency: str, requestedAmount: int) -> Any:
@@ -654,8 +677,25 @@ def tip_policy(tripId: str, country: str, currency: str, requestedAmount: int) -
             "currency": currency,
             "requestedAmount": requestedAmount,
             "amount": requestedAmount,
+            "subtotal": requestedAmount,
         },
     )
+
+
+_PHRASE_LANGUAGES = {
+    "japan": "ja",
+    "jp": "ja",
+    "jpn": "ja",
+    "france": "fr",
+    "fr": "fr",
+    "fra": "fr",
+}
+
+
+def _phrase_language(country: str) -> str:
+    """Language code the phrase card already accepts for this country name."""
+
+    return _PHRASE_LANGUAGES.get(country.strip().casefold(), "")
 
 
 def phrase_card(
@@ -678,6 +718,9 @@ def phrase_card(
             "pickupAt": pickupAt,
             "segmentId": segmentId,
             "situation": "ride",
+            "language": _phrase_language(country),
+            "placeName": dropoffName,
+            "arriveAt": pickupAt,
         },
     )
 
@@ -693,6 +736,7 @@ def trip_wallet(tripId: str, codes: list[str]) -> Any:
             "trip_id": tripId,
             "codes": list(codes),
             "confirmationCodes": list(codes),
+            "items": [{"code": code} for code in codes if isinstance(code, str) and code.strip()],
         },
     )
 
