@@ -566,11 +566,16 @@ class RuntimeTests(unittest.TestCase):
                 for tick, update in replan_updates
             ],
             [
-                (1, "cancelled", None, "replan_not_installed"),
-                (2, "ended_early", 60, "replan_not_installed"),
-                (3, "ended_late", 45, "replan_not_installed"),
+                (1, "cancelled", None, "changed"),
+                (2, "ended_early", 60, "changed"),
+                (3, "ended_late", 45, "changed"),
             ],
         )
+        notes = {update.get("event"): update.get("notes") for _tick, update in replan_updates}
+        self.assertIn("marked flight-1 removed", notes["cancelled"])
+        self.assertIn("shifted hotel-1 earlier by 180 minutes", notes["cancelled"])
+        self.assertIn("shifted attraction-4 earlier by 60 minutes", notes["ended_early"])
+        self.assertIn("shifted attraction-3 later by 45 minutes", notes["ended_late"])
         self.assertIn("tick 1", trace)
         self.assertIn("action=rebook", trace)
         self.assertIn("event=cancelled", trace)
@@ -578,7 +583,8 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("event=ended_late", trace)
         self.assertIn("deltaMinutes=60", trace)
         self.assertIn("deltaMinutes=45", trace)
-        self.assertIn("replan=replan_not_installed", trace)
+        self.assertIn("replan=changed", trace)
+        self.assertNotIn("replan_not_installed", trace)
         self.assertNotIn("progress_not_installed", trace)
         self.assertNotIn("verifier_not_installed", trace)
         for item in printed["results"]:

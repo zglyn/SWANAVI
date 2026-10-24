@@ -30,16 +30,26 @@ _SANDBOX_ENV = (
     "ROAM_HOTEL_PROVIDER",
     "ROAM_ATTRACTION_PROVIDER",
 )
-# The sample attraction ends at 09:00Z on 2026-11-03. The service clock starts at
-# 08:00Z on the trip start date and stops while on track, so it never reaches a
-# segment end. This demo keeps that clock, then moves tick 1 to 60 minutes after
-# the attraction end (more than the 45-minute grace) and passes that timestamp
-# as ``now``. Later ticks stay on the service clock. The cap stays five ticks.
-_DEMO_LATE_TICK = 1
-_DEMO_LATE_NOW = "2026-11-03T10:00:00Z"
+# The service clock starts at 08:00Z on the trip start date and stops while on
+# track, so it never reaches a segment end. Progress treats an attraction time
+# as that segment's end. Tick 1 is 13:00Z on the start date: after the morning
+# briefing (10:00Z, past the 45-minute grace, so the loop rebooks and stays
+# open) and before the hotel's 15:00Z start, so a cancellation can still pull
+# that hotel forward. Ticks 2 and 3 stay on that morning. The service clock
+# would jump past the briefing and rebook it again, and the loop would stop
+# before the early and late signals. The cap stays five ticks.
+_DEMO_NOW = {
+    1: "2026-11-02T13:00:00Z",
+    2: "2026-11-02T10:30:00Z",
+    3: "2026-11-02T10:40:00Z",
+}
 # One scripted replan signal per tick, on top of whatever trip_progress reports.
 # ended_early is 60 minutes. ended_late is 45 minutes. A missing replan package
 # is recorded as replan_not_installed and the demo still finishes.
+# The sample flight, hotel, and temple are not one same-day chain. The demo
+# adds a morning briefing (keeps the loop open), an afternoon garden after the
+# temple, and a farewell tea after hotel checkout. Those are the later segments
+# the three replan agents move.
 _REPLAN_SIGNALS = {
     1: {
         "segmentId": "flight-1",
@@ -90,15 +100,64 @@ def _wait_until_ready(port: int, timeout_s: float = 15) -> None:
 
 
 def _demo_clock(original):
-    """Service clock, except one tick is after a sample segment end."""
+    """Service clock, except the scripted ticks use ``_DEMO_NOW``."""
 
     def clock(plan: dict, tick: int) -> dict:
         reported = original(plan, tick)
-        if tick == _DEMO_LATE_TICK:
-            return {"tick": reported.get("tick", tick), "now": _DEMO_LATE_NOW}
+        now = _DEMO_NOW.get(tick)
+        if now is not None:
+            return {"tick": reported.get("tick", tick), "now": now}
         return reported
 
     return clock
+
+
+def _with_later_segments(payload: dict) -> dict:
+    """Add the later same-day visits the scripted replans move.
+
+    Cancellation pulls the hotel, which starts later the same day as the flight.
+    The farewell tea starts after hotel checkout, so an early finish can pull it
+    forward. The garden walk starts after the temple, so a late finish can push
+    it back. The morning briefing is what progress rebooks on tick 1.
+    """
+
+    plan = json.loads(json.dumps(payload))
+    attractions = plan.get("attractions")
+    if not isinstance(attractions, list):
+        attractions = []
+        plan["attractions"] = attractions
+    attractions.extend(
+        [
+            {
+                "segmentId": "attraction-2",
+                "kind": "attraction",
+                "name": "Sample morning briefing",
+                "city": "Kyoto",
+                "date": "2026-11-02",
+                "partySize": 1,
+                "time": "10:00",
+            },
+            {
+                "segmentId": "attraction-3",
+                "kind": "attraction",
+                "name": "Sample garden walk",
+                "city": "Kyoto",
+                "date": "2026-11-03",
+                "partySize": 1,
+                "time": "13:00",
+            },
+            {
+                "segmentId": "attraction-4",
+                "kind": "attraction",
+                "name": "Sample farewell tea",
+                "city": "Kyoto",
+                "date": "2026-11-06",
+                "partySize": 1,
+                "time": "12:00",
+            },
+        ]
+    )
+    return plan
 
 
 def _with_replan_signal(report: object, tick: object) -> object:
@@ -216,7 +275,7 @@ def write_trace(result: dict, stream: object | None = None) -> None:
 def main() -> int:
     saved = {name: os.environ.pop(name) for name in _SANDBOX_ENV if name in os.environ}
     try:
-        payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        payload = _with_later_segments(json.loads(FIXTURE.read_text(encoding="utf-8")))
         result = invoke_runtime(payload)
     finally:
         os.environ.update(saved)
