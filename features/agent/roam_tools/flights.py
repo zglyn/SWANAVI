@@ -41,7 +41,9 @@ def reset_flight_lookup() -> None:
 
 
 def lookup_flight(number: str, date: str) -> TravelSegment:
-    provider = os.environ.get("FLIGHT_API_PROVIDER", "fixture")
+    provider = os.environ.get("FLIGHT_API_PROVIDER")
+    if not provider:
+        provider = "aerodatabox" if os.environ.get("FLIGHT_API_KEY") else "fixture"
     if provider == "fixture":
         return lookup_fixture_flight(number, date)
     if provider != "aerodatabox":

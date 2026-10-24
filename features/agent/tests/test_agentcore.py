@@ -64,6 +64,12 @@ def test_entrypoint_plans_from_the_scripted_fixtures(monkeypatch):
     ids = {stop["id"] for day in result["itinerary"]["days"] for stop in day["stops"]}
     assert {"bamboo-grove", "tenryuji"} <= ids
     assert result["config"]["plan_store"] == "memory"
+    other = handle_invocation({
+        "action": "plan",
+        "brief": _brief().model_dump(mode="json"),
+        "selection": {"must_visit": [], "maybe": [], "excluded": []},
+    })
+    assert other["plan_id"] != result["plan_id"]
     assert result["config"]["tools_mcp_url"].endswith(":8003/mcp")
 
 

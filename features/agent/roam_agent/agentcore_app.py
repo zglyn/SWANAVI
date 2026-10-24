@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 
 from roam_contracts.models import PlanRevision, PlanSelection, PlanStatus, TripBrief
 
@@ -41,7 +42,7 @@ def handle_invocation(payload: dict) -> dict:
         store.put(record)
         return {"plan_id": record.plan_id, "itinerary": updated.model_dump(mode="json"), "events": events}
     brief = TripBrief.model_validate(payload["brief"])
-    plan_id = payload.get("plan_id") or "agentcore"
+    plan_id = payload.get("plan_id") or uuid.uuid4().hex[:12]
     selection = PlanSelection.model_validate(payload.get("selection") or {"must_visit": [], "maybe": [], "excluded": []})
     candidates = collect_candidates(brief, events.append, plan_id)
     itinerary = build_plan(brief, selection, candidates, events.append, plan_id)

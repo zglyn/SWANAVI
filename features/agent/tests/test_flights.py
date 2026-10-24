@@ -66,6 +66,22 @@ def test_paid_lookup_parses_airports_and_caches(monkeypatch):
     assert flight_call_count() == 1
 
 
+def test_a_key_without_a_provider_uses_aerodatabox(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(*args, **kwargs):
+        calls["n"] += 1
+        return _Response(SAMPLE)
+
+    monkeypatch.delenv("FLIGHT_API_PROVIDER", raising=False)
+    monkeypatch.setenv("FLIGHT_API_KEY", "test-key")
+    monkeypatch.setattr(httpx, "get", fake_get)
+    reset_flight_lookup()
+    segment = lookup_flight("JL3020", "2026-11-14")
+    assert segment.source == "aerodatabox"
+    assert calls["n"] == 1
+
+
 def test_missing_key_is_unverified_and_makes_no_call(monkeypatch):
     def boom(*args, **kwargs):
         raise AssertionError("paid lookup should not run")
