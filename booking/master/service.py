@@ -469,7 +469,31 @@ def _refund_if_cancelled(
     if update.get("event") != "cancelled":
         return
     segment_id = update.get("segmentId") if isinstance(update.get("segmentId"), str) else None
-    update["refund"] = refund_booking(trip_id, segment_id, _confirmation_code(segment_id, located, results))
+    amount, currency = _quoted_price(segment_id, located)
+    update["refund"] = refund_booking(
+        trip_id,
+        segment_id,
+        _confirmation_code(segment_id, located, results),
+        amount,
+        currency,
+    )
+
+
+def _quoted_price(
+    segment_id: str | None,
+    located: dict[str, list[dict[str, Any]]],
+) -> tuple[Any, str | None]:
+    """Amount and currency from the booking price stored for this segment."""
+
+    if not segment_id:
+        return None, None
+    for match in located.get(segment_id) or []:
+        price = match.get("price")
+        if not isinstance(price, dict) or "amount" not in price:
+            continue
+        currency = price.get("currency")
+        return price.get("amount"), currency if isinstance(currency, str) else None
+    return None, None
 
 
 def _confirmation_code(

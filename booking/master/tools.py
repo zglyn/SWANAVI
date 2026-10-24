@@ -7,6 +7,7 @@ decides a guard outcome.
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from booking.master.capabilities import (
@@ -246,7 +247,7 @@ def check_budget(trip_id: str, segment: dict[str, Any], price: dict[str, Any] | 
     if budget is None:
         return CHECK_BUDGET_NOT_INSTALLED
     try:
-        return budget(trip_id, segment, price)
+        return _call_budget(budget, trip_id, segment, price)
     except Exception as exc:
         return {"allowed": None, "error": _message(exc)}
 
@@ -273,7 +274,8 @@ def authorize_spend(
         record["reason"] = AUTHORIZE_SPEND_NOT_INSTALLED
         return record
     try:
-        raw = spend(authorizedAmount, requestedAmount, currency)
+        # The spend package names these fields. Positional order is segmentId, currency, then the amounts.
+        raw = spend(authorizedAmount=authorizedAmount, requestedAmount=requestedAmount, currency=currency)
     except Exception as exc:
         record["payAmount"] = None
         record["reason"] = _message(exc)
@@ -288,14 +290,20 @@ def authorize_spend(
     return record
 
 
-def refund_booking(trip_id: str, segment_id: str | None, confirmation_code: str | None) -> Any:
+def refund_booking(
+    trip_id: str,
+    segment_id: str | None,
+    confirmation_code: str | None,
+    amount: Any = None,
+    currency: str | None = None,
+) -> Any:
     """Call booking.refund.refund_booking when a segment is cancelled."""
 
     refund = load_refund_booking()
     if refund is None:
         return REFUND_BOOKING_NOT_INSTALLED
     try:
-        raw = refund(trip_id, segment_id, confirmation_code)
+        raw = _call_refund(refund, trip_id, segment_id, confirmation_code, amount, currency)
     except Exception as exc:
         return {"error": _message(exc)}
     if not isinstance(raw, dict):
@@ -325,9 +333,95 @@ def trip_notice(trip_id: str, event: dict[str, Any]) -> Any:
     if notice is None:
         return TRIP_NOTICE_NOT_INSTALLED
     try:
-        return notice(trip_id, event)
+        return _call_notice(notice, trip_id, event)
     except Exception as exc:
         return {"error": _message(exc)}
+
+
+_NOTICE_EVENTS = frozenset({"cancelled", "ended_early", "ended_late", "booked", "over_capture_rejected"})
+
+
+def _param_names(fn: Any) -> list[str]:
+    try:
+        return list(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        return []
+
+
+def _call_budget(
+    budget: Any,
+    trip_id: str,
+    segment: dict[str, Any],
+    price: dict[str, Any] | None,
+) -> Any:
+    """booking.guard.budget.check_budget takes one source object, not three positional args."""
+
+    if _param_names(budget)[:1] == ["source"]:
+        return budget(_budget_source(trip_id, segment, price))
+    return budget(trip_id, segment, price)
+
+
+def _budget_source(trip_id: str, segment: dict[str, Any], price: dict[str, Any] | None) -> dict[str, Any]:
+    """Quoted price is the proposed charge. The plan has no separate budget, so that quote is the cap."""
+
+    currency = ""
+    proposed = None
+    if isinstance(price, dict):
+        raw_currency = price.get("currency")
+        if isinstance(raw_currency, str):
+            currency = raw_currency
+        if "amount" in price:
+            proposed = price.get("amount")
+    segment_currency = segment.get("currency")
+    if isinstance(segment_currency, str) and segment_currency.strip():
+        currency = segment_currency
+    return {
+        "tripId": trip_id,
+        "currency": currency,
+        "budgetAmount": segment.get("budgetAmount", proposed),
+        "spentAmount": segment.get("spentAmount", "0"),
+        "proposedAmount": segment.get("proposedAmount", proposed),
+    }
+
+
+def _call_refund(
+    refund: Any,
+    trip_id: str,
+    segment_id: str | None,
+    confirmation_code: str | None,
+    amount: Any,
+    currency: str | None,
+) -> Any:
+    """booking.refund.refund_booking is (segmentId, confirmationCode, amount, currency, event)."""
+
+    if "confirmationCode" in _param_names(refund):
+        return refund(segment_id, confirmation_code, amount, currency, "cancelled")
+    return refund(trip_id, segment_id, confirmation_code)
+
+
+def _call_notice(notice: Any, trip_id: str, event: dict[str, Any]) -> Any:
+    """booking.notify.trip_notice reads tripId, event, notes, and segmentId."""
+
+    names = _param_names(notice)
+    if "tripId" in names and "trip_id" not in names:
+        name, notes, segment_id = _notice_fields(event)
+        return notice(tripId=trip_id, event=name, notes=notes, segmentId=segment_id)
+    return notice(trip_id, event)
+
+
+def _notice_fields(event: dict[str, Any]) -> tuple[str, Any, str]:
+    raw_event = event.get("event")
+    raw_type = event.get("type")
+    if isinstance(raw_event, str) and raw_event in _NOTICE_EVENTS:
+        name = raw_event
+    elif isinstance(raw_type, str) and raw_type in _NOTICE_EVENTS:
+        name = raw_type
+    else:
+        name = "update"
+    segment_id = event.get("segmentId")
+    if not isinstance(segment_id, str):
+        segment_id = ""
+    return name, event.get("notes"), segment_id
 
 
 RUNTIME_TOOLS = {
