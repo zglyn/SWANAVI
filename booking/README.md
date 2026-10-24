@@ -2,19 +2,21 @@
 
 Books a **finished** trip plan. The planner, the UI, payments, and the supplier providers are not in this folder.
 
-This process runs on [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html). It calls three tools (`book_flight`, `book_hotel`, `book_attraction`) and stores booking state in AgentCore Memory when a memory id is configured. A local run uses the same entrypoint and an in-process memory, and does not need AWS credentials or supplier keys.
+The only entrypoint is one [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html): `BedrockAgentCoreApp` in `booking/orchestrator/main.py`. A trip plan is posted to that runtime. The runtime calls three tools it registered at startup, then returns one result per segment. Booking state goes to AgentCore Memory when a memory id is configured. With no memory id, state stays in the process.
 
-Sandbox only. This orchestrator never calls a supplier, never charges a card, and never mints confirmation codes. A code is returned only when a provider produced it and it starts with `SANDBOX-`. Anything else is dropped.
+There is no second entrypoint. A script that imports the provider packages and books on its own is not this path.
+
+Sandbox is the default. This runtime never charges a card and never mints confirmation codes. A code is returned only when a provider produced it and it starts with `SANDBOX-`. Anything else is dropped. The runtime does not call Amadeus itself.
 
 Nothing in this repository has been deployed to AWS.
 
 ## What it books
 
-| Plan list | Tool | Provider module (owned by another agent) |
-| --- | --- | --- |
-| `flights` | `book_flight` | `booking.providers.flights.book` |
-| `hotels` | `book_hotel` | `booking.providers.hotels.book` |
-| `attractions` | `book_attraction` | `booking.providers.attractions.book` |
+| Plan list | Tool registered on the runtime | Provider `book()` | Supplier API behind that provider |
+| --- | --- | --- | --- |
+| `flights` | `book_flight` | `booking.providers.flights` | Amadeus Flight Offers Search, then Flight Create Orders |
+| `hotels` | `book_hotel` | `booking.providers.hotels` | Amadeus Hotel Search, then Hotel Booking |
+| `attractions` | `book_attraction` | `booking.providers.attractions` | Amadeus Tours and Activities |
 
 Each provider function is:
 
@@ -25,9 +27,21 @@ def book(segment: dict, travelers: list, trip_id: str) -> dict:
 
 `segment` is that segment's JSON object (`from` stays `from` on flights). `travelers` is `[{id, name}, ...]`. The return value is one booking result, below.
 
-If the module cannot be imported, or it does not export `book`, that segment is `failed` with `error` set to `provider_not_installed`. Other segments still run.
+If the module cannot be imported, or it does not export `book`, that tool returns `failed` with `error` `provider_not_installed`. Other segments still run.
 
-Browser, code interpreter, and payment tools are not enabled.
+Browser, code interpreter, and payment tools are not registered.
+
+### Amadeus credentials
+
+The provider packages read these. This runtime does not. Sandbox is the default when they are unset: no Amadeus client id means the providers must not place a live order, and this runtime still only accepts confirmation codes that start with `SANDBOX-`.
+
+| Variable | Value |
+| --- | --- |
+| `AMADEUS_CLIENT_ID` | Amadeus test application client id. Unset → sandbox. |
+| `AMADEUS_CLIENT_SECRET` | Amadeus test application secret. Unset → sandbox. |
+| `AMADEUS_HOSTNAME` | `test` (Amadeus test environment, `test.api.amadeus.com`). Unset → sandbox, same as `test`. |
+
+Do not set `AMADEUS_HOSTNAME` to `production`. The tools refuse that hostname with `production_booking_refused` and do not call the provider. This path never charges a card and never books on the production Amadeus host.
 
 ## Contract
 
@@ -107,7 +121,7 @@ The runtime returns:
 
 Already `booked` segments are replayed from memory and are not sent to the provider again.
 
-## Local demo (no AWS)
+## Local demo (AgentCore SDK local mode, no AWS)
 
 From the repository root:
 
@@ -116,11 +130,13 @@ python3 -m pip install -r booking/orchestrator/requirements.txt
 PYTHONPATH=. python3 -m booking.orchestrator.demo
 ```
 
-The demo reads `booking/orchestrator/fixtures/sample_plan.json`, books it through the orchestrator, and prints JSON. It always uses in-process memory, so it does not read AWS credentials and it does not call AgentCore.
+That command starts the Bedrock AgentCore app (the same server as `python3 -m booking.orchestrator.main`, SDK local mode) and posts `booking/orchestrator/fixtures/sample_plan.json` to `POST /invocations`. The entrypoint runs the three registered tools and the command prints the JSON results. It clears `AGENTCORE_MEMORY_ID` and `MEMORY_BOOKINGMEMORY_ID` for the process so the demo does not call AWS. No Amadeus credentials are required.
 
-With no provider packages on `PYTHONPATH`, every segment is `failed` / `provider_not_installed` and `confirmationCode` is `null`. That is the expected orchestrator-only result. It is not a ticket.
+With no provider packages on `PYTHONPATH`, every segment is `failed` / `provider_not_installed` and `confirmationCode` is `null`. That is the expected runtime result. It is not a ticket.
 
-To serve the AgentCore runtime locally (SDK default HTTP port 8080):
+`agentcore dev` is the AgentCore CLI's local server for the same entrypoint, after you have created a project with the steps below. Headless `agentcore dev` does not deploy. This repository has not run a cloud deploy.
+
+To hold the SDK server open yourself (default port 8080):
 
 ```bash
 PYTHONPATH=. python3 -m booking.orchestrator.main
@@ -134,8 +150,6 @@ curl -s -X POST http://localhost:8080/invocations \
   -H 'Content-Type: application/json' \
   --data @booking/orchestrator/fixtures/sample_plan.json
 ```
-
-`/invocations` calls the same `invoke` entrypoint the managed runtime uses. Leave `AGENTCORE_MEMORY_ID` and `MEMORY_BOOKINGMEMORY_ID` unset if you do not want the process to talk to AWS. With both unset, booking state stays in memory for the life of the process.
 
 Tests:
 
@@ -208,7 +222,7 @@ Memory events use actor id `booking-orchestrator` and session id `tripId`. Re-in
 
 | To do this | You need |
 | --- | --- |
-| Local demo and `/invocations` against the sample plan | Nothing. No AWS credentials and no supplier keys. |
-| `agentcore deploy` and AgentCore Memory in AWS | Your AWS account, credentials, and permission to create Runtime and Memory. |
-| A segment to come back `booked` | The matching provider package on `PYTHONPATH`, implementing `book`. This orchestrator does not ship supplier clients or API keys. |
-| A live airline, hotel, or attraction ticket | Out of scope. Do not point providers at production booking APIs, and do not treat a `SANDBOX-` code as a ticket. |
+| Local demo (`python3 -m booking.orchestrator.demo`) | Nothing. No AWS credentials. Leave `AMADEUS_CLIENT_ID` and `AMADEUS_CLIENT_SECRET` unset for sandbox. |
+| `agentcore deploy` and AgentCore Memory in AWS | Your AWS account, credentials, and permission to create Runtime and Memory. Not done in this repo. |
+| A segment to come back `booked` | The matching provider package on `PYTHONPATH`. Amadeus test calls inside that package need `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, and `AMADEUS_HOSTNAME=test`. |
+| A production Amadeus order or a card charge | Not supported. `AMADEUS_HOSTNAME=production` is refused. A `SANDBOX-` code is not a live ticket. |

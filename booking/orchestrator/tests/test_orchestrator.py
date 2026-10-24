@@ -185,7 +185,44 @@ class ProviderSandbox(unittest.TestCase):
 
     def test_tools_are_the_three_booking_kinds(self) -> None:
         self.assertEqual([tool.kind for tool in TOOLS], ["flight", "hotel", "attraction"])
-        self.assertTrue(all(tool.name.startswith("book_") for tool in TOOLS))
+        self.assertEqual([tool.name for tool in TOOLS], ["book_flight", "book_hotel", "book_attraction"])
+
+    def test_production_hostname_does_not_call_providers(self) -> None:
+        called: list[str] = []
+
+        def counting(segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
+            called.append(segment["segmentId"])
+            return _sandbox(segment, travelers, trip_id)
+
+        for name in (
+            "booking.providers.flights",
+            "booking.providers.hotels",
+            "booking.providers.attractions",
+        ):
+            self._install(name, counting)
+
+        previous = os.environ.get("AMADEUS_HOSTNAME")
+        os.environ["AMADEUS_HOSTNAME"] = "production"
+        memory_env = {name: os.environ.pop(name, None) for name in ("AGENTCORE_MEMORY_ID", "MEMORY_BOOKINGMEMORY_ID")}
+        try:
+            from booking.orchestrator.main import invoke
+
+            result = invoke(SAMPLE, context=None)
+        finally:
+            if previous is None:
+                os.environ.pop("AMADEUS_HOSTNAME", None)
+            else:
+                os.environ["AMADEUS_HOSTNAME"] = previous
+            for name, value in memory_env.items():
+                if value is not None:
+                    os.environ[name] = value
+
+        self.assertEqual(called, [])
+        self.assertTrue(result["results"])
+        for item in result["results"]:
+            self.assertEqual(item["status"], "failed")
+            self.assertEqual(item["error"], "production_booking_refused")
+            self.assertIsNone(item["confirmationCode"])
 
 
 class MemoryTests(unittest.TestCase):
@@ -259,6 +296,10 @@ class RuntimeTests(unittest.TestCase):
             from booking.orchestrator.main import app, invoke
 
             self.assertIn("main", app.handlers)
+            self.assertEqual(
+                set(app.booking_tools),
+                {"book_flight", "book_hotel", "book_attraction"},
+            )
             result = invoke(SAMPLE, context=None)
         finally:
             for name, value in previous.items():

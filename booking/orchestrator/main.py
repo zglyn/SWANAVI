@@ -14,20 +14,23 @@ from bedrock_agentcore import BedrockAgentCoreApp
 
 from booking.orchestrator.memory import memory_from_env
 from booking.orchestrator.service import handle_payload
+from booking.orchestrator.tools import register_booking_tools
 
 app = BedrockAgentCoreApp()
+register_booking_tools(app)
 
 
 @app.entrypoint
 def invoke(payload: dict, context: object | None = None) -> dict:
-    """Book the finished plan in ``payload`` and return per-segment results.
+    """Book the finished plan by calling the tools registered on this runtime.
 
-    ``context`` is the AgentCore request context (session id and headers).
-    Booking state is keyed by ``tripId``, not by the runtime session.
+    ``context`` is the AgentCore request context. Booking state is keyed by
+    ``tripId``. Providers are reached only from ``book_flight``, ``book_hotel``,
+    and ``book_attraction``.
     """
 
-    del context  # trip state is keyed by tripId inside the plan
-    return handle_payload(payload, memory_from_env())
+    del context
+    return handle_payload(payload, memory_from_env(), tools=app.booking_tools)
 
 
 if __name__ == "__main__":

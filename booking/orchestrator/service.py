@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from booking.contract import SegmentResult, TripBookingResponse, TripPlan
 from booking.orchestrator.memory import BookingMemory
-from booking.orchestrator.tools import invoke_tool, normalize_provider_result
+from booking.orchestrator.tools import TOOLS_BY_KIND, Tool, normalize_provider_result
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +49,17 @@ def _segments(plan: TripPlan) -> list[tuple[str, dict[str, Any]]]:
     return ordered
 
 
-def book_plan(plan: TripPlan, memory: BookingMemory) -> dict[str, Any]:
-    """Book each segment. A provider failure is one result; later segments still run."""
+def book_plan(
+    plan: TripPlan,
+    memory: BookingMemory,
+    tools: dict[str, Tool] | None = None,
+) -> dict[str, Any]:
+    """Book each segment through a registered runtime tool.
+
+    A provider failure is one result; later segments still run.
+    """
+
+    registry = tools if tools is not None else {tool.name: tool for tool in TOOLS_BY_KIND.values()}
 
     known_travelers = {traveler.id for traveler in plan.travelers}
     travelers = [traveler.model_dump(mode="json") for traveler in plan.travelers]
@@ -85,7 +94,7 @@ def book_plan(plan: TripPlan, memory: BookingMemory) -> dict[str, Any]:
                 continue
 
         try:
-            outcome = invoke_tool(kind, segment, travelers, plan.tripId)
+            outcome = registry[TOOLS_BY_KIND[kind].name].fn(segment, travelers, plan.tripId)
         except Exception as exc:
             logger.exception("Booking tool crashed for %s", segment_id)
             message = str(exc).strip() or exc.__class__.__name__
@@ -98,7 +107,11 @@ def book_plan(plan: TripPlan, memory: BookingMemory) -> dict[str, Any]:
     return TripBookingResponse(tripId=plan.tripId, results=results, error=None).model_dump()
 
 
-def handle_payload(payload: object, memory: BookingMemory) -> dict[str, Any]:
+def handle_payload(
+    payload: object,
+    memory: BookingMemory,
+    tools: dict[str, Tool] | None = None,
+) -> dict[str, Any]:
     """Validate a trip plan and book it. Invalid JSON shape does not raise."""
 
     if not isinstance(payload, dict):
@@ -113,4 +126,4 @@ def handle_payload(payload: object, memory: BookingMemory) -> dict[str, Any]:
             results=[],
             error="invalid_plan",
         ).model_dump()
-    return book_plan(plan, memory)
+    return book_plan(plan, memory, tools=tools)

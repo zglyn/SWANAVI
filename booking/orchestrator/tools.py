@@ -1,18 +1,23 @@
-"""Booking tools invoked by the AgentCore runtime entrypoint.
+"""Tools registered on the Bedrock AgentCore runtime.
 
-These are ordinary Python tools. Browser, code interpreter, and payment tools
-are not registered: a booking step does not need them, and this agent never
-charges a card.
+The runtime entrypoint is the only caller. Each tool calls a sibling provider
+when that package imports, and never calls Amadeus itself. Browser, code
+interpreter, and payment tools are not registered.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from booking.contract import Price, SegmentResult
 from booking.orchestrator.providers import NOT_INSTALLED, load_book
+
+# Amadeus Python SDK hostname. Unset means sandbox. Only the test host is allowed.
+SANDBOX_HOSTNAME = "test"
+PRODUCTION_REFUSED = "production_booking_refused"
 
 ToolFn = Callable[[dict[str, Any], list[dict[str, Any]], str], dict[str, Any]]
 
@@ -114,8 +119,23 @@ def normalize_provider_result(raw: object, segment_id: str, kind: str) -> dict[s
     )
 
 
+def supplier_hostname() -> str:
+    """Amadeus host the providers may use. Empty means the sandbox default."""
+
+    return os.environ.get("AMADEUS_HOSTNAME", "").strip().lower()
+
+
+def supplier_calls_allowed() -> bool:
+    """Sandbox is the default. A production hostname is never called."""
+
+    host = supplier_hostname()
+    return host in ("", SANDBOX_HOSTNAME)
+
+
 def _call(kind: str, segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
     segment_id = str(segment.get("segmentId") or "")
+    if not supplier_calls_allowed():
+        return _failed(segment_id, kind, PRODUCTION_REFUSED)
     book = load_book(kind)
     if book is None:
         return _not_installed(segment_id, kind)
@@ -128,19 +148,19 @@ def _call(kind: str, segment: dict[str, Any], travelers: list[dict[str, Any]], t
 
 
 def book_flight(segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
-    """Book one flight segment via booking.providers.flights.book."""
+    """Book one flight. Provider: Amadeus Flight Offers Search and Flight Create Orders."""
 
     return _call("flight", segment, travelers, trip_id)
 
 
 def book_hotel(segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
-    """Book one hotel segment via booking.providers.hotels.book."""
+    """Book one stay. Provider: Amadeus Hotel Search and Hotel Booking."""
 
     return _call("hotel", segment, travelers, trip_id)
 
 
 def book_attraction(segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
-    """Book one attraction segment via booking.providers.attractions.book."""
+    """Book one attraction. Provider: Amadeus Tours and Activities."""
 
     return _call("attraction", segment, travelers, trip_id)
 
@@ -149,19 +169,28 @@ TOOLS: tuple[Tool, ...] = (
     Tool(
         name="book_flight",
         kind="flight",
-        description="Book one flight segment from the finished trip plan. Sandbox providers only.",
+        description=(
+            "Book one flight segment. Calls booking.providers.flights.book, which uses "
+            "Amadeus Flight Offers Search and Flight Create Orders on the test host."
+        ),
         fn=book_flight,
     ),
     Tool(
         name="book_hotel",
         kind="hotel",
-        description="Book one hotel segment from the finished trip plan. Sandbox providers only.",
+        description=(
+            "Book one hotel segment. Calls booking.providers.hotels.book, which uses "
+            "Amadeus Hotel Search and Hotel Booking on the test host."
+        ),
         fn=book_hotel,
     ),
     Tool(
         name="book_attraction",
         kind="attraction",
-        description="Book one attraction segment from the finished trip plan. Sandbox providers only.",
+        description=(
+            "Book one attraction segment. Calls booking.providers.attractions.book, which uses "
+            "Amadeus Tours and Activities on the test host."
+        ),
         fn=book_attraction,
     ),
 )
@@ -170,6 +199,14 @@ TOOLS_BY_KIND: dict[str, Tool] = {tool.kind: tool for tool in TOOLS}
 
 
 def invoke_tool(kind: str, segment: dict[str, Any], travelers: list[dict[str, Any]], trip_id: str) -> dict[str, Any]:
-    """Run the tool for this segment kind. Provider exceptions stay inside the tool."""
+    """Run the registered tool for this segment kind."""
 
     return TOOLS_BY_KIND[kind].fn(segment, travelers, trip_id)
+
+
+def register_booking_tools(app: Any) -> dict[str, Tool]:
+    """Register book_flight, book_hotel, and book_attraction on the runtime."""
+
+    registered = {tool.name: tool for tool in TOOLS}
+    app.booking_tools = registered
+    return registered
