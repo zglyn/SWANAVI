@@ -1,0 +1,50 @@
+[
+  {
+    "merchant_id": "bamboo-bikes",
+    "name": "Arashiyama Bamboo Bike Rentals",
+    "category": "activity",
+    "location": {
+      "lat": 35.017,
+      "lng": 135.6713
+    },
+    "xrpl_address": "rbamboobikesPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/bamboo-bikes/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+    "merchant_id": "kissa-matcha",
+    "name": "Kissa Master Matcha Workshop",
+    "category": "food",
+    "location": {
+      "lat": 35.0136,
+      "lng": 135.6779
+    },
+    "xrpl_address": "rkissamatchaPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/kissa-matcha/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+    "merchant_id": "ramen-tasting",
+    "name": "Gion Ramen Tasting",
+    "category": "food",
+    "location": {
+      "lat": 35.0037,
+      "lng": 135.7788
+    },
+    "xrpl_address": "rramentastingPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/ramen-tasting/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+    "merchant_id": "lucky-souvenir",
+    "name": "Lucky Cat Souvenir Shop",
+    "category": "shopping",
+    "location": {
+      "lat": 35.0155,
+      "lng": 135.674
+    },
+    "xrpl_address": "rluckysouvenirPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/lucky-souvenir/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+]

@@ -1,5 +1,7 @@
 # features/dashboard — Owner D
 
+> **Full spec: [`SPEC.md`](SPEC.md)** — everything you need to build this feature without waiting on anyone.
+
 Next.js (App Router) + Tailwind split-screen UI. Spec: `docs/SPEC.md` §4.5.
 
 - Left: chat, quote cards (price vs. Viator, savings, verified badge), policy sliders, "Book itinerary".

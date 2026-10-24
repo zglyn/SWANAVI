@@ -1,5 +1,7 @@
 # features/merchants — Owner A
 
+> **Full spec: [`SPEC.md`](SPEC.md)** — everything you need to build this feature without waiting on anyone.
+
 Mock Kyoto merchants exposed over MCP and gated with HTTP 402 (`x402-xrpl` or hand-rolled). Spec: `docs/SPEC.md` §4.1.
 
 - Runs on `:8001`. One FastAPI app, one MCP mount per merchant at `/m/{merchant_id}/mcp`.

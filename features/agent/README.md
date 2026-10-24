@@ -1,5 +1,7 @@
 # features/agent — Owner B
 
+> **Full spec: [`SPEC.md`](SPEC.md)** — everything you need to build this feature without waiting on anyone.
+
 The LLM agent (MCP client), the orchestrator, scripted demo scenarios, and the HTTP gateway the dashboard calls. Spec: `docs/SPEC.md` §4.4.
 
 - Runs on `:8000`. API contract: `contracts/ts/api.ts` (`API` constant).

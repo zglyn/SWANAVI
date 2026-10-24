@@ -19,6 +19,7 @@ from roam_contracts.models import (
     EventSource,
     GeoPoint,
     InspectorEvent,
+    MerchantProfile,
     PolicyConfig,
     PolicyDecision,
     Quote,
@@ -117,20 +118,40 @@ def ev(i: int, source: EventSource, level: EventLevel, type_: str, msg: str, tx:
 
 cancel_hash = h("cancel", bike.invoice_id)
 ramen_hash = h("batch", ramen.invoice_id)
+ramen_approved = PolicyDecision(approved=True, total=Decimal("20.00"), remaining_daily_budget=Decimal("50.00"))
+ramen_checkout = CheckoutResult(
+    status="success",
+    batch=TxResult(tx_hash=ramen_hash, engine_result="tesSUCCESS", validated=True, explorer_url=EXPLORER + ramen_hash),
+    escrows=[EscrowRef(invoice_id=ramen.invoice_id, owner="rTripPLACEHOLDER", sequence=102,
+                       destination=ramen.merchant_address, amount=ramen.amount, currency=ramen.currency,
+                       cancel_after=ramen.cancel_after)],
+    decision=ramen_approved,
+    total=Decimal("20.00"),
+    viator_total=Decimal("23.53"),
+    savings=Decimal("3.53"),
+)
+J = lambda m: m.model_dump(mode="json")  # noqa: E731
 events = [
     ev(1, EventSource.AGENT, EventLevel.INFO, "agent.planning", "Planning afternoon in Arashiyama"),
-    ev(2, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: bike rental 15 RLUSD", quote=bike.invoice_id),
-    ev(3, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: matcha workshop 30 RLUSD", quote=matcha.invoice_id),
-    ev(4, EventSource.GUARDRAIL, EventLevel.SUCCESS, "guardrail.approved", "Policy passed — co-signed (2/2)", total="45.00"),
-    ev(5, EventSource.LEDGER, EventLevel.SUCCESS, "batch.validated", "Atomic batch validated: 2 escrows", batch_hash),
-    ev(6, EventSource.MERCHANT, EventLevel.WARNING, "quote.received", "402 quote: gold maneki-neko 500 RLUSD", quote=trap.invoice_id),
-    ev(7, EventSource.GUARDRAIL, EventLevel.BLOCKED, "guardrail.blocked", "Co-sign refused: 4 violations",
-       violations=[v.rule.value for v in blocked.violations]),
-    ev(8, EventSource.SYSTEM, EventLevel.WARNING, "weather.alert", "Rainstorm forecast at 14:00"),
-    ev(9, EventSource.LEDGER, EventLevel.SUCCESS, "escrow.cancelled", "Bike escrow cancelled — 15 RLUSD recovered", cancel_hash),
-    ev(10, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: ramen tasting 20 RLUSD", quote=ramen.invoice_id),
-    ev(11, EventSource.GUARDRAIL, EventLevel.SUCCESS, "guardrail.approved", "Policy passed — co-signed (2/2)", total="20.00"),
-    ev(12, EventSource.LEDGER, EventLevel.SUCCESS, "batch.validated", "Ramen escrow validated", ramen_hash),
+    ev(2, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: bike rental 15 RLUSD", quote=J(bike)),
+    ev(3, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: matcha workshop 30 RLUSD", quote=J(matcha)),
+    ev(4, EventSource.AGENT, EventLevel.INFO, "tx.signed.agent", "Agent signed batch (1/2)", signer="agent"),
+    ev(5, EventSource.GUARDRAIL, EventLevel.SUCCESS, "guardrail.approved", "Policy passed — co-signed (2/2)",
+       decision=J(approved)),
+    ev(6, EventSource.LEDGER, EventLevel.SUCCESS, "batch.validated", "Atomic batch validated: 2 escrows", batch_hash,
+       checkout=J(checkout)),
+    ev(7, EventSource.MERCHANT, EventLevel.WARNING, "quote.received", "402 quote: gold maneki-neko 500 RLUSD",
+       quote=J(trap)),
+    ev(8, EventSource.GUARDRAIL, EventLevel.BLOCKED, "guardrail.blocked", "Co-sign refused: 4 violations",
+       decision=J(blocked)),
+    ev(9, EventSource.SYSTEM, EventLevel.WARNING, "weather.alert", "Rainstorm forecast at 14:00"),
+    ev(10, EventSource.LEDGER, EventLevel.SUCCESS, "escrow.cancelled", "Bike escrow cancelled — 15 RLUSD recovered",
+       cancel_hash, escrow=J(checkout.escrows[0])),
+    ev(11, EventSource.MERCHANT, EventLevel.INFO, "quote.received", "402 quote: ramen tasting 20 RLUSD", quote=J(ramen)),
+    ev(12, EventSource.GUARDRAIL, EventLevel.SUCCESS, "guardrail.approved", "Policy passed — co-signed (2/2)",
+       decision=J(ramen_approved)),
+    ev(13, EventSource.LEDGER, EventLevel.SUCCESS, "batch.validated", "Ramen escrow validated", ramen_hash,
+       checkout=J(ramen_checkout)),
 ]
 
 
@@ -143,6 +164,12 @@ def dump(name: str, obj) -> None:
 
 
 if __name__ == "__main__":
+    dump("merchants.json", [
+        MerchantProfile(merchant_id=mid, name=n, category=c, location=loc,
+                        xrpl_address=f"r{mid.replace('-', '')}PLACEHOLDER",
+                        mcp_url=f"http://localhost:8001/m/{mid}/mcp", pubkey_ed25519="00" * 32)
+        for mid, (n, c, loc) in MERCHANTS.items()
+    ])
     dump("quotes.json", [bike, matcha, ramen, trap])
     dump("policy.json", policy)
     dump("policy_decisions.json", {"approved_bike_matcha": approved.model_dump(mode="json"),

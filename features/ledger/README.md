@@ -1,5 +1,7 @@
 # features/ledger — Owner C
 
+> **Full spec: [`SPEC.md`](SPEC.md)** — everything you need to build this feature without waiting on anyone.
+
 All XRPL code (`xrpl-py`): bootstrap, multi-sig, credentials, `Batch` (all-or-nothing) of `EscrowCreate`s, cancel/finish. Spec: `docs/SPEC.md` §4.3.
 
 - Python library `roam_ledger` implementing `Ledger` + `FakeLedger` (in-memory, fake hashes, returns `contracts/fixtures/checkout_result.json`-shaped data).

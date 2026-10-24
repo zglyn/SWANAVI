@@ -103,12 +103,20 @@ export interface WalletState {
 export type EventSource = "agent" | "merchant" | "guardrail" | "ledger" | "system";
 export type EventLevel = "info" | "success" | "warning" | "blocked" | "error";
 
+export type EventType =
+  | "agent.message" | "agent.planning" | "quote.received"
+  | "guardrail.approved" | "guardrail.blocked" | "tx.signed.agent"
+  | "batch.submitted" | "batch.validated" | "batch.failed"
+  | "escrow.cancelled" | "escrow.finished"
+  | "booking.confirmed" | "booking.cancelled"
+  | "weather.alert" | "wallet.updated" | "system.reset";
+
 export interface InspectorEvent {
   id: string;
   ts: string;
   source: EventSource;
   level: EventLevel;
-  type: string;
+  type: EventType | string;
   message: string;
   tx_hash: Hash256 | null;
   explorer_url: string | null;

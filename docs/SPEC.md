@@ -13,7 +13,7 @@ One flawless, live, end-to-end run that shows:
 3. An **atomic `Batch`** that escrows payment to two verified merchants ($15 bike + $30 matcha) in one all-or-nothing transaction, showing the ~15% "Direct-to-Wallet" savings vs. Viator.
 4. A **rainstorm pivot** that cancels the bike escrow, recovers the funds and rebooks an indoor Ramen Tasting within budget.
 
-Everything else (real onboarding, NFC check-in, group split, real merchants) is a stretch goal or slideware.
+Everything else (real onboarding, NFC check-in, real merchants) is a stretch goal or slideware.
 
 ## 2. Team & ownership
 
@@ -74,6 +74,8 @@ separate process that runs deterministic rules (no LLM) before it adds its signa
 
 ### 4.1 `features/merchants` (A)
 
+**Detailed spec (work from this):** [`features/merchants/SPEC.md`](../features/merchants/SPEC.md)
+
 One FastAPI app on `:8001` hosting three (+1 pivot) mock Kyoto merchants, each with its own MCP mount and XRPL address.
 
 | merchant_id | Name | Item | Direct price | Viator price | Verified credential | Notes |
@@ -100,6 +102,8 @@ with a payment proof for an escrow created on the ledger.
 
 ### 4.2 `features/guardrail` (A)
 
+**Detailed spec (work from this):** [`features/guardrail/SPEC.md`](../features/guardrail/SPEC.md)
+
 FastAPI on `:8002`. Holds **only** Key 2. Deterministic Python, no LLM.
 
 `POST /cosign` with a `CosignRequest` (`tx_json`, `quotes`, `policy`, `spent_today`). It:
@@ -119,13 +123,15 @@ FastAPI on `:8002`. Holds **only** Key 2. Deterministic Python, no LLM.
 
 ### 4.3 `features/ledger` (C)
 
+**Detailed spec (work from this):** [`features/ledger/SPEC.md`](../features/ledger/SPEC.md)
+
 Python library (`roam_ledger`) implementing the `Ledger` protocol. Owns all `xrpl-py` code.
 
 - `bootstrap()` (idempotent CLI `python -m roam_ledger.bootstrap`): fund accounts from the faucet, create the credential
   issuer, issue + accept `Local_Merchant_KYC` credentials for the 3 verified merchants (not the trap shop), set up the
   trip account's `SignerListSet` (2-of-2) and disable the master key, and set up RLUSD trust lines if we use RLUSD (Q2).
   It writes `.env.ledger` (addresses + seeds). The guardrail seed goes in a separate file only the guardrail reads.
-- `build_checkout(quotes, payers) -> UnsignedTx`: a `Batch` (`tfAllOrNothing`) whose inner txs are one `EscrowCreate`
+- `build_checkout(quotes) -> UnsignedTx`: a `Batch` (`tfAllOrNothing`) whose inner txs are one `EscrowCreate`
   per quote (`Destination`, `Amount`, `InvoiceID` via memo or field, unique `SourceTag`, `FinishAfter`/`CancelAfter`,
   optional crypto-condition for check-in).
 - `sign_as_agent(tx)`, `submit_multisigned(tx, signer_blobs) -> CheckoutResult`.
@@ -140,6 +146,8 @@ Python library (`roam_ledger`) implementing the `Ledger` protocol. Owns all `xrp
 test Key 2), validates it on-ledger and prints explorer links. A cancel then recovers the bike funds.
 
 ### 4.4 `features/agent` (B)
+
+**Detailed spec (work from this):** [`features/agent/SPEC.md`](../features/agent/SPEC.md)
 
 FastAPI gateway on `:8000` and the orchestrator.
 
@@ -167,6 +175,8 @@ FastAPI gateway on `:8000` and the orchestrator.
 
 ### 4.5 `features/dashboard` (D)
 
+**Detailed spec (work from this):** [`features/dashboard/SPEC.md`](../features/dashboard/SPEC.md)
+
 Next.js (App Router) + Tailwind. One page, split screen.
 
 - **Left:** chat with the agent, quote cards (merchant, price, Viator price, savings, verified badge), the policy card
@@ -186,6 +196,8 @@ Source of truth: `contracts/python/roam_contracts/models.py` (Pydantic v2) and `
 
 Rules:
 - Money is a **decimal string** (`"15.00"`), never a float. Currency is `"RLUSD"` or `"XRP"` (Q2).
+- Event `type`s and their `data` payloads: `EVENT_TYPES` in `models.py`. On-ledger conventions (escrow invoice memo,
+  credential type, per-booking `SourceTag`): `INVOICE_MEMO_TYPE`, `CREDENTIAL_TYPE`, `source_tag_for` in `models.py`.
 - `invoice_id` is a 64-char uppercase hex (XRPL `Hash256`), i.e. `sha256(merchant_id|sku|slot_start|nonce)`.
 - **Frozen at Hour 2.** After that, a change needs a PR touching both the Python and TS files plus the fixtures, and a
   heads-up to all owners. You may add optional fields freely. You may not remove or rename fields.
@@ -205,11 +217,10 @@ Rules:
 
 ## 7. Stretch goals (only after Hour 28 is green)
 
-1. **Group split:** 4 payer accounts signing the same `Batch` via `BatchSigners`, 25% each.
-2. **Sold-out revert:** make one inner tx fail on-ledger (e.g. revoke a merchant's credential + `DepositAuth`) to show the
+1. **Sold-out revert:** make one inner tx fail on-ledger (e.g. revoke a merchant's credential + `DepositAuth`) to show the
    whole batch reverting.
-3. **Check-in escrow finish:** a crypto-condition whose fulfillment is revealed by a "tap" button, which triggers `EscrowFinish`.
-4. **60-second onboarding:** paste a URL, an LLM extracts the catalog and a new merchant mount appears.
+2. **Check-in escrow finish:** a crypto-condition whose fulfillment is revealed by a "tap" button, which triggers `EscrowFinish`.
+3. **60-second onboarding:** paste a URL, an LLM extracts the catalog and a new merchant mount appears.
 
 ## 8. Risks
 
@@ -220,8 +231,7 @@ Rules:
 - **R2: Escrow cancel timing.** `EscrowCancel` only succeeds after `CancelAfter`. A "refund in 3 seconds" means the bike
   escrow must be created with a short `CancelAfter` (e.g. 60–90 s) for the demo, or the rainstorm must be triggered after
   the window passes. Decide in Q3.
-- **R3: Batch + multi-sig.** We need to confirm that a multi-signed outer `Batch` is accepted (and, for group split,
-  multi-account `BatchSigners`). C validates this in the spike before Hour 6.
+- **R3: Batch + multi-sig.** We need to confirm that a multi-signed outer `Batch` is accepted. C validates this in the spike before Hour 6.
 - **R4: `x402-xrpl` maturity.** If the package is missing or unstable, A implements the 402 handshake by hand (it's a
   status code + JSON body + header verification). The contract stays the same.
 - **R5: LLM non-determinism on stage.** Scenarios are scripted. The LLM only drives free-form chat.
@@ -234,5 +244,4 @@ See the team discussion. Answers get recorded here.
 2. Currency: RLUSD (needs issuer + trust lines + IOU escrow) or Testnet XRP labelled "RLUSD" in the UI?
 3. Rainstorm refund: short `CancelAfter` window, or merchant-signed refund payment?
 4. LLM provider + who has an API key?
-5. Is group split in the MVP or a stretch goal?
-6. Tooling: Python 3.12 + `uv` workspace, Node 20 + pnpm, OK?
+5. Tooling: Python 3.12 + `uv` workspace, Node 20 + pnpm, OK?

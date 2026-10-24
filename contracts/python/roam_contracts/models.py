@@ -220,6 +220,36 @@ class EventLevel(str, Enum):
     ERROR = "error"
 
 
+# Every InspectorEvent.type the gateway may emit. Dashboard renders unknown types generically.
+EVENT_TYPES = (
+    "agent.message",       # free-form chat reply / reasoning summary
+    "agent.planning",
+    "quote.received",      # data: {quote: Quote}
+    "guardrail.approved",  # data: {decision: PolicyDecision}
+    "guardrail.blocked",   # data: {decision: PolicyDecision}
+    "tx.signed.agent",     # data: {signer: "agent"}
+    "batch.submitted",
+    "batch.validated",     # data: {checkout: CheckoutResult}
+    "batch.failed",        # data: {engine_result: str}
+    "escrow.cancelled",    # data: {escrow: EscrowRef}
+    "escrow.finished",     # data: {escrow: EscrowRef}
+    "booking.confirmed",   # data: {booking: Booking}
+    "booking.cancelled",   # data: {booking: Booking}
+    "weather.alert",
+    "wallet.updated",      # data: {wallet: WalletState}
+    "system.reset",
+)
+
+# On-ledger conventions shared by ledger (writes), merchants and guardrail (read/verify).
+INVOICE_MEMO_TYPE = "roam402/invoice"  # EscrowCreate Memo: MemoType=hex(this), MemoData=invoice_id
+CREDENTIAL_TYPE = "Local_Merchant_KYC"  # CredentialType = hex(this)
+
+
+def source_tag_for(invoice_id: Hash256) -> int:
+    """Unique per-booking SourceTag receipt: first 4 bytes of the invoice id."""
+    return int(invoice_id[:8], 16)
+
+
 class InspectorEvent(BaseModel):
     id: str
     ts: datetime

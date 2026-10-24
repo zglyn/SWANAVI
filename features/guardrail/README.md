@@ -1,5 +1,7 @@
 # features/guardrail — Owner A
 
+> **Full spec: [`SPEC.md`](SPEC.md)** — everything you need to build this feature without waiting on anyone.
+
 Deterministic Policy Co-Signer. Holds **only** Key 2 of the trip account's 2-of-2 multi-sig. No LLM. Spec: `docs/SPEC.md` §4.2.
 
 - Runs on `:8002`: `POST /cosign`, `GET/PUT /policy`.
