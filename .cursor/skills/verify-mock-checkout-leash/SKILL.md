@@ -46,7 +46,7 @@ The transpiler is TypeScript 5.8.3, pinned in this skill's `package.json`. It on
 
 ## Show that the check can fail
 
-In `checkout`, the refusal is the early return on `!decision.approved`. Change that condition to `false && !decision.approved`, run the command, and confirm `result: FAIL` on a violating quote. Restore the condition and confirm the result is back to `result: PASS` with no product diff.
+In `checkout`, the refusal is the early return on `!decision.approved`. Change that condition to `false && !decision.approved` and run the command. The check fails on the fixture trap quote (`GOLD-CAT`, amount `500.00`, unverified, category `shopping`): `evaluate` still refuses, then `checkout` emits `batch.submitted` and `batch.validated` and moves the balance from `250` to `-250`. Restore the condition. The result is `result: PASS` again and `mock.ts` has no diff.
 
 ## Coverage
 
@@ -55,9 +55,10 @@ In `checkout`, the refusal is the early return on `!decision.approved`. Change t
 | Decision | `evaluate` in `features/dashboard/lib/mock.ts` |
 | Submission and wallet | `checkout` in the same file |
 | Rules in the property | `max_per_item`, `max_daily_budget`, `verified_credential`, `category` |
-| Sync commit | `pending confirmation` |
+| Sync commit | `82567e7460b32c002446ba195aa6572cce920fb7` |
+| `mock.ts` sha256 at that commit | `2e0043d94693a928c01002e4f6156987f076879e82bcf8736928688936e599fe` |
 
-`check.mjs` prints `source_sha256` of `mock.ts` on every run. Move the sync commit forward only after you confirm that `evaluate`, `checkout`, and this harness still describe that file at the new commit. A green run on a stale harness is not a confirmation.
+`check.mjs` prints `source_sha256` of `mock.ts` on every run. If that hash differs from the one above, the covered file has changed since the sync commit. Move the sync commit forward only after you confirm that `evaluate`, `checkout`, and this harness still describe that file at the new commit. A green run on a stale harness is not a confirmation.
 
 ## Bounds and assumptions
 
@@ -74,7 +75,7 @@ The check calls the real functions on one checkout at a time.
 
 ## What this does not cover
 
-- Overlapping `checkout` calls. The book button is disabled while `state.busy` is true, so the demo click path does not issue a second call. `checkout` itself updates `spentToday` only after several awaits, so two overlapping calls can both pass `evaluate` against the same remaining budget. This check does not run that schedule.
+- Overlapping `checkout` calls. This is the closest hole. Measured against the sync commit, with the real `checkout`: policy `max_per_item` `45.00`, `max_daily_budget` `70.00`, credential required, category `food`, `spentToday` `0`, balance `250`. Start a verified `40.00` food quote and start a second `40.00` quote before the first call adds to `spentToday`. Both calls pass `evaluate` while `spentToday` is still `0`, both return `success`, `spentToday` ends at `80`, and the balance ends at `170` with two escrows. Both quotes were submitted under either demo sleep, a resolved promise or a `0` timer. The daily total was `80` against a `70` cap. The book button in `features/dashboard/components/dashboard/TravellerPanel.tsx` is disabled while `busy` is true, so a second click after that render does not call `checkout`. This check does not run the overlapping schedule, and it does not claim the button closes the race.
 - Quote signatures, expiry, date window, geofence, and matching an inner transaction to a quote. `evaluate` does not implement those rules.
 - The real guardrail service. `features/guardrail` is a stub. This check is about the mock the dashboard runs.
 - The inspector reducer in `features/dashboard/lib/useDemo.ts`. `batch.validated` sets the ledger signer to signed without reading the guardrail signer.
