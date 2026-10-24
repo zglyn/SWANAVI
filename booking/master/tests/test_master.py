@@ -75,17 +75,24 @@ class _Modules(unittest.TestCase):
             setattr(parent, child, module)
         return module
 
+    def hide(self, *names: str) -> None:
+        """Treat these modules as not installed. ``tearDown`` puts them back."""
+
+        for name in names:
+            if name not in self._saved:
+                self._saved[name] = sys.modules.get(name)
+            sys.modules[name] = None
+
 
 class MissingCapabilityTests(_Modules):
     def test_missing_verifiers_do_not_crash(self) -> None:
-        for name in (
+        self.hide(
             "booking.verify",
             "booking.verify.flights",
             "booking.verify.hotels",
             "booking.verify.attractions",
             "booking.progress",
-        ):
-            self.assertNotIn(name, sys.modules)
+        )
 
         result = handle_payload(SAMPLE)
 
@@ -105,6 +112,7 @@ class MissingCapabilityTests(_Modules):
         self.assertTrue(any(item["status"] == "booked" for item in result["results"]))
 
     def test_missing_progress_records_one_update_and_stops(self) -> None:
+        self.hide("booking.progress")
         result = handle_payload(SAMPLE)
 
         self.assertEqual(result["loopStopped"], "progress_not_installed")
@@ -131,6 +139,7 @@ class MissingCapabilityTests(_Modules):
             del args, kwargs
             raise RuntimeError("parser blew up")
 
+        self.hide("booking.progress")
         self.install("booking.providers.flights", book=_booked)
         self.install("booking.providers.hotels", book=_booked)
         self.install("booking.providers.attractions", book=_booked)
@@ -357,8 +366,14 @@ class RuntimeTests(unittest.TestCase):
         )
         result = invoke(SAMPLE, context=None)
         self.assertEqual(result["tripId"], "sample-kyoto")
-        self.assertTrue(result["ticks"])
-        self.assertTrue(result["ticks"][0]["updates"])
+        self.assertIsNone(result["error"])
+        self.assertNotEqual(result["loopStopped"], "progress_not_installed")
+        self.assertGreaterEqual(len(result["ticks"]), 1)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertIs(item["emailVerified"], True)
+            self.assertNotEqual(item["reason"], "verifier_not_installed")
 
     def test_demo_shows_a_tick_and_an_update(self) -> None:
         from io import StringIO
@@ -372,14 +387,19 @@ class RuntimeTests(unittest.TestCase):
         printed = json.loads(stdout.getvalue())
         trace = stderr.getvalue()
         self.assertEqual(printed["tripId"], "sample-kyoto")
+        self.assertEqual(printed["maxTicks"], MAX_TICKS)
         self.assertGreaterEqual(len(printed["ticks"]), 1)
         self.assertLessEqual(len(printed["ticks"]), MAX_TICKS)
-        updates = [update for tick in printed["ticks"] for update in tick["updates"]]
-        self.assertTrue(updates)
+        self.assertNotEqual(printed["loopStopped"], "progress_not_installed")
+        updates = [update for tick in printed["ticks"] for update in tick["updates"] if isinstance(update, dict)]
+        self.assertTrue(any(update.get("action") == "rebook" for update in updates))
         self.assertIn("tick 1", trace)
-        self.assertIn("progress_not_installed", trace)
+        self.assertIn("action=rebook", trace)
+        self.assertNotIn("progress_not_installed", trace)
+        self.assertNotIn("verifier_not_installed", trace)
         for item in printed["results"]:
-            self.assertFalse(item["emailVerified"])
+            self.assertEqual(item["status"], "booked")
+            self.assertIs(item["emailVerified"], True)
 
 
 if __name__ == "__main__":

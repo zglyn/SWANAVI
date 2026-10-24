@@ -93,9 +93,11 @@ python3 -m pip install -r booking/master/requirements.txt
 PYTHONPATH=. python3 -m booking.master.demo
 ```
 
-That command starts the Bedrock AgentCore app (the same server as `python3 -m booking.master.main`) and posts `booking/master/fixtures/sample_plan.json` to `POST /invocations`. Stderr prints each tick and each recorded update. Stdout is the JSON result. The demo clears memory ids and `ROAM_*_PROVIDER` for the process so it stays on the local sandbox and does not call AWS. No Amadeus credentials are required.
+That command starts the Bedrock AgentCore app (the same server as `python3 -m booking.master.main`) and posts `booking/master/fixtures/sample_plan.json` to `POST /invocations`. Stderr prints each segment, each tick, and each recorded update. Stdout is the JSON result. The demo clears memory ids and `ROAM_*_PROVIDER` for the process so it stays on the local sandbox and does not call AWS. No Amadeus credentials are required.
 
-With the email verifiers and `booking.progress` absent, booked segments have `emailVerified: false` and `reason: "verifier_not_installed"`, and the loop records one `progress_not_installed` update and stops. That is the expected sandbox result.
+With the verifiers and `booking.progress` installed, the three sample segments come back `booked` with `emailVerified` true. The service clock starts at 08:00Z on the trip start date and stops on track before any segment has ended, so it never asks for a rebook. The demo keeps that clock and moves tick 1 to `2026-11-03T10:00:00Z` (60 minutes after the sample attraction ends at 09:00Z, past the 45-minute grace). It passes that timestamp as `now`. Tick 1 then includes `action` `rebook` for the attraction. Later ticks use the service clock, which asks for `verify_email` and then stops on track. The cap stays five ticks.
+
+With the email verifiers and `booking.progress` absent, booked segments have `emailVerified: false` and `reason: "verifier_not_installed"`, and the loop records one `progress_not_installed` update and stops.
 
 To hold the server open (default port 8080):
 

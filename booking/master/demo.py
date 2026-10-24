@@ -30,6 +30,13 @@ _SANDBOX_ENV = (
     "ROAM_HOTEL_PROVIDER",
     "ROAM_ATTRACTION_PROVIDER",
 )
+# The sample attraction ends at 09:00Z on 2026-11-03. The service clock starts at
+# 08:00Z on the trip start date and stops while on track, so it never reaches a
+# segment end. This demo keeps that clock, then moves tick 1 to 60 minutes after
+# the attraction end (more than the 45-minute grace) and passes that timestamp
+# as ``now``. Later ticks stay on the service clock. The cap stays five ticks.
+_DEMO_LATE_TICK = 1
+_DEMO_LATE_NOW = "2026-11-03T10:00:00Z"
 
 
 def _free_port() -> int:
@@ -53,13 +60,40 @@ def _wait_until_ready(port: int, timeout_s: float = 15) -> None:
     raise RuntimeError(f"AgentCore local runtime did not become ready: {last_error}")
 
 
+def _demo_clock(original):
+    """Service clock, except one tick is after a sample segment end."""
+
+    def clock(plan: dict, tick: int) -> dict:
+        reported = original(plan, tick)
+        if tick == _DEMO_LATE_TICK:
+            return {"tick": reported.get("tick", tick), "now": _DEMO_LATE_NOW}
+        return reported
+
+    return clock
+
+
+def _demo_progress(original):
+    """Forward the clock's ``now`` string. ``trip_progress`` does not read a clock object."""
+
+    def progress(plan: dict, results: list, clock: dict):
+        now = clock.get("now") if isinstance(clock, dict) else clock
+        return original(plan, results, now)
+
+    return progress
+
+
 def invoke_runtime(payload: dict) -> dict:
     """POST ``payload`` to the running Bedrock AgentCore app and return JSON."""
 
     import uvicorn
 
+    from booking.master import service as master_service
     from booking.master.main import app
 
+    original_clock = master_service._clock
+    original_progress = master_service.trip_progress
+    master_service._clock = _demo_clock(original_clock)
+    master_service.trip_progress = _demo_progress(original_progress)
     port = _free_port()
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", access_log=False)
     server = uvicorn.Server(config)
@@ -82,6 +116,8 @@ def invoke_runtime(payload: dict) -> dict:
     finally:
         server.should_exit = True
         thread.join(timeout=5)
+        master_service._clock = original_clock
+        master_service.trip_progress = original_progress
     if not isinstance(body, dict):
         raise RuntimeError("AgentCore runtime returned a non-object response")
     return body
@@ -93,6 +129,14 @@ def write_trace(result: dict, stream: object | None = None) -> None:
     out = stream or sys.stderr
     stopped = result.get("loopStopped")
     ticks = result.get("ticks") if isinstance(result.get("ticks"), list) else []
+    results = result.get("results") if isinstance(result.get("results"), list) else []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        print(
+            f"segment {item.get('segmentId')} status={item.get('status')} emailVerified={item.get('emailVerified')}",
+            file=out,
+        )
     print(f"master loop stopped={stopped} ticks={len(ticks)} maxTicks={result.get('maxTicks')}", file=out)
     for tick in ticks:
         if not isinstance(tick, dict):
