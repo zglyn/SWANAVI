@@ -1,0 +1,28 @@
+{
+  "place": "Kyoto",
+  "modes": [
+    {"mode": "walk", "typical_speed_kmh": 4.5, "typical_cost": "0", "best_for": "Arashiyama, Gion, Pontocho", "notes": "Buses are slow at peak times. Walk or bike inside a neighbourhood."},
+    {"mode": "bike", "typical_speed_kmh": 12, "typical_cost": "day rental", "best_for": "Arashiyama paths", "notes": "Many shops rent bikes by the hour."},
+    {"mode": "transit", "typical_speed_kmh": 18, "typical_cost": "230 yen a ride", "best_for": "between neighbourhoods", "notes": "City bus plus subway. The bus day pass pays off after a few rides."},
+    {"mode": "taxi", "typical_speed_kmh": 22, "typical_cost": "meter", "best_for": "late night or luggage", "notes": "Doors open themselves."}
+  ],
+  "passes": ["ICOCA card", "Kyoto city bus day pass"],
+  "transfers": [
+    {
+      "from_code": "KIX",
+      "to_area": "Kyoto Station",
+      "options": [
+        {"mode": "transit", "name": "Haruka limited express", "minutes": 75, "cost": "3000 yen", "frequency": "every 30 min", "notes": "Reserved seats. Direct from Kansai Airport to Kyoto Station."}
+      ]
+    },
+    {
+      "from_code": "ITM",
+      "to_area": "Kyoto Station",
+      "options": [
+        {"mode": "bus", "name": "Airport limousine bus", "minutes": 55, "cost": "1310 yen", "frequency": "hourly", "notes": "From Itami to Kyoto Station."}
+      ]
+    }
+  ],
+  "tips": ["Kyoto buses are slow at peak times; walk or bike within Arashiyama."],
+  "source": "curated"
+}

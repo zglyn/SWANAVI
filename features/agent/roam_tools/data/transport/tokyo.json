@@ -1,0 +1,26 @@
+{
+  "place": "Tokyo",
+  "modes": [
+    {"mode": "transit", "typical_speed_kmh": 30, "typical_cost": "IC card", "best_for": "almost everywhere", "notes": "JR, metro and private lines. Avoid taxis across town."},
+    {"mode": "walk", "typical_speed_kmh": 4.5, "typical_cost": "0", "best_for": "inside a ward", "notes": "Last mile from the station."}
+  ],
+  "passes": ["Suica or Pasmo"],
+  "transfers": [
+    {
+      "from_code": "HND",
+      "to_area": "Tokyo",
+      "options": [
+        {"mode": "transit", "name": "Keikyu or monorail", "minutes": 30, "cost": "500 yen", "frequency": "every 10 min", "notes": "Haneda into the city."}
+      ]
+    },
+    {
+      "from_code": "NRT",
+      "to_area": "Tokyo",
+      "options": [
+        {"mode": "transit", "name": "Narita Express", "minutes": 60, "cost": "3070 yen", "frequency": "every 30 min", "notes": "Narita to Tokyo Station."}
+      ]
+    }
+  ],
+  "tips": ["Rush hour trains are packed. Shift sightseeing off 8:00 and 18:00."],
+  "source": "curated"
+}

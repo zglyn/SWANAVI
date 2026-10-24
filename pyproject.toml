@@ -1,3 +1,9 @@
 # uv workspace: each Python feature is its own package and depends only on roam-contracts.
 [tool.uv.workspace]
 members = ["contracts/python", "features/merchants", "features/guardrail", "features/ledger", "features/agent"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["features/agent/tests", "features/merchants/tests", "contracts/python/tests"]
