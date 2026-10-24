@@ -1,0 +1,15 @@
+{
+  "max_daily_budget": "100",
+  "max_per_item": "45",
+  "currency": "RLUSD",
+  "require_verified_credential": true,
+  "allowed_categories": [
+    "activity",
+    "food",
+    "transport",
+    "lodging"
+  ],
+  "date_window_start": null,
+  "date_window_end": null,
+  "geofence": null
+}

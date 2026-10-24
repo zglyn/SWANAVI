@@ -1,0 +1,15 @@
+[project]
+name = "roam-merchants"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["roam-contracts", "fastapi", "uvicorn", "fastmcp", "pynacl"]
+
+[tool.uv.sources]
+roam-contracts = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["roam_merchants"]

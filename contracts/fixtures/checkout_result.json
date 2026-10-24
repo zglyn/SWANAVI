@@ -1,0 +1,41 @@
+{
+  "status": "success",
+  "batch": {
+    "tx_hash": "5EDB4346B37C20FC40EB071D16E999301FABF1DC1C651D0D007E0BA29823B4A0",
+    "engine_result": "tesSUCCESS",
+    "validated": true,
+    "explorer_url": "https://devnet.xrpl.org/transactions/5EDB4346B37C20FC40EB071D16E999301FABF1DC1C651D0D007E0BA29823B4A0"
+  },
+  "escrows": [
+    {
+      "invoice_id": "B65D7B500D2CCFAF9FAC717F5D4DB31AAB496C09BFB4340449DFC2E7ADD1034D",
+      "owner": "rTripPLACEHOLDER",
+      "sequence": 100,
+      "destination": "rbamboobikesPLACEHOLDER",
+      "amount": "15.00",
+      "currency": "RLUSD",
+      "finish_after": null,
+      "cancel_after": "2026-11-14T13:00:00+09:00"
+    },
+    {
+      "invoice_id": "813F54FF6A26996A03913A962CC8B884A03999BC716DFCEEED0735867142ED73",
+      "owner": "rTripPLACEHOLDER",
+      "sequence": 101,
+      "destination": "rkissamatchaPLACEHOLDER",
+      "amount": "30.00",
+      "currency": "RLUSD",
+      "finish_after": null,
+      "cancel_after": "2026-11-14T15:00:00+09:00"
+    }
+  ],
+  "decision": {
+    "approved": true,
+    "violations": [],
+    "total": "45.00",
+    "remaining_daily_budget": "55.00"
+  },
+  "total": "45.00",
+  "viator_total": "52.94",
+  "savings": "7.94",
+  "bookings": []
+}

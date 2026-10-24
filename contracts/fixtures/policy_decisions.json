@@ -1,0 +1,43 @@
+{
+  "approved_bike_matcha": {
+    "approved": true,
+    "violations": [],
+    "total": "45.00",
+    "remaining_daily_budget": "55.00"
+  },
+  "blocked_souvenir": {
+    "approved": false,
+    "violations": [
+      {
+        "rule": "max_per_item",
+        "invoice_id": "0FD5071D0E9BDC347E2F6009F9860DD2F5AAAF8BBCB6F6B27C76A4215FF00BF3",
+        "detail": "Item exceeds per-item cap",
+        "expected": "<= 45",
+        "actual": "500.00"
+      },
+      {
+        "rule": "max_daily_budget",
+        "invoice_id": "0FD5071D0E9BDC347E2F6009F9860DD2F5AAAF8BBCB6F6B27C76A4215FF00BF3",
+        "detail": "Exceeds remaining daily budget",
+        "expected": "<= 55.00",
+        "actual": "500.00"
+      },
+      {
+        "rule": "verified_credential",
+        "invoice_id": "0FD5071D0E9BDC347E2F6009F9860DD2F5AAAF8BBCB6F6B27C76A4215FF00BF3",
+        "detail": "Destination holds no Local_Merchant_KYC credential",
+        "expected": "credential",
+        "actual": "none"
+      },
+      {
+        "rule": "category",
+        "invoice_id": "0FD5071D0E9BDC347E2F6009F9860DD2F5AAAF8BBCB6F6B27C76A4215FF00BF3",
+        "detail": "Category not allowed",
+        "expected": "activity,food,transport,lodging",
+        "actual": "shopping"
+      }
+    ],
+    "total": "500.00",
+    "remaining_daily_budget": "55.00"
+  }
+}

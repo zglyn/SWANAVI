@@ -1,0 +1,153 @@
+[
+  {
+    "id": "evt-001",
+    "ts": "2026-11-14T10:00:02+09:00",
+    "source": "agent",
+    "level": "info",
+    "type": "agent.planning",
+    "message": "Planning afternoon in Arashiyama",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {}
+  },
+  {
+    "id": "evt-002",
+    "ts": "2026-11-14T10:00:04+09:00",
+    "source": "merchant",
+    "level": "info",
+    "type": "quote.received",
+    "message": "402 quote: bike rental 15 RLUSD",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "quote": "B65D7B500D2CCFAF9FAC717F5D4DB31AAB496C09BFB4340449DFC2E7ADD1034D"
+    }
+  },
+  {
+    "id": "evt-003",
+    "ts": "2026-11-14T10:00:06+09:00",
+    "source": "merchant",
+    "level": "info",
+    "type": "quote.received",
+    "message": "402 quote: matcha workshop 30 RLUSD",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "quote": "813F54FF6A26996A03913A962CC8B884A03999BC716DFCEEED0735867142ED73"
+    }
+  },
+  {
+    "id": "evt-004",
+    "ts": "2026-11-14T10:00:08+09:00",
+    "source": "guardrail",
+    "level": "success",
+    "type": "guardrail.approved",
+    "message": "Policy passed \u2014 co-signed (2/2)",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "total": "45.00"
+    }
+  },
+  {
+    "id": "evt-005",
+    "ts": "2026-11-14T10:00:10+09:00",
+    "source": "ledger",
+    "level": "success",
+    "type": "batch.validated",
+    "message": "Atomic batch validated: 2 escrows",
+    "tx_hash": "5EDB4346B37C20FC40EB071D16E999301FABF1DC1C651D0D007E0BA29823B4A0",
+    "explorer_url": "https://devnet.xrpl.org/transactions/5EDB4346B37C20FC40EB071D16E999301FABF1DC1C651D0D007E0BA29823B4A0",
+    "data": {}
+  },
+  {
+    "id": "evt-006",
+    "ts": "2026-11-14T10:00:12+09:00",
+    "source": "merchant",
+    "level": "warning",
+    "type": "quote.received",
+    "message": "402 quote: gold maneki-neko 500 RLUSD",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "quote": "0FD5071D0E9BDC347E2F6009F9860DD2F5AAAF8BBCB6F6B27C76A4215FF00BF3"
+    }
+  },
+  {
+    "id": "evt-007",
+    "ts": "2026-11-14T10:00:14+09:00",
+    "source": "guardrail",
+    "level": "blocked",
+    "type": "guardrail.blocked",
+    "message": "Co-sign refused: 4 violations",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "violations": [
+        "max_per_item",
+        "max_daily_budget",
+        "verified_credential",
+        "category"
+      ]
+    }
+  },
+  {
+    "id": "evt-008",
+    "ts": "2026-11-14T10:00:16+09:00",
+    "source": "system",
+    "level": "warning",
+    "type": "weather.alert",
+    "message": "Rainstorm forecast at 14:00",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {}
+  },
+  {
+    "id": "evt-009",
+    "ts": "2026-11-14T10:00:18+09:00",
+    "source": "ledger",
+    "level": "success",
+    "type": "escrow.cancelled",
+    "message": "Bike escrow cancelled \u2014 15 RLUSD recovered",
+    "tx_hash": "627B454E2ED64C81D5EA5C8A7E3E33173A75D304C881AA0C3740318727FF87B4",
+    "explorer_url": "https://devnet.xrpl.org/transactions/627B454E2ED64C81D5EA5C8A7E3E33173A75D304C881AA0C3740318727FF87B4",
+    "data": {}
+  },
+  {
+    "id": "evt-010",
+    "ts": "2026-11-14T10:00:20+09:00",
+    "source": "merchant",
+    "level": "info",
+    "type": "quote.received",
+    "message": "402 quote: ramen tasting 20 RLUSD",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "quote": "90893245FEE4F15D610106DC7DD035962207F471B312BC34E9642F389DCDBB9E"
+    }
+  },
+  {
+    "id": "evt-011",
+    "ts": "2026-11-14T10:00:22+09:00",
+    "source": "guardrail",
+    "level": "success",
+    "type": "guardrail.approved",
+    "message": "Policy passed \u2014 co-signed (2/2)",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "total": "20.00"
+    }
+  },
+  {
+    "id": "evt-012",
+    "ts": "2026-11-14T10:00:24+09:00",
+    "source": "ledger",
+    "level": "success",
+    "type": "batch.validated",
+    "message": "Ramen escrow validated",
+    "tx_hash": "7BF01BB3C1E84FC9A312F60138FECD9D6B82C0D778A71C7DE2DF8E077E6A4CDF",
+    "explorer_url": "https://devnet.xrpl.org/transactions/7BF01BB3C1E84FC9A312F60138FECD9D6B82C0D778A71C7DE2DF8E077E6A4CDF",
+    "data": {}
+  }
+]
