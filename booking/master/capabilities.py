@@ -1,7 +1,7 @@
 """Import capability packages owned by other agents.
 
 Missing packages are reported by the caller. This module does not implement
-booking, email parsing, trip progress, or replanning.
+booking, email parsing, trip progress, replanning, or the guard tools.
 """
 
 from __future__ import annotations
@@ -15,11 +15,21 @@ SampleEmailFn = Callable[[dict[str, Any], str, list[Any], str], Any]
 VerifyFn = Callable[[dict[str, Any], dict[str, Any], str, list[Any]], Any]
 ProgressFn = Callable[[dict[str, Any], list[dict[str, Any]], dict[str, Any]], Any]
 ReplanFn = Callable[[str, str, dict[str, Any], dict[str, Any]], Any]
+BudgetFn = Callable[[str, dict[str, Any], dict[str, Any] | None], Any]
+SpendFn = Callable[[int, int, str], Any]
+RefundFn = Callable[[str, str | None, str | None], Any]
+ConflictsFn = Callable[[str, dict[str, Any]], Any]
+NoticeFn = Callable[[str, dict[str, Any]], Any]
 
 PROVIDER_NOT_INSTALLED = "provider_not_installed"
 VERIFIER_NOT_INSTALLED = "verifier_not_installed"
 PROGRESS_NOT_INSTALLED = "progress_not_installed"
 REPLAN_NOT_INSTALLED = "replan_not_installed"
+CHECK_BUDGET_NOT_INSTALLED = "check_budget_not_installed"
+AUTHORIZE_SPEND_NOT_INSTALLED = "authorize_spend_not_installed"
+REFUND_BOOKING_NOT_INSTALLED = "refund_booking_not_installed"
+CHECK_CONFLICTS_NOT_INSTALLED = "check_conflicts_not_installed"
+TRIP_NOTICE_NOT_INSTALLED = "trip_notice_not_installed"
 
 PROVIDER_MODULES = {
     "flight": "booking.providers.flights",
@@ -57,6 +67,18 @@ REPLAN_EXPORTS = {
     "ended_early": "replan_early",
     "ended_late": "replan_late",
 }
+
+# Guard tools live in their own packages. The master only calls them.
+BUDGET_MODULE = "booking.guard.budget"
+BUDGET_EXPORT = "check_budget"
+SPEND_MODULE = "booking.guard.spend"
+SPEND_EXPORT = "authorize_spend"
+CONFLICTS_MODULE = "booking.guard.conflicts"
+CONFLICTS_EXPORT = "check_conflicts"
+REFUND_MODULE = "booking.refund"
+REFUND_EXPORT = "refund_booking"
+NOTIFY_MODULE = "booking.notify"
+NOTIFY_EXPORT = "trip_notice"
 
 
 class ProgressNotInstalled(Exception):
@@ -126,6 +148,46 @@ def load_replan(event: str) -> ReplanFn | None:
     if not callable(replan):
         return None
     return replan
+
+
+def load_check_budget() -> BudgetFn | None:
+    """Return check_budget, or None when booking.guard.budget is not importable."""
+
+    return _load_callable(BUDGET_MODULE, BUDGET_EXPORT)
+
+
+def load_authorize_spend() -> SpendFn | None:
+    """Return authorize_spend, or None when booking.guard.spend is not importable."""
+
+    return _load_callable(SPEND_MODULE, SPEND_EXPORT)
+
+
+def load_refund_booking() -> RefundFn | None:
+    """Return refund_booking, or None when booking.refund is not importable."""
+
+    return _load_callable(REFUND_MODULE, REFUND_EXPORT)
+
+
+def load_check_conflicts() -> ConflictsFn | None:
+    """Return check_conflicts, or None when booking.guard.conflicts is not importable."""
+
+    return _load_callable(CONFLICTS_MODULE, CONFLICTS_EXPORT)
+
+
+def load_trip_notice() -> NoticeFn | None:
+    """Return trip_notice, or None when booking.notify is not importable."""
+
+    return _load_callable(NOTIFY_MODULE, NOTIFY_EXPORT)
+
+
+def _load_callable(module_name: str, export: str) -> Any | None:
+    module = _import(module_name)
+    if module is None:
+        return None
+    fn = getattr(module, export, None)
+    if not callable(fn):
+        return None
+    return fn
 
 
 def _import(module_name: str) -> Any | None:

@@ -46,6 +46,9 @@ _DEMO_NOW = {
 # One scripted replan signal per tick, on top of whatever trip_progress reports.
 # ended_early is 60 minutes. ended_late is 45 minutes. A missing replan package
 # is recorded as replan_not_installed and the demo still finishes.
+# The loop also calls check_budget, authorize_spend(10, 12, USD),
+# refund_booking, check_conflicts, and trip_notice. A missing guard package
+# is recorded as <tool>_not_installed and the demo still finishes.
 # The sample flight, hotel, and temple are not one same-day chain. The demo
 # adds a morning briefing (keeps the loop open), an afternoon garden after the
 # temple, and a farewell tea after hotel checkout. Those are the later segments
@@ -243,6 +246,12 @@ def write_trace(result: dict, stream: object | None = None) -> None:
             f"segment {item.get('segmentId')} status={item.get('status')} emailVerified={item.get('emailVerified')}",
             file=out,
         )
+    spend = result.get("spend") if isinstance(result.get("spend"), dict) else None
+    if spend is not None:
+        print(
+            f"spend payAmount={spend.get('payAmount')} reason={spend.get('reason')}",
+            file=out,
+        )
     print(f"master loop stopped={stopped} ticks={len(ticks)} maxTicks={result.get('maxTicks')}", file=out)
     for tick in ticks:
         if not isinstance(tick, dict):
@@ -253,6 +262,8 @@ def write_trace(result: dict, stream: object | None = None) -> None:
             f"tick {tick.get('tick')} now={clock.get('now')} phase={tick.get('phase')} onTrack={tick.get('onTrack')} updates={len(updates)}",
             file=out,
         )
+        if "notice" in tick:
+            print(f"  notice={tick.get('notice')}", file=out)
         for update in updates:
             if not isinstance(update, dict):
                 continue

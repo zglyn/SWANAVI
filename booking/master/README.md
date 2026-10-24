@@ -1,6 +1,6 @@
 # Master booking agent
 
-The planner calls this runtime and no other booking entry. The master manages the trip by calling capability agents. Flight booking, hotel booking, attraction booking, confirmation-email verification, trip progress, and replanning each live in their own package. This folder does not implement those capabilities. The master calls one replan agent per event: cancellation, an early finish, or a late finish.
+The planner calls this runtime and no other booking entry. The master manages the trip by calling capability agents. Flight booking, hotel booking, attraction booking, confirmation-email verification, trip progress, replanning, and the guard tools each live in their own package. This folder does not implement those capabilities. The master calls one replan agent per event: cancellation, an early finish, or a late finish. It calls `check_budget`, `authorize_spend`, `refund_booking`, `check_conflicts`, and `trip_notice` when those packages import.
 
 The runtime is one [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html) app: `BedrockAgentCoreApp` in `booking/master/main.py`. A finished trip plan is posted to that runtime. The entrypoint books every segment, checks the sandbox provider email for each booked segment, then runs a control loop of at most five ticks.
 
@@ -20,6 +20,11 @@ Nothing in this folder has been deployed to AWS. The local demo needs no AWS cre
 | Update `event` `cancelled` | `replan_cancel` | `booking.replan.cancel` | `replan_cancel(trip_id, now, plan, disruption)` |
 | Update `event` `ended_early` | `replan_early` | `booking.replan.early` | `replan_early(trip_id, now, plan, disruption)` |
 | Update `event` `ended_late` | `replan_late` | `booking.replan.late` | `replan_late(trip_id, now, plan, disruption)` |
+| Before accepting a booked segment | `check_budget` | `booking.guard.budget` | `check_budget(trip_id, segment, price)` |
+| Scripted demo charge | `authorize_spend` | `booking.guard.spend` | `authorize_spend(10, 12, "USD")` |
+| Segment `event` `cancelled` | `refund_booking` | `booking.refund` | `refund_booking(trip_id, segment_id, confirmation_code)` |
+| Replan returned `changed: true` | `check_conflicts` | `booking.guard.conflicts` | `check_conflicts(trip_id, plan)` |
+| After a replan, or an over-capture rejection | `trip_notice` | `booking.notify` | `trip_notice(trip_id, event)` |
 
 Provider tool input is the segment object from the plan (`from` stays `from` on flights), the traveler list `[{id, name}, ...]`, and `tripId`.
 
@@ -79,6 +84,22 @@ When the tool returns `changed: true` and a `plan` object, the master replaces i
 
 The loop stops at five ticks. It also stops when `onTrack` is true and the tick has no `rebook` or `verify_email` action. A `replan` action does not by itself keep the loop open, and a missing replan package does not end it. When `booking.progress` is missing, or it has no `trip_progress` callable, the master records one update with `issue: "progress_not_installed"` and `action: "none"`, then ends the loop. A progress exception is recorded and ends the loop the same way. The process keeps going.
 
+### Guard tools
+
+The master calls each guard when that package imports. When the import fails, or the package does not export the function, the master records `<tool>_not_installed` and continues. The cap stays five ticks. Book, email verify, progress, and replan behavior stay as they are.
+
+| Tool | When | Missing package | Installed result |
+| --- | --- | --- | --- |
+| `check_budget` | After a segment is `booked` and `emailVerified` is true, before that segment is accepted | Segment result `budget` is `check_budget_not_installed`. The segment stays accepted. | `check_budget(trip_id, segment, price)`. `price` is the booking price `{amount, currency}` or `null`. When the result has `allowed: false`, the master sets `status` to `needs_user` and does not treat the segment as accepted. |
+| `authorize_spend` | Once per plan, for the scripted demo charge | Envelope `spend.reason` is `authorize_spend_not_installed` and `spend.payAmount` is `null`. | `authorize_spend(10, 12, "USD")` — `authorizedAmount` 10, `requestedAmount` 12, `currency` `"USD"`. The master records the tool's `payAmount` and `reason` on `spend`. The spend guard's over-capture result is `payAmount` 10 and `reason` `over_capture_rejected`. |
+| `refund_booking` | A replan update has `event` `cancelled` | Update `refund` is `refund_booking_not_installed`. | `refund_booking(trip_id, segment_id, confirmation_code)`. The return value is stored on `refund`. |
+| `check_conflicts` | A replan returned `changed: true` and replaced the plan | Update `conflicts` is `check_conflicts_not_installed`. | `check_conflicts(trip_id, plan)` on the replaced plan. The return value is stored on `conflicts`. |
+| `trip_notice` | After a handled replan, and when `authorize_spend` records `reason` `over_capture_rejected` | Tick `notice` is `trip_notice_not_installed`. | `trip_notice(trip_id, event)`. The return value is kept on that tick as `notice`. Two notices on one tick are a list. |
+
+`event` for a replan is `{type: "replan", segmentId, kind, event, replan, notes}`. `event` for an over-capture rejection is `{type: "over_capture_rejected", authorizedAmount, requestedAmount, currency, payAmount}`.
+
+`spend` on a finished run is `{authorizedAmount, requestedAmount, currency, payAmount, reason}` plus any other fields the spend tool returned.
+
 A segment that is rebooked during the loop is not accepted until a later `verify_email` action returns `verified: true`. Its `reason` is `rebooked` until then.
 
 ## Per-segment result
@@ -91,6 +112,7 @@ A segment that is rebooked during the loop is not accepted until a later `verify
 | `confirmationCode` | Sandbox code from the booking tool, or `null` |
 | `emailVerified` | `true` only when `verify` returned `verified: true` |
 | `reason` | Verifier reason, `verifier_not_installed`, `rebooked`, or the booking error |
+| `budget` | Present once the segment is booked and email-verified: the `check_budget` result, or `check_budget_not_installed` |
 
 The runtime returns:
 
@@ -101,13 +123,20 @@ The runtime returns:
   "ticks": [],
   "maxTicks": 5,
   "loopStopped": "progress_not_installed",
-  "error": null
+  "error": null,
+  "spend": {
+    "authorizedAmount": 10,
+    "requestedAmount": 12,
+    "currency": "USD",
+    "payAmount": null,
+    "reason": "authorize_spend_not_installed"
+  }
 }
 ```
 
-`error` is `invalid_plan` when the payload is not a trip plan. `results` and `ticks` are then empty. `loopStopped` is `progress_not_installed`, `on_track`, `max_ticks`, `progress_error`, or `invalid_plan`.
+`error` is `invalid_plan` when the payload is not a trip plan. `results` and `ticks` are then empty, and `spend` is omitted. `loopStopped` is `progress_not_installed`, `on_track`, `max_ticks`, `progress_error`, or `invalid_plan`.
 
-Each tick is `{tick, clock, phase, onTrack, updates}`.
+Each tick is `{tick, clock, phase, onTrack, updates}`. A tick that notified the traveler also has `notice`.
 
 ## Local demo (AgentCore SDK local mode, no AWS)
 
@@ -124,7 +153,9 @@ With the verifiers and `booking.progress` installed, the sample segments come ba
 
 The demo also appends one scripted replan signal per tick for the first three ticks, on top of those progress updates. Tick 1 is `cancelled` for `flight-1`, which marks that flight removed and pulls the hotel forward. Tick 2 is `ended_early` for `hotel-1` with `deltaMinutes` 60, which pulls the farewell tea earlier. Tick 3 is `ended_late` for `attraction-1` with `deltaMinutes` 45, which pushes the garden walk later. The master calls one replan agent per event. When that package is missing, the demo still finishes and stderr shows `replan=replan_not_installed` on that update.
 
-With the email verifiers and `booking.progress` absent, booked segments have `emailVerified: false` and `reason: "verifier_not_installed"`, and the loop records one `progress_not_installed` update and stops.
+The same run calls `authorize_spend(10, 12, "USD")`. With `booking.guard.spend` installed, stderr shows `payAmount=10` and `reason=over_capture_rejected`, and the over-capture `trip_notice` stays on tick 1. With the guard packages absent, the demo still finishes: `spend.reason` is `authorize_spend_not_installed`, accepted segments record `budget` `check_budget_not_installed`, a cancellation records `refund` `refund_booking_not_installed`, a changed replan records `conflicts` `check_conflicts_not_installed`, and each replan tick keeps `notice` `trip_notice_not_installed`.
+
+With the email verifiers and `booking.progress` absent, booked segments have `emailVerified: false` and `reason: "verifier_not_installed"`, and the loop records one `progress_not_installed` update and stops. The scripted spend record is still on the result.
 
 To hold the server open (default port 8080):
 
@@ -147,4 +178,4 @@ Tests:
 PYTHONPATH=. python3 -m unittest booking.master.tests.test_master
 ```
 
-The tests cover a missing verifier (`emailVerified` false, process still returns), a missing progress agent (one recorded update, loop ends, at most five ticks), a missing replan package (`replan_not_installed` recorded, loop continues, cap still five), and a fake replan tool that shifts a segment (`changed: true` replaces the plan and the notes are recorded).
+The tests cover a missing verifier (`emailVerified` false, process still returns), a missing progress agent (one recorded update, loop ends, at most five ticks), a missing replan package (`replan_not_installed` recorded, loop continues, cap still five), a fake replan tool that shifts a segment (`changed: true` replaces the plan and the notes are recorded), missing guard packages (the loop still returns and records each `<tool>_not_installed`), and a fake `authorize_spend` result (`payAmount` 10 and `reason` `over_capture_rejected` recorded on `spend`, with the notice kept on the tick).

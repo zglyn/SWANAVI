@@ -6,6 +6,8 @@ That path does not need AWS credentials or Amadeus keys.
 The planner calls this entrypoint. The entrypoint calls book_flight,
 book_hotel, book_attraction, the verify_*_email tools, trip_progress, and
 one replan tool per event: replan_cancel, replan_early, or replan_late.
+It also calls check_budget, authorize_spend, refund_booking, check_conflicts,
+and trip_notice when those packages import.
 """
 
 from __future__ import annotations

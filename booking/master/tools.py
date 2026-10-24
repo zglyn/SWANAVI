@@ -1,7 +1,8 @@
 """Tool names the master calls.
 
 Each function forwards to a capability package. None of them books a supplier,
-parses an inbox, decides whether the trip is on track, or shifts the day.
+parses an inbox, decides whether the trip is on track, shifts the day, or
+decides a guard outcome.
 """
 
 from __future__ import annotations
@@ -9,16 +10,31 @@ from __future__ import annotations
 from typing import Any
 
 from booking.master.capabilities import (
+    AUTHORIZE_SPEND_NOT_INSTALLED,
+    CHECK_BUDGET_NOT_INSTALLED,
+    CHECK_CONFLICTS_NOT_INSTALLED,
     PROGRESS_NOT_INSTALLED,
     PROVIDER_NOT_INSTALLED,
+    REFUND_BOOKING_NOT_INSTALLED,
     REPLAN_NOT_INSTALLED,
+    TRIP_NOTICE_NOT_INSTALLED,
     VERIFIER_NOT_INSTALLED,
     ProgressNotInstalled,
+    load_authorize_spend,
     load_book,
+    load_check_budget,
+    load_check_conflicts,
+    load_refund_booking,
     load_replan,
+    load_trip_notice,
     load_trip_progress,
     load_verifier,
 )
+
+# One scripted demo charge. The spend guard decides payAmount and reason.
+SCRIPTED_AUTHORIZED_AMOUNT = 10
+SCRIPTED_REQUESTED_AMOUNT = 12
+SCRIPTED_CURRENCY = "USD"
 
 BOOK_TOOL_BY_KIND = {
     "flight": "book_flight",
@@ -218,6 +234,102 @@ REPLAN_TOOLS = {
     "ended_late": replan_late,
 }
 
+
+def check_budget(trip_id: str, segment: dict[str, Any], price: dict[str, Any] | None) -> Any:
+    """Call booking.guard.budget.check_budget before a booked segment is accepted.
+
+    Returns the tool result, or ``check_budget_not_installed`` when that
+    function cannot be imported.
+    """
+
+    budget = load_check_budget()
+    if budget is None:
+        return CHECK_BUDGET_NOT_INSTALLED
+    try:
+        return budget(trip_id, segment, price)
+    except Exception as exc:
+        return {"allowed": None, "error": _message(exc)}
+
+
+def authorize_spend(
+    authorizedAmount: int = SCRIPTED_AUTHORIZED_AMOUNT,
+    requestedAmount: int = SCRIPTED_REQUESTED_AMOUNT,
+    currency: str = SCRIPTED_CURRENCY,
+) -> dict[str, Any]:
+    """Call booking.guard.spend.authorize_spend for the scripted demo charge.
+
+    The master passes authorizedAmount 10, requestedAmount 12, and currency USD.
+    payAmount and reason are whatever that tool returns.
+    """
+
+    record: dict[str, Any] = {
+        "authorizedAmount": authorizedAmount,
+        "requestedAmount": requestedAmount,
+        "currency": currency,
+    }
+    spend = load_authorize_spend()
+    if spend is None:
+        record["payAmount"] = None
+        record["reason"] = AUTHORIZE_SPEND_NOT_INSTALLED
+        return record
+    try:
+        raw = spend(authorizedAmount, requestedAmount, currency)
+    except Exception as exc:
+        record["payAmount"] = None
+        record["reason"] = _message(exc)
+        return record
+    if not isinstance(raw, dict):
+        record["payAmount"] = None
+        record["reason"] = "invalid_spend_result"
+        return record
+    record.update(raw)
+    record.setdefault("payAmount", None)
+    record.setdefault("reason", None)
+    return record
+
+
+def refund_booking(trip_id: str, segment_id: str | None, confirmation_code: str | None) -> Any:
+    """Call booking.refund.refund_booking when a segment is cancelled."""
+
+    refund = load_refund_booking()
+    if refund is None:
+        return REFUND_BOOKING_NOT_INSTALLED
+    try:
+        raw = refund(trip_id, segment_id, confirmation_code)
+    except Exception as exc:
+        return {"error": _message(exc)}
+    if not isinstance(raw, dict):
+        return {"error": "invalid_refund_result"}
+    return raw
+
+
+def check_conflicts(trip_id: str, plan: dict[str, Any]) -> Any:
+    """Call booking.guard.conflicts.check_conflicts after a replan changes the plan."""
+
+    conflicts = load_check_conflicts()
+    if conflicts is None:
+        return CHECK_CONFLICTS_NOT_INSTALLED
+    try:
+        raw = conflicts(trip_id, plan)
+    except Exception as exc:
+        return {"error": _message(exc)}
+    if not isinstance(raw, dict):
+        return {"error": "invalid_conflicts_result"}
+    return raw
+
+
+def trip_notice(trip_id: str, event: dict[str, Any]) -> Any:
+    """Call booking.notify.trip_notice after a replan or an over-capture rejection."""
+
+    notice = load_trip_notice()
+    if notice is None:
+        return TRIP_NOTICE_NOT_INSTALLED
+    try:
+        return notice(trip_id, event)
+    except Exception as exc:
+        return {"error": _message(exc)}
+
+
 RUNTIME_TOOLS = {
     "book_flight": book_flight,
     "book_hotel": book_hotel,
@@ -229,4 +341,9 @@ RUNTIME_TOOLS = {
     "replan_cancel": replan_cancel,
     "replan_early": replan_early,
     "replan_late": replan_late,
+    "check_budget": check_budget,
+    "authorize_spend": authorize_spend,
+    "refund_booking": refund_booking,
+    "check_conflicts": check_conflicts,
+    "trip_notice": trip_notice,
 }

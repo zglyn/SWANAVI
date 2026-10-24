@@ -503,6 +503,118 @@ class ControlLoopTests(_Modules):
         self.assertEqual(len(result["results"]), 3)
         self.assertIsNone(result["error"])
 
+    def test_missing_guard_packages_do_not_crash(self) -> None:
+        self._providers()
+        self.hide(
+            "booking.guard",
+            "booking.guard.budget",
+            "booking.guard.spend",
+            "booking.guard.conflicts",
+            "booking.refund",
+            "booking.notify",
+        )
+
+        def replan_cancel(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            del trip_id, now, disruption
+            shifted = json.loads(json.dumps(plan))
+            shifted["hotels"][0]["checkOut"] = "2026-11-05"
+            return {"changed": True, "plan": shifted, "notes": ["cancelled flight-1"]}
+
+        self.install("booking.replan.cancel", replan_cancel=replan_cancel)
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del plan, results
+            if clock["tick"] > 1:
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            return {
+                "phase": "in_progress",
+                "onTrack": False,
+                "updates": [
+                    {
+                        "segmentId": "flight-1",
+                        "kind": "flight",
+                        "issue": "segment cancelled",
+                        "action": "replan",
+                        "event": "cancelled",
+                    }
+                ],
+            }
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        result = handle_payload(SAMPLE)
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(result["spend"]["authorizedAmount"], 10)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertEqual(result["spend"]["currency"], "USD")
+        self.assertIsNone(result["spend"]["payAmount"])
+        self.assertEqual(result["spend"]["reason"], "authorize_spend_not_installed")
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+            self.assertEqual(item["budget"], "check_budget_not_installed")
+        cancelled = result["ticks"][0]["updates"][0]
+        self.assertEqual(cancelled["replan"], "changed")
+        self.assertEqual(cancelled["refund"], "refund_booking_not_installed")
+        self.assertEqual(cancelled["conflicts"], "check_conflicts_not_installed")
+        self.assertEqual(result["ticks"][0]["notice"], "trip_notice_not_installed")
+
+    def test_budget_rejection_is_not_accepted(self) -> None:
+        self._providers()
+        self.hide("booking.progress", "booking.guard.spend", "booking.notify")
+
+        def check_budget(trip_id: str, segment: dict[str, Any], price: dict[str, Any] | None) -> dict[str, Any]:
+            del trip_id, price
+            return {"allowed": segment.get("segmentId") != "hotel-1"}
+
+        self.install("booking.guard.budget", check_budget=check_budget)
+        result = handle_payload(SAMPLE)
+        by_id = {item["segmentId"]: item for item in result["results"]}
+
+        self.assertEqual(by_id["hotel-1"]["status"], "needs_user")
+        self.assertTrue(by_id["hotel-1"]["emailVerified"])
+        self.assertFalse(segment_accepted(by_id["hotel-1"]))
+        self.assertEqual(by_id["hotel-1"]["budget"]["allowed"], False)
+        self.assertTrue(segment_accepted(by_id["flight-1"]))
+        self.assertTrue(segment_accepted(by_id["attraction-1"]))
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+
+    def test_fake_authorize_spend_result_is_recorded(self) -> None:
+        self._providers()
+        self.hide("booking.progress")
+        seen: list[tuple[Any, ...]] = []
+
+        def authorize_spend(authorizedAmount: int, requestedAmount: int, currency: str) -> dict[str, Any]:
+            seen.append((authorizedAmount, requestedAmount, currency))
+            return {"payAmount": 10, "reason": "over_capture_rejected", "marker": "fake-spend"}
+
+        def trip_notice(trip_id: str, event: dict[str, Any]) -> dict[str, Any]:
+            return {"tripId": trip_id, "type": event["type"], "payAmount": event["payAmount"]}
+
+        self.install("booking.guard.spend", authorize_spend=authorize_spend)
+        self.install("booking.notify", trip_notice=trip_notice)
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(seen, [(10, 12, "USD")])
+        self.assertEqual(result["spend"]["payAmount"], 10)
+        self.assertEqual(result["spend"]["reason"], "over_capture_rejected")
+        self.assertEqual(result["spend"]["marker"], "fake-spend")
+        self.assertEqual(result["spend"]["authorizedAmount"], 10)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertEqual(result["spend"]["currency"], "USD")
+        self.assertEqual(
+            result["ticks"][0]["notice"],
+            {"tripId": "sample-kyoto", "type": "over_capture_rejected", "payAmount": 10},
+        )
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertEqual(len(result["ticks"]), 1)
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+
 
 class RuntimeTests(unittest.TestCase):
     def test_entrypoint_registers_capability_tools(self) -> None:
@@ -522,6 +634,11 @@ class RuntimeTests(unittest.TestCase):
                 "replan_cancel",
                 "replan_early",
                 "replan_late",
+                "check_budget",
+                "authorize_spend",
+                "refund_booking",
+                "check_conflicts",
+                "trip_notice",
             },
         )
         result = invoke(SAMPLE, context=None)
