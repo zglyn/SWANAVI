@@ -1,0 +1,8 @@
+{
+  "name": "verify-mock-checkout-leash",
+  "private": true,
+  "description": "Exhaustive check that the Roam402 mock checkout refuses policy violations.",
+  "dependencies": {
+    "typescript": "5.8.3"
+  }
+}
