@@ -8,12 +8,12 @@
  * part of the decision.
  */
 
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import ts from "typescript";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../..");
@@ -41,7 +41,20 @@ function mustReplace(source, needle, replacement, label) {
   return source.replace(needle, replacement);
 }
 
-function buildHarness(source) {
+function ensureTypescript() {
+  const installed = join(here, "node_modules", "typescript", "package.json");
+  if (existsSync(installed)) return;
+  const result = spawnSync("npm", ["install", "--silent"], {
+    cwd: here,
+    stdio: "inherit",
+    shell: true,
+  });
+  if (result.status !== 0) {
+    throw new Error("npm install of typescript failed");
+  }
+}
+
+function buildHarness(ts, source) {
   let body = source.replace(/^\s*import\s[\s\S]*?;\s*$/gm, "");
   body = mustReplace(
     body,
@@ -102,10 +115,12 @@ export async function __checkout(quotes) {
 }
 
 async function loadHarness() {
+  ensureTypescript();
+  const ts = await import("typescript");
   const source = readFileSync(mockPath, "utf8");
   const dir = mkdtempSync(join(tmpdir(), "roam-leash-"));
   const file = join(dir, "harness.mjs");
-  writeFileSync(file, buildHarness(source));
+  writeFileSync(file, buildHarness(ts, source));
   return import(pathToFileURL(file).href);
 }
 

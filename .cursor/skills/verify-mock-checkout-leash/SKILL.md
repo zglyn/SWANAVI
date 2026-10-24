@@ -31,10 +31,10 @@ A change that only edits copy, the 850ms pause, or a scenario that never calls `
 From the repo root, with Node 22:
 
 ```text
-npm install --prefix .cursor/skills/verify-mock-checkout-leash --silent && node .cursor/skills/verify-mock-checkout-leash/check.mjs
+node .cursor/skills/verify-mock-checkout-leash/check.mjs
 ```
 
-The transpiler is TypeScript 5.8.3, pinned in this skill's `package.json`. It only strips types. The functions that run are the ones in `mock.ts`. One sequential run of the bound finishes in a few seconds.
+That single command works in Windows PowerShell 5 and in bash. The script installs its pinned TypeScript 5.8.3 if `node_modules` is missing, then runs the check. TypeScript only strips types. The functions that run are the ones in `mock.ts`. One sequential run of the bound finishes in a few seconds.
 
 ## How to read the result
 
