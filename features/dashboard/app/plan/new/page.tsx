@@ -80,7 +80,7 @@ function Planner() {
     <SwanShell
       step={step}
       steps={6}
-      map={<TripMap stops={stops} arcs={arcs} focus={Math.max(stops.length - 1, 0)} dayLabel={draft.destination} />}
+      map={<TripMap stops={stops} arcs={arcs} focus={Math.max(stops.length - 1, 0)} dayLabel={draft.destination} showToggle={false} />}
     >
       {step === 1 && (
         <section>

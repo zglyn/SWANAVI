@@ -20,11 +20,13 @@ export function TripMap({
   arcs,
   focus,
   dayLabel,
+  showToggle = true,
 }: {
   stops: MapStop[];
   arcs: Arc[];
   focus: number;
   dayLabel: string;
+  showToggle?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<{ flyTo: (opts: object) => void; jumpTo: (opts: object) => void; remove: () => void; setPitch: (n: number) => void } | null>(null);
@@ -127,9 +129,11 @@ export function TripMap({
   return (
     <div className="relative h-full min-h-72">
       <div ref={host} className="swan-map h-full min-h-72 w-full" />
-      <button type="button" className="swan-chip absolute top-3 right-3 bg-white" onClick={() => setFlat((value) => !value)}>
-        {flat ? "3D view" : "2D view"}
-      </button>
+      {showToggle ? (
+        <button type="button" className="swan-chip absolute top-3 right-3 bg-white" onClick={() => setFlat((value) => !value)}>
+          {flat ? "3D view" : "2D view"}
+        </button>
+      ) : null}
       {selected ? <p className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1 text-sm text-black">{selected.label}</p> : null}
     </div>
   );
