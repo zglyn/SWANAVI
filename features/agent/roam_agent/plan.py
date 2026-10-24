@@ -17,6 +17,7 @@ from roam_contracts.models import (
     PlanRevision,
     PlanSelection,
     RevisionAction,
+    SegmentStatus,
     Stop,
     StopKind,
     StopStatus,
@@ -30,6 +31,18 @@ from roam_tools.transport import arrival_transfer_minutes, get_transport_profile
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "contracts" / "fixtures"
+
+
+def flight_warnings(brief: TripBrief) -> list[str]:
+    notes: list[str] = []
+    for label, segment in (("Arrival", brief.arrival), ("Departure", brief.departure)):
+        if segment is None:
+            continue
+        if segment.status == SegmentStatus.UNVERIFIED:
+            notes.append(f"Unverified flight times for {segment.number or label}.")
+        if segment.status == SegmentStatus.DELAYED and label == "Arrival":
+            notes.append(f"Arrival {segment.number or ''} is delayed. Day 1 uses the revised time.".strip())
+    return notes
 
 
 def _emit(emit, plan_id: str, tool: str, summary: str) -> None:
@@ -84,6 +97,7 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
         payload = json.loads((FIXTURES / "itinerary_kyoto.json").read_text())
         built = Itinerary.model_validate(payload)
         built.selection = selection
+        built.warnings = [*built.warnings, *flight_warnings(brief)]
         return built
     by_id = _candidate_map(candidates)
     profile = get_transport_profile(brief.destination)
@@ -95,6 +109,7 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
         if item in by_id and item not in chosen_ids:
             chosen_ids.append(item)
     warnings: list[str] = []
+    warnings.extend(flight_warnings(brief))
     if profile.source == "llm":
         warnings.append(f"Getting around {brief.destination} is unverified.")
     missing = [item for item in selection.must_visit if item not in by_id]

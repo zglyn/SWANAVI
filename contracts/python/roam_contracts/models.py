@@ -242,6 +242,7 @@ class TravelSegment(BaseModel):
     arrive_at: datetime
     status: SegmentStatus = SegmentStatus.SCHEDULED
     source: str = "user"
+    terminal: str | None = None
 
 
 class Lodging(BaseModel):

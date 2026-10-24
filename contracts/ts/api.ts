@@ -179,6 +179,7 @@ export interface TravelSegment {
   arrive_at: string;
   status: SegmentStatus;
   source: string;
+  terminal?: string | null;
 }
 export interface Lodging {
   name: string;
