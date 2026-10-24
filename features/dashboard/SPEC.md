@@ -57,7 +57,7 @@ Ship mock mode first and you're never blocked. B has fixture-backed routes from 
 
 Event payloads by type are documented in `roam_contracts.models.EVENT_TYPES` and exemplified in `contracts/fixtures/events.json`.
 
-## 6. Mock mode (`NEXT_PUBLIC_USE_MOCKS=1`)
+## 6. Mock mode (default; `NEXT_PUBLIC_USE_MOCKS=0` switches to the real gateway)
 
 One `api.ts` client with two implementations behind the same functions:
 - `real`: fetch/EventSource to `NEXT_PUBLIC_GATEWAY_URL` (default `http://localhost:8000`).

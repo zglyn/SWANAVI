@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Kyoto palette: washi paper, sumi ink, torii vermilion, matcha green, indigo for the agent. */
+@theme {
+  --color-paper: #f7f4ee;
+  --color-paper-2: #efe9df;
+  --color-card: #fffdf9;
+  --color-ink: #1b1a17;
+  --color-ink-2: #55524b;
+  --color-ink-3: #8a857a;
+  --color-line: #e2dbcf;
+  --color-torii: #c8371d;
+  --color-torii-soft: #fbe7e2;
+  --color-matcha: #4f7a3f;
+  --color-matcha-soft: #e5efdc;
+  --color-amber: #b7791f;
+  --color-amber-soft: #fbf0d9;
+  --color-indigo: #2f4b9a;
+  --color-indigo-soft: #e3e8f6;
+
+  /* Inspector (ledger side) — always dark, like a terminal. */
+  --color-night: #0f1216;
+  --color-night-2: #171b21;
+  --color-night-3: #232932;
+  --color-night-line: #2c333d;
+  --color-night-text: #e6e9ee;
+  --color-night-dim: #8b95a3;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html { background: var(--color-paper); color: var(--color-ink); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+@keyframes slide-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes shake { 0%,100% { transform: none } 20%,60% { transform: translateX(-4px) } 40%,80% { transform: translateX(4px) } }
+.animate-slide-in { animation: slide-in .35s ease-out both; }
+.animate-shake { animation: shake .4s ease-in-out; }
+
+input[type="range"] { accent-color: var(--color-ink); }

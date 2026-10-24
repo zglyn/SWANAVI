@@ -75,6 +75,7 @@ class Quote(BaseModel):
     cancel_after: datetime  # latest time a refund (EscrowCancel) is possible
     expires_at: datetime
     merchant_signature: str  # hex ed25519 over canonical JSON of all other fields
+    merchant_verified: bool | None = None  # set by the gateway via ledger.has_credential; not signed
 
 
 class PaymentProof(BaseModel):

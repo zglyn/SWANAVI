@@ -37,7 +37,7 @@ everyone else can build against the fake until the real one lands.
 | Merchant catalog / quotes | `contracts/fixtures/merchants.json`, `quotes.json` + merchants' `FakeMerchantDirectory` |
 | Guardrail decisions | `contracts/fixtures/policy_decisions.json` + guardrail's `FakeGuardrail` (pure rules, no keys) |
 | Ledger results | `contracts/fixtures/checkout_result.json` + ledger's `FakeLedger` (in-memory, fake hashes) |
-| Gateway API (dashboard) | `contracts/fixtures/events.json` + mock mode `NEXT_PUBLIC_USE_MOCKS=1` |
+| Gateway API (dashboard) | `contracts/fixtures/events.json` + mock mode (the default) |
 
 Pick real or fake implementations per feature at runtime: `ROAM_FAKES=merchants,ledger` (comma list; empty = all real).
 
@@ -184,7 +184,7 @@ Next.js (App Router) + Tailwind. One page, split screen.
 - **Right:** the inspector, a live timeline of `InspectorEvent`s with color by level (`blocked` = red, big). Tx hashes link
   to the XRPL explorer. It shows the 2-of-2 signer status (Agent ✅ / Guardrail ✅/❌) per transaction, plus wallet balance and total savings.
 - **Demo buttons:** "Simulate Malicious Upsell", "Simulate Rainstorm at 2 PM" and "Reset".
-- **Mock mode:** `NEXT_PUBLIC_USE_MOCKS=1` replays `contracts/fixtures/events.json` on a timer and serves fixture
+- **Mock mode** (default; `NEXT_PUBLIC_USE_MOCKS=0` for real) replays `contracts/fixtures/events.json` on a timer and serves fixture
   responses, so the UI can be finished without a backend.
 
 **Done when:** the full demo can be clicked through in mock mode, and the same UI works against the real gateway.

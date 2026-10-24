@@ -24,6 +24,7 @@ export interface Quote {
   cancel_after: string;
   expires_at: string;
   merchant_signature: string;
+  merchant_verified?: boolean | null; // set by the gateway; not part of the signed quote
 }
 
 export interface Geofence { center: GeoPoint; radius_km: number }

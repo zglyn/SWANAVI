@@ -72,6 +72,8 @@ if result.status == "success":
 return result
 ```
 
+Before emitting `quote.received`, set `quote.merchant_verified = ledger.has_credential(quote.merchant_address)` (display only; the guardrail re-checks on its own).
+
 Keep a `quote_cache` (invoice_id → Quote) and an `escrows` map (invoice_id → EscrowRef) in memory.
 
 ## 7. Scenarios (scripted and deterministic; each step emits events with ~0.5–1 s spacing for the audience)

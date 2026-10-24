@@ -66,6 +66,7 @@ def quote(mid: str, sku: str, title: str, amount: str, viator: str | None, start
         cancel_after=start - timedelta(hours=1),
         expires_at=DAY.replace(hour=23),
         merchant_signature="00" * 64,
+        merchant_verified=mid != "lucky-souvenir",
     )
 
 
