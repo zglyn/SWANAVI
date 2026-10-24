@@ -21,6 +21,7 @@ from roam_contracts.models import (
 )
 from roam_agent.plan import collect_candidates, plan as build_plan, revise
 from roam_agent.store import MemoryPlanStore, PlanRecord
+from roam_agent.swan_http import router as swan_router
 from roam_tools.flights import lookup_flight
 
 app = FastAPI(title="Roam402 gateway")
@@ -180,3 +181,6 @@ async def events():
                 _waiters.remove(queue)
 
     return EventSourceResponse(gen())
+
+
+app.include_router(swan_router)
