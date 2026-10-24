@@ -14,6 +14,10 @@ class HotelStay:
     check_out: date
     rooms: int
     guests: int
+    city_code: str | None = None
+    hotel_ids: tuple[str, ...] = ()
+    city_code_rejected: bool = False
+    hotel_id_rejected: bool = False
 
     @property
     def nights(self) -> int:
@@ -83,6 +87,8 @@ def parse_hotel_request(
     if problems or check_in is None or check_out is None or rooms is None or guests is None:
         return None, problems
 
+    city_code, city_code_rejected = _city_code(segment)
+    hotel_ids, hotel_id_rejected = _hotel_ids(segment)
     return (
         HotelStay(
             segment_id=clean_id,
@@ -91,6 +97,10 @@ def parse_hotel_request(
             check_out=check_out,
             rooms=rooms,
             guests=guests,
+            city_code=city_code,
+            hotel_ids=hotel_ids,
+            city_code_rejected=city_code_rejected,
+            hotel_id_rejected=hotel_id_rejected,
         ),
         [],
     )
@@ -133,6 +143,38 @@ def _parse_date(value: object) -> date | None:
         return date.fromisoformat(candidate)
     except ValueError:
         return None
+
+
+def _city_code(segment: dict) -> tuple[str | None, bool]:
+    if "cityCode" not in segment:
+        return None, False
+    raw = segment.get("cityCode")
+    if isinstance(raw, str) and len(raw.strip()) == 3 and raw.strip().isalpha():
+        return raw.strip().upper(), False
+    return None, True
+
+
+def _hotel_ids(segment: dict) -> tuple[tuple[str, ...], bool]:
+    if "hotelId" not in segment and "hotelIds" not in segment:
+        return (), False
+    raw = segment.get("hotelIds", segment.get("hotelId"))
+    parts: list[object]
+    if isinstance(raw, str):
+        parts = raw.split(",")
+    elif isinstance(raw, list):
+        parts = list(raw)
+    else:
+        return (), True
+    ids: list[str] = []
+    for part in parts:
+        if not isinstance(part, str):
+            continue
+        text = part.strip()
+        if text and text.isalnum() and len(text) <= 12:
+            ids.append(text)
+    if not ids:
+        return (), True
+    return tuple(ids), False
 
 
 def _positive_int(value: object) -> int | None:

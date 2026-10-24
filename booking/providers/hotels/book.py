@@ -1,8 +1,10 @@
 """Book one hotel segment from a trip plan.
 
-The default provider is a deterministic sandbox. Set
-``HOTEL_BOOKING_PROVIDER=live`` only to opt into the live adapter, which
-still refuses production hosts and card data.
+The AgentCore ``handler`` is the supported invoke path and calls ``book``.
+The default provider is a deterministic sandbox. Amadeus test (Hotel Search,
+then Hotel Booking) runs only when ``ROAM_HOTEL_PROVIDER=live`` and
+``AMADEUS_CLIENT_ID``, ``AMADEUS_CLIENT_SECRET``, and ``AMADEUS_HOSTNAME=test``
+are all set.
 """
 
 from __future__ import annotations
@@ -66,14 +68,31 @@ class _Provider(Protocol):
 
 
 def _resolve_provider() -> _Provider:
-    mode = os.environ.get("HOTEL_BOOKING_PROVIDER", "sandbox").strip().lower() or "sandbox"
+    mode = os.environ.get("ROAM_HOTEL_PROVIDER", "sandbox").strip().lower() or "sandbox"
     if mode == "sandbox":
         return SandboxHotelProvider()
-    if mode == "live":
-        from .live import LiveHotelProvider
+    if mode != "live":
+        raise HotelProviderError(f"unknown ROAM_HOTEL_PROVIDER {mode!r}")
+    client_id, client_secret = _amadeus_credentials()
+    # Import only after the test-host gate so a missing or production config
+    # never loads the Amadeus client.
+    from .live import AmadeusHotelClient
 
-        return LiveHotelProvider.from_env()
-    raise HotelProviderError(f"unknown HOTEL_BOOKING_PROVIDER {mode!r}")
+    return AmadeusHotelClient(client_id, client_secret)
+
+
+def _amadeus_credentials() -> tuple[str, str]:
+    hostname = os.environ.get("AMADEUS_HOSTNAME", "").strip().lower()
+    client_id = os.environ.get("AMADEUS_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("AMADEUS_CLIENT_SECRET", "").strip()
+    if hostname in {"production", "prod", "api.amadeus.com"}:
+        raise HotelProviderError("refusing production Amadeus host")
+    if hostname != "test" or not client_id or not client_secret:
+        raise HotelProviderError(
+            "Amadeus live hotel booking requires AMADEUS_CLIENT_ID, "
+            "AMADEUS_CLIENT_SECRET, and AMADEUS_HOSTNAME=test"
+        )
+    return client_id, client_secret
 
 
 def _accept(provider: object, raw: object, segment_id: str) -> HotelBookingResult:

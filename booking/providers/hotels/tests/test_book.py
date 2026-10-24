@@ -16,13 +16,17 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from booking.providers.hotels import book  # noqa: E402
+from booking.providers.hotels import TOOL_SPEC, book, handler  # noqa: E402
 
 _HOTEL_ENV = (
+    "ROAM_HOTEL_PROVIDER",
+    "AMADEUS_CLIENT_ID",
+    "AMADEUS_CLIENT_SECRET",
+    "AMADEUS_HOSTNAME",
+    "HOTEL_SANDBOX_FAULT",
     "HOTEL_BOOKING_PROVIDER",
     "HOTEL_BOOKING_API_BASE",
     "HOTEL_BOOKING_API_KEY",
-    "HOTEL_SANDBOX_FAULT",
 )
 
 TRIP_ID = "trip-kyoto-001"
@@ -111,30 +115,63 @@ class HotelBookTests(unittest.TestCase):
         self.assertIsNone(result["confirmationCode"])
         self.assertIn("checkOut must be after checkIn", result["error"])
 
+    def test_agentcore_tool_handler_calls_book(self):
+        self.assertEqual(TOOL_SPEC["name"], "book_hotel")
+        self.assertEqual(TOOL_SPEC["inputSchema"]["required"], ["segment", "travelers", "trip_id"])
+        self.assertIn("AgentCore", TOOL_SPEC["description"])
+
+        event = {"segment": sample_segment(), "travelers": TRAVELERS, "trip_id": TRIP_ID}
+        context = _agentcore_context("hotels___book_hotel")
+
+        self.assertEqual(handler(event, context), book(sample_segment(), TRAVELERS, TRIP_ID))
+        self.assertTrue(handler(event)["confirmationCode"].startswith("SANDBOX-"))
+
+        rejected = handler(event, _agentcore_context("hotels___book_flight"))
+        self.assertEqual(rejected["status"], "failed")
+        self.assertIsNone(rejected["confirmationCode"])
+
     def test_default_provider_does_not_call_the_network(self):
         def boom(*args, **kwargs):
             raise AssertionError("hotel network call")
 
-        with patch("urllib.request.urlopen", boom), patch("booking.providers.hotels.live.post_json", boom):
-            result = book(sample_segment(), TRAVELERS, TRIP_ID)
+        with patch("urllib.request.urlopen", boom):
+            result = handler(
+                {"segment": sample_segment(), "travelers": TRAVELERS, "trip_id": TRIP_ID}
+            )
 
         self.assertEqual(result["status"], "booked")
         self.assertTrue(result["confirmationCode"].startswith("SANDBOX-"))
 
-    def test_live_adapter_refuses_production_without_a_request(self):
-        os.environ["HOTEL_BOOKING_PROVIDER"] = "live"
-        os.environ["HOTEL_BOOKING_API_BASE"] = "https://api.booking.com/v1"
+    def test_live_mode_without_amadeus_config_does_not_call_the_network(self):
+        os.environ["ROAM_HOTEL_PROVIDER"] = "live"
 
         def boom(*args, **kwargs):
-            raise AssertionError("production host was contacted")
+            raise AssertionError("Amadeus was called")
 
-        with patch("urllib.request.urlopen", boom), patch("booking.providers.hotels.live.post_json", boom):
+        with patch("urllib.request.urlopen", boom):
             result = book(sample_segment(), TRAVELERS, TRIP_ID)
 
         self.assertEqual(result["status"], "failed")
         self.assertIsNone(result["confirmationCode"])
         self.assertIsNone(result["price"])
+        self.assertIn("AMADEUS_HOSTNAME=test", result["error"])
+
+    def test_production_hostname_does_not_call_amadeus(self):
+        os.environ["ROAM_HOTEL_PROVIDER"] = "live"
+        os.environ["AMADEUS_HOSTNAME"] = "production"
+        os.environ["AMADEUS_CLIENT_ID"] = "id"
+        os.environ["AMADEUS_CLIENT_SECRET"] = "secret"
+
+        def boom(*args, **kwargs):
+            raise AssertionError("production Amadeus was called")
+
+        with patch("urllib.request.urlopen", boom):
+            result = book(sample_segment(), TRAVELERS, TRIP_ID)
+
+        self.assertEqual(result["status"], "failed")
         self.assertIn("production", result["error"])
+        self.assertIsNone(result["confirmationCode"])
+        self.assertIsNone(result["price"])
 
     def test_card_details_do_not_book_or_charge(self):
         segment = sample_segment()
@@ -143,7 +180,7 @@ class HotelBookTests(unittest.TestCase):
         def boom(*args, **kwargs):
             raise AssertionError("card booking contacted a provider")
 
-        with patch("urllib.request.urlopen", boom), patch("booking.providers.hotels.live.post_json", boom):
+        with patch("urllib.request.urlopen", boom):
             result = book(segment, TRAVELERS, TRIP_ID)
 
         self.assertEqual(result["status"], "needs_user")
@@ -151,34 +188,15 @@ class HotelBookTests(unittest.TestCase):
         self.assertIsNone(result["price"])
         self.assertIn("card", result["error"])
 
-    def test_live_sandbox_payload_has_no_payment(self):
-        os.environ["HOTEL_BOOKING_PROVIDER"] = "live"
-        os.environ["HOTEL_BOOKING_API_BASE"] = "https://sandbox.hotels.test/v1"
-        os.environ["HOTEL_BOOKING_API_KEY"] = "test-key"
-        seen = {}
 
-        def fake_post(url, payload, api_key, timeout=10.0):
-            seen["url"] = url
-            seen["payload"] = payload
-            seen["api_key"] = api_key
-            return {
-                "status": "booked",
-                "confirmationCode": "LIVE-1",
-                "price": {"amount": "10.00", "currency": "USD"},
-                "error": None,
-            }
+class _AgentCoreContext:
+    def __init__(self, tool_name: str):
+        self.client_context = type("ClientContext", (), {})()
+        self.client_context.custom = {"bedrockAgentCoreToolName": tool_name}
 
-        with patch("booking.providers.hotels.live.post_json", fake_post):
-            result = book(sample_segment(), TRAVELERS, TRIP_ID)
 
-        self.assertEqual(result["status"], "booked")
-        self.assertEqual(result["confirmationCode"], "LIVE-1")
-        self.assertEqual(result["price"], {"amount": "10.00", "currency": "USD"})
-        self.assertIn("sandbox.hotels.test", seen["url"])
-        self.assertNotIn("card", str(seen["payload"]).lower())
-        self.assertNotIn("charge", str(seen["payload"]).lower())
-        self.assertEqual(seen["api_key"], "test-key")
-        self.assertEqual(seen["payload"]["segment"]["kind"], "hotel")
+def _agentcore_context(tool_name: str) -> _AgentCoreContext:
+    return _AgentCoreContext(tool_name)
 
 
 if __name__ == "__main__":
