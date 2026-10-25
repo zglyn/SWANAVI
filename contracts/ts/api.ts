@@ -124,7 +124,9 @@ export type EventType =
   | "booking.confirmed" | "booking.cancelled"
   | "weather.alert" | "wallet.updated" | "system.reset"
   | "plan.tool_call" | "plan.candidates" | "plan.ready" | "plan.invalid" | "plan.failed"
-  | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready";
+  | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready"
+  | "chat.delta" | "chat.message" | "brief.updated" | "proposal.ready"
+  | "suggestion.updated" | "itinerary.reflowed";
 
 export interface InspectorEvent {
   id: string;
@@ -162,6 +164,14 @@ export const API = {
   authVerify: "/api/auth/verify",
   authDemo: "/api/auth/demo",
   tripRequest: "/api/trips/request",
+  trips: "/api/trips",
+  trip: (id: string) => `/api/trips/${id}`,
+  tripMessages: (id: string) => `/api/trips/${id}/messages`,
+  tripPlan: (id: string) => `/api/trips/${id}/plan`,
+  tripAlternatives: (id: string, sid: string) => `/api/trips/${id}/suggestions/${sid}/alternatives`,
+  tripSuggestion: (id: string, sid: string) => `/api/trips/${id}/suggestions/${sid}`,
+  tripAcceptAll: (id: string) => `/api/trips/${id}/accept-all`,
+  tripBook: (id: string) => `/api/trips/${id}/book`,
   planFlights: (id: string) => `/api/plans/${id}/flights`,
   planHotels: (id: string) => `/api/plans/${id}/hotels`,
   planChoices: (id: string) => `/api/plans/${id}/choices`,
@@ -438,4 +448,72 @@ export interface SwanView {
   flights: FlightOffer[];
   hotels: HotelOffer[];
   package?: TravelPackage | null;
+}
+
+export type ConversationPhase = "chatting" | "planning" | "proposal" | "review" | "booked";
+export type ChatRole = "user" | "assistant";
+export type ControlType = "chips" | "date_range" | "stepper" | "slider" | "airport" | "tiles";
+export type SuggestionKind = "flight" | "hotel" | "attraction" | "transfer";
+export type SuggestionStatus = "proposed" | "accepted" | "modifying" | "rejected" | "replaced" | "booked";
+export type SuggestionActionName = "accept" | "reject" | "modify" | "undo";
+
+export interface Control {
+  slot: string;
+  type: ControlType;
+  options?: string[] | null;
+  min?: number | null;
+  max?: number | null;
+  value?: unknown;
+}
+export interface ChatAnswer { slot: string; value: unknown }
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  text: string;
+  controls: Control[];
+  answers?: ChatAnswer[] | null;
+  created_at: string;
+}
+export interface TripFacts {
+  destination?: string | null;
+  origin?: TripOrigin | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  outbound_window?: TimeOfDayWindow | null;
+  return_window?: TimeOfDayWindow | null;
+  travellers?: number | null;
+  budget?: Money | null;
+  pace?: Pace | null;
+  interests?: string[];
+  notes?: string | null;
+}
+export interface TripConversation {
+  trip_id: string;
+  phase: ConversationPhase;
+  messages: ChatMessage[];
+  brief: TripFacts;
+  missing: string[];
+}
+export interface Suggestion {
+  id: string;
+  kind: SuggestionKind;
+  status: SuggestionStatus;
+  item: FlightOffer | HotelStay | Stop;
+  why: string[];
+  alternatives_available: boolean;
+  required: boolean;
+}
+export interface Proposal {
+  trip_id: string;
+  package: TravelPackage;
+  suggestions: Suggestion[];
+  totals: PackageTotals;
+}
+export interface SuggestionAction {
+  suggestion_id: string;
+  action: SuggestionActionName;
+  reason?: string | null;
+  alternative_id?: string | null;
+  constraints?: Record<string, unknown> | null;
+  text?: string | null;
 }

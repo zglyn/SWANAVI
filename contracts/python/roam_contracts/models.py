@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, model_validator
 
 Currency = Literal["RLUSD", "XRP"]
 Money = Decimal  # serialized as string, e.g. "15.00"
@@ -453,6 +453,12 @@ EVENT_TYPES = (
     "plan.flights_ready",
     "plan.hotels_ready",
     "plan.package_ready",
+    "chat.delta",
+    "chat.message",
+    "brief.updated",
+    "proposal.ready",
+    "suggestion.updated",
+    "itinerary.reflowed",
 )
 
 # On-ledger conventions shared by ledger (writes), merchants and guardrail (read/verify).
@@ -728,3 +734,179 @@ class SwanView(BaseModel):
     flights: list[FlightOffer] = Field(default_factory=list)
     hotels: list[HotelOffer] = Field(default_factory=list)
     package: TravelPackage | None = None
+
+
+class ConversationPhase(str, Enum):
+    CHATTING = "chatting"
+    PLANNING = "planning"
+    PROPOSAL = "proposal"
+    REVIEW = "review"
+    BOOKED = "booked"
+
+
+class TripFacts(BaseModel):
+    destination: str | None = None
+    origin: TripOrigin | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    outbound_window: TimeOfDayWindow | None = None
+    return_window: TimeOfDayWindow | None = None
+    travellers: int | None = Field(default=None, ge=1)
+    budget: Money | None = None
+    pace: Pace | None = None
+    interests: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+    def missing_required(self) -> list[str]:
+        missing: list[str] = []
+        if not self.destination:
+            missing.append("destination")
+        if not self.start_date or not self.end_date:
+            missing.append("dates")
+        origin = self.origin
+        if origin is None or not (origin.airport_codes or origin.place):
+            missing.append("origin")
+        if self.travellers is None:
+            missing.append("travellers")
+        return missing
+
+    def to_request(self) -> TripRequest:
+        missing = self.missing_required()
+        if missing:
+            raise ValueError("missing " + ", ".join(missing))
+        assert self.destination and self.origin and self.start_date and self.end_date
+        assert self.travellers is not None
+        return TripRequest(
+            destination=self.destination,
+            origin=self.origin,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            outbound_window=self.outbound_window or TimeOfDayWindow.ANY,
+            return_window=self.return_window or TimeOfDayWindow.ANY,
+            travellers=self.travellers,
+            budget=self.budget,
+            notes=self.notes,
+        )
+
+
+class ChatRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ControlType(str, Enum):
+    CHIPS = "chips"
+    DATE_RANGE = "date_range"
+    STEPPER = "stepper"
+    SLIDER = "slider"
+    AIRPORT = "airport"
+    TILES = "tiles"
+
+
+class Control(BaseModel):
+    slot: str
+    type: ControlType
+    options: list[str] | None = None
+    min: float | None = None
+    max: float | None = None
+    value: Any | None = None
+
+
+class ChatAnswer(BaseModel):
+    slot: str
+    value: Any
+
+
+class ChatMessage(BaseModel):
+    id: str
+    role: ChatRole
+    text: str
+    controls: list[Control] = Field(default_factory=list)
+    answers: list[ChatAnswer] | None = None
+    created_at: datetime
+
+
+class TripConversation(BaseModel):
+    trip_id: str
+    phase: ConversationPhase
+    messages: list[ChatMessage] = Field(default_factory=list)
+    brief: TripFacts = Field(default_factory=TripFacts)
+
+    @computed_field
+    @property
+    def missing(self) -> list[str]:
+        return self.brief.missing_required()
+
+
+class SuggestionKind(str, Enum):
+    FLIGHT = "flight"
+    HOTEL = "hotel"
+    ATTRACTION = "attraction"
+    TRANSFER = "transfer"
+
+
+class SuggestionStatus(str, Enum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    MODIFYING = "modifying"
+    REJECTED = "rejected"
+    REPLACED = "replaced"
+    BOOKED = "booked"
+
+
+class Suggestion(BaseModel):
+    id: str
+    kind: SuggestionKind
+    status: SuggestionStatus = SuggestionStatus.PROPOSED
+    item: FlightOffer | HotelStay | Stop
+    why: list[str] = Field(default_factory=list)
+    alternatives_available: bool = False
+    required: bool = False
+
+    @model_validator(mode="after")
+    def item_matches_kind(self) -> Suggestion:
+        expected: type[BaseModel] = {
+            SuggestionKind.FLIGHT: FlightOffer,
+            SuggestionKind.HOTEL: HotelStay,
+            SuggestionKind.ATTRACTION: Stop,
+            SuggestionKind.TRANSFER: Stop,
+        }[self.kind]
+        if not isinstance(self.item, expected):
+            raise ValueError(f"{self.kind.value} suggestion item must be {expected.__name__}")
+        return self
+
+
+class Proposal(BaseModel):
+    trip_id: str
+    package: TravelPackage
+    suggestions: list[Suggestion]
+    totals: PackageTotals
+
+
+class SuggestionActionName(str, Enum):
+    ACCEPT = "accept"
+    REJECT = "reject"
+    MODIFY = "modify"
+    UNDO = "undo"
+
+
+class SuggestionAction(BaseModel):
+    suggestion_id: str
+    action: SuggestionActionName
+    reason: str | None = None
+    alternative_id: str | None = None
+    constraints: dict[str, Any] | None = None
+    text: str | None = None
+
+
+class ScriptedChange(BaseModel):
+    action: SuggestionAction
+    proposal: Proposal
+
+
+class ConversationFixture(BaseModel):
+    conversation: TripConversation
+    proposal: Proposal
+    accept: ScriptedChange
+    modify: ScriptedChange
+    reject: ScriptedChange
