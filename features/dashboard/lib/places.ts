@@ -48,6 +48,70 @@ export function matchCity(query: string): PlaceHit | null {
   return CITIES.find((city) => city.label.toLowerCase().includes(needle) || needle.includes(city.label.toLowerCase())) ?? null;
 }
 
+export function nearestCityName(lat: number, lng: number, maxKm = 40): string | null {
+  let best: { label: string; km: number } | null = null;
+  for (const city of CITIES) {
+    const km = distance(lat, lng, city.lat, city.lng);
+    if (!best || km < best.km) best = { label: city.label, km };
+  }
+  if (!best || best.km > maxKm) return null;
+  return best.label;
+}
+
+const NAMED_STOPS: { label: string; lat: number; lng: number }[] = [
+  { label: "Kansai", lat: 34.4347, lng: 135.244 },
+  { label: "Hotel Granvia Kyoto", lat: 34.9858, lng: 135.7588 },
+  { label: "Hyatt Place Arashiyama", lat: 35.0162, lng: 135.6784 },
+  { label: "Hyatt Regency Osaka", lat: 34.6937, lng: 135.5023 },
+  { label: "Arashiyama Riverside Inn", lat: 35.0162, lng: 135.6784 },
+  { label: "Gion House", lat: 35.0037, lng: 135.7758 },
+  { label: "Arashiyama Bamboo Grove", lat: 35.017, lng: 135.6716 },
+  { label: "Tenryu-ji", lat: 35.0156, lng: 135.6737 },
+  { label: "Fushimi Inari", lat: 34.9671, lng: 135.7727 },
+  { label: "Kinkaku-ji", lat: 35.0394, lng: 135.7292 },
+  { label: "Kiyomizu-dera", lat: 34.9949, lng: 135.785 },
+  { label: "Philosopher's Path", lat: 35.027, lng: 135.798 },
+  { label: "Nishiki Market Food Walk", lat: 35.005, lng: 135.7649 },
+  { label: "Nishiki Market", lat: 35.005, lng: 135.7649 },
+  { label: "Nijo Castle", lat: 35.0142, lng: 135.7481 },
+  { label: "Pontocho", lat: 35.0038, lng: 135.7712 },
+  { label: "Arashiyama Park", lat: 35.0152, lng: 135.6788 },
+  { label: "Kyoto Imperial Palace", lat: 35.0254, lng: 135.7621 },
+  { label: "Kissa Master Matcha Workshop", lat: 35.0136, lng: 135.6779 },
+  { label: "Matcha workshop", lat: 35.0136, lng: 135.6779 },
+  { label: "Gion Tea House", lat: 35.0036, lng: 135.775 },
+  { label: "Tea ceremony", lat: 35.0036, lng: 135.775 },
+  { label: "Fushimi Sake Brewery Tour", lat: 34.9256, lng: 135.7614 },
+  { label: "Arashiyama River Boat", lat: 35.0148, lng: 135.6765 },
+  { label: "Gion Ramen Tasting", lat: 35.0037, lng: 135.7788 },
+  { label: "Arashiyama Bamboo Bike Rentals", lat: 35.017, lng: 135.6713 },
+  { label: "Gion", lat: 35.0037, lng: 135.7758 },
+];
+
+function fold(value: string) {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/** Cities, airports, and named demo stops. No network. */
+export function resolveKnownPlace(query: string): { lat: number; lng: number } | null {
+  const raw = query.trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  for (const airport of AIRPORTS) {
+    if (new RegExp(`\\b${airport.code}\\b`).test(upper)) return { lat: airport.lat, lng: airport.lng };
+  }
+  const needle = fold(raw);
+  const named = [...NAMED_STOPS].sort((a, b) => fold(b.label).length - fold(a.label).length);
+  for (const place of named) {
+    const label = fold(place.label);
+    if (label.length < 3) continue;
+    if (needle.includes(label)) return { lat: place.lat, lng: place.lng };
+  }
+  const city = matchCity(raw);
+  if (city) return { lat: city.lat, lng: city.lng };
+  return null;
+}
+
 export async function suggestPlaces(query: string, signal?: AbortSignal): Promise<PlaceHit[]> {
   const needle = query.trim().toLowerCase();
   if (needle.length < 2) return [];

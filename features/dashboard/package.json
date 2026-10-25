@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "leaflet": "1.9.4",
+    "mapbox-gl": "3.16.0",
     "maplibre-gl": "5.6.1",
     "next": "15.5.28",
     "react": "19.1.0",
