@@ -44,6 +44,7 @@ export interface RoamClient {
   submitAttractions(id: string, selection: AttractionSelection): Promise<{ ok: boolean; phase: string }>;
   choosePackage(id: string, choices: PackageChoices): Promise<{ ok: boolean; phase: string }>;
   getPackage(id: string): Promise<TravelPackage>;
+  createTrip(message: string): Promise<{ trip_id: string }>;
 }
 
 export function getClient(): RoamClient {

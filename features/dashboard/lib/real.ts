@@ -108,4 +108,5 @@ export const realClient: RoamClient = {
   choosePackage: (id: string, choices: PackageChoices) =>
     call(API.planChoices(id), { method: "POST", body: JSON.stringify(choices) }),
   getPackage: (id: string) => call<TravelPackage>(API.planPackage(id)),
+  createTrip: (message: string) => call(API.trips, { method: "POST", body: JSON.stringify({ message }) }),
 };

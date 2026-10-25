@@ -347,4 +347,7 @@ export const mockClient: RoamClient = {
     return () => state.listeners.delete(onEvent);
   },
   ...swanMock,
+  async createTrip(_message: string) {
+    return { trip_id: "kyoto-demo" };
+  },
 };
