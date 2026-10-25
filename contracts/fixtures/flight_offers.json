@@ -1,5 +1,54 @@
 [
   {
+    "id": "ret-jl",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "JL",
+        "number": "JL002",
+        "from_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "to_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "depart_at": "2026-11-16T18:20:00+09:00",
+        "arrive_at": "2026-11-16T11:40:00-08:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "JL",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 620,
+    "price": "690.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 111.83,
+    "why": [
+      "leaves in your evening window",
+      "your favourite airline",
+      "refundable fare"
+    ],
+    "deep_link": "https://example.com/swan/flights/ret-jl",
+    "direction": "return"
+  },
+  {
     "id": "out-jl",
     "segments": [
       {
@@ -39,8 +88,12 @@
       "refundable": true,
       "changeable": true
     },
-    "score": 0.0,
-    "why": [],
+    "score": 110.83,
+    "why": [
+      "leaves in your morning window",
+      "your favourite airline",
+      "refundable fare"
+    ],
     "deep_link": "https://example.com/swan/flights/out-jl",
     "direction": "outbound"
   },
@@ -84,54 +137,12 @@
       "refundable": true,
       "changeable": true
     },
-    "score": 0.0,
-    "why": [],
-    "deep_link": "https://example.com/swan/flights/out-ua",
-    "direction": "outbound"
-  },
-  {
-    "id": "out-red",
-    "segments": [
-      {
-        "mode": "flight",
-        "carrier": "UA",
-        "number": "UA35",
-        "from_place": {
-          "code": "SFO",
-          "name": "San Francisco",
-          "location": {
-            "lat": 37.6213,
-            "lng": -122.379
-          }
-        },
-        "to_place": {
-          "code": "KIX",
-          "name": "Kansai",
-          "location": {
-            "lat": 34.4347,
-            "lng": 135.244
-          }
-        },
-        "depart_at": "2026-11-13T00:40:00-08:00",
-        "arrive_at": "2026-11-14T05:10:00+09:00",
-        "status": "scheduled",
-        "source": "fixture",
-        "terminal": null
-      }
+    "score": 86.83,
+    "why": [
+      "leaves in your morning window",
+      "refundable fare"
     ],
-    "carrier": "UA",
-    "cabin": "economy",
-    "stops": 0,
-    "duration_min": 690,
-    "price": "590.00",
-    "currency": "USD",
-    "fare_conditions": {
-      "refundable": false,
-      "changeable": true
-    },
-    "score": 0.0,
-    "why": [],
-    "deep_link": "https://example.com/swan/flights/out-red",
+    "deep_link": "https://example.com/swan/flights/out-ua",
     "direction": "outbound"
   },
   {
@@ -174,55 +185,13 @@
       "refundable": true,
       "changeable": true
     },
-    "score": 0.0,
-    "why": [],
+    "score": 43.83,
+    "why": [
+      "outside the morning window",
+      "refundable fare"
+    ],
     "deep_link": "https://example.com/swan/flights/out-aa",
     "direction": "outbound"
-  },
-  {
-    "id": "ret-jl",
-    "segments": [
-      {
-        "mode": "flight",
-        "carrier": "JL",
-        "number": "JL002",
-        "from_place": {
-          "code": "KIX",
-          "name": "Kansai",
-          "location": {
-            "lat": 34.4347,
-            "lng": 135.244
-          }
-        },
-        "to_place": {
-          "code": "SFO",
-          "name": "San Francisco",
-          "location": {
-            "lat": 37.6213,
-            "lng": -122.379
-          }
-        },
-        "depart_at": "2026-11-16T18:20:00+09:00",
-        "arrive_at": "2026-11-16T11:40:00-08:00",
-        "status": "scheduled",
-        "source": "fixture",
-        "terminal": null
-      }
-    ],
-    "carrier": "JL",
-    "cabin": "economy",
-    "stops": 0,
-    "duration_min": 620,
-    "price": "690.00",
-    "currency": "USD",
-    "fare_conditions": {
-      "refundable": true,
-      "changeable": true
-    },
-    "score": 0.0,
-    "why": [],
-    "deep_link": "https://example.com/swan/flights/ret-jl",
-    "direction": "return"
   },
   {
     "id": "ret-ua",
@@ -264,9 +233,61 @@
       "refundable": false,
       "changeable": true
     },
-    "score": 0.0,
-    "why": [],
+    "score": 38.33,
+    "why": [
+      "outside the evening window",
+      "lands while you would be asleep"
+    ],
     "deep_link": "https://example.com/swan/flights/ret-ua",
     "direction": "return"
+  },
+  {
+    "id": "out-red",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA35",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "KIX",
+          "name": "Kansai",
+          "location": {
+            "lat": 34.4347,
+            "lng": 135.244
+          }
+        },
+        "depart_at": "2026-11-13T00:40:00-08:00",
+        "arrive_at": "2026-11-14T05:10:00+09:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 690,
+    "price": "590.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": false,
+      "changeable": true
+    },
+    "score": -0.5,
+    "why": [
+      "outside the morning window",
+      "red-eye, which you asked to avoid",
+      "lands while you would be asleep"
+    ],
+    "deep_link": "https://example.com/swan/flights/out-red",
+    "direction": "outbound"
   }
 ]

@@ -18,11 +18,13 @@ from roam_contracts.models import (
     HotelOffer,
     HotelStay,
     Itinerary,
+    ItineraryDay,
     Lodging,
     PackageChoices,
     PackageTotals,
     Pace,
     PlanSelection,
+    Stop,
     StopKind,
     SwanPhase,
     TravelPackage,
@@ -30,10 +32,12 @@ from roam_contracts.models import (
     TripRequest,
     UserProfile,
 )
+from roam_agent.plan import DEPLANE_MIN, arrival_lodging, build_legs, schedule_stops
 from roam_agent.plan import plan as build_plan
 from roam_agent.profile_crypto import planning_profile
 from roam_tools.flight_search import search_flights
 from roam_tools.hotel_search import search_hotels
+from roam_tools.transport import arrival_transfer_minutes, get_transport_profile
 
 log = logging.getLogger("swan.autopilot")
 ROOT = Path(__file__).resolve().parents[3]
@@ -386,9 +390,25 @@ def _lighten_first_day(itinerary: Itinerary, outbound: FlightOffer | None, profi
             if seen > 1:
                 continue
         kept.append(stop)
-    days = [first.model_copy(update={"stops": kept}), *itinerary.days[1:]]
+    if len(kept) == len(first.stops):
+        return itinerary
+    days = [_reflow_day(first, kept, itinerary.brief), *itinerary.days[1:]]
     warnings = [*itinerary.warnings, "Lighter first day after a long flight."]
     return itinerary.model_copy(update={"days": days, "warnings": warnings})
+
+
+def _reflow_day(day: ItineraryDay, stops: list[Stop], brief: TripBrief) -> ItineraryDay:
+    fixed = [stop for stop in stops if stop.kind not in {StopKind.ATTRACTION, StopKind.MERCHANT}]
+    visits = [stop for stop in stops if stop.kind in {StopKind.ATTRACTION, StopKind.MERCHANT}]
+    anchor = next((stop for stop in fixed if stop.kind == StopKind.LODGING and stop.id == "check-in"), None)
+    if anchor is None:
+        anchor = next((stop for stop in fixed if stop.kind == StopKind.ARRIVAL), None)
+    if anchor is not None and visits:
+        visits = schedule_stops(visits, anchor.location, anchor.end + timedelta(minutes=15), brief.preferred_modes)
+    ordered = sorted([*fixed, *visits], key=lambda stop: stop.start)
+    code = brief.arrival.to_place.code if brief.arrival and brief.arrival.to_place else None
+    transfer = arrival_transfer_minutes(get_transport_profile(brief.destination), code)
+    return day.model_copy(update={"stops": ordered, "legs": build_legs(ordered, brief.preferred_modes, transfer)})
 
 
 def _fit_budget(itinerary: Itinerary, trip: SwanTrip, outbound, inbound, stays: list[HotelOffer]) -> Itinerary:
@@ -441,23 +461,17 @@ def _shift_day_one(itinerary: Itinerary, arrival: datetime) -> Itinerary:
     brief = itinerary.brief.model_copy(deep=True)
     if brief.arrival is not None:
         brief.arrival = brief.arrival.model_copy(update={"arrive_at": arrival})
-    clock = arrival + timedelta(minutes=90)
-    opening = datetime.fromisoformat(f"{arrival.date().isoformat()}T{brief.daily_start}:00").replace(tzinfo=arrival.tzinfo)
-    if clock < opening:
-        clock = opening
+    code = brief.arrival.to_place.code if brief.arrival and brief.arrival.to_place else None
+    transfer = arrival_transfer_minutes(get_transport_profile(brief.destination), code)
     stops = []
     for stop in first.stops:
-        if stop.kind not in {StopKind.ATTRACTION, StopKind.MERCHANT}:
-            if stop.kind == StopKind.ARRIVAL:
-                stops.append(stop.model_copy(update={"start": arrival, "end": arrival + timedelta(minutes=20)}))
-            else:
-                stops.append(stop)
-            continue
-        duration = stop.end - stop.start
-        moved = stop.model_copy(update={"start": clock, "end": clock + duration})
-        stops.append(moved)
-        clock = moved.end + timedelta(minutes=20)
-    days = [first.model_copy(update={"stops": stops}), *itinerary.days[1:]]
+        if stop.kind == StopKind.ARRIVAL:
+            stops.append(stop.model_copy(update={"start": arrival, "end": arrival + timedelta(minutes=DEPLANE_MIN)}))
+        elif stop.kind == StopKind.LODGING and stop.id == "check-in" and brief.lodging:
+            stops.append(arrival_lodging(brief, arrival + timedelta(minutes=DEPLANE_MIN + transfer)))
+        else:
+            stops.append(stop)
+    days = [_reflow_day(first, stops, brief), *itinerary.days[1:]]
     return itinerary.model_copy(update={"brief": brief, "days": days})
 
 

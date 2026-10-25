@@ -1,33 +1,5 @@
 [
   {
-    "id": "inn-arashiyama",
-    "name": "Arashiyama Riverside Inn",
-    "brand": null,
-    "stars": 4.0,
-    "location": {
-      "lat": 35.0162,
-      "lng": 135.6784
-    },
-    "area": "Arashiyama",
-    "price_per_night": "180",
-    "total": "360",
-    "currency": "USD",
-    "amenities": [
-      "wifi",
-      "breakfast"
-    ],
-    "refundable": true,
-    "avg_travel_min_to_attractions": 0,
-    "score": 0.0,
-    "why": [],
-    "image_url": null,
-    "source": "provider",
-    "quote": null,
-    "deep_link": "https://example.com/swan/hotels/inn-arashiyama",
-    "check_in": null,
-    "check_out": null
-  },
-  {
     "id": "hyatt-arashiyama",
     "name": "Hyatt Place Arashiyama",
     "brand": "Hyatt",
@@ -46,15 +18,21 @@
       "gym"
     ],
     "refundable": true,
-    "avg_travel_min_to_attractions": 0,
-    "score": 0.0,
-    "why": [],
+    "avg_travel_min_to_attractions": 38,
+    "score": 79.0,
+    "why": [
+      "38 min average to your picks",
+      "Hyatt: you're a member",
+      "4 stars",
+      "has wifi, breakfast",
+      "refundable"
+    ],
     "image_url": null,
     "source": "provider",
     "quote": null,
     "deep_link": "https://example.com/swan/hotels/hyatt-arashiyama",
-    "check_in": null,
-    "check_out": null
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-16"
   },
   {
     "id": "gion-house",
@@ -73,9 +51,15 @@
       "wifi"
     ],
     "refundable": true,
-    "avg_travel_min_to_attractions": 0,
-    "score": 0.0,
-    "why": [],
+    "avg_travel_min_to_attractions": 24,
+    "score": 75.5,
+    "why": [
+      "24 min average to your picks",
+      "3 stars",
+      "refundable",
+      "Swanavi merchant: pay with your wallet",
+      "save 40 RLUSD vs the aggregator"
+    ],
     "image_url": null,
     "source": "merchant_mcp",
     "quote": {
@@ -101,8 +85,41 @@
       "merchant_verified": true
     },
     "deep_link": null,
-    "check_in": null,
-    "check_out": null
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-16"
+  },
+  {
+    "id": "inn-arashiyama",
+    "name": "Arashiyama Riverside Inn",
+    "brand": null,
+    "stars": 4.0,
+    "location": {
+      "lat": 35.0162,
+      "lng": 135.6784
+    },
+    "area": "Arashiyama",
+    "price_per_night": "180",
+    "total": "360",
+    "currency": "USD",
+    "amenities": [
+      "wifi",
+      "breakfast"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 38,
+    "score": 64.0,
+    "why": [
+      "38 min average to your picks",
+      "4 stars",
+      "has wifi, breakfast",
+      "refundable"
+    ],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": "https://example.com/swan/hotels/inn-arashiyama",
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-16"
   },
   {
     "id": "osaka-hyatt",
@@ -123,14 +140,20 @@
       "pool"
     ],
     "refundable": true,
-    "avg_travel_min_to_attractions": 0,
-    "score": 0.0,
-    "why": [],
+    "avg_travel_min_to_attractions": 187,
+    "score": -71.0,
+    "why": [
+      "187 min average to your picks",
+      "Hyatt: you're a member",
+      "4 stars",
+      "has wifi, breakfast",
+      "refundable"
+    ],
     "image_url": null,
     "source": "provider",
     "quote": null,
     "deep_link": "https://example.com/swan/hotels/osaka-hyatt",
-    "check_in": null,
-    "check_out": null
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-16"
   }
 ]

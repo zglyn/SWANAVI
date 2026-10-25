@@ -22,6 +22,7 @@ from roam_contracts.models import (
     Priority,
     StopKind,
     SwanPhase,
+    TravelPackage,
     TripRequest,
     UserProfile,
 )
@@ -228,3 +229,38 @@ def test_package_fixture_has_return_flight():
     payload = json.loads((FIXTURES / "package_kyoto.json").read_text())
     assert payload["return"]["carrier"] == "JL"
     assert payload["hotels"][0]["offer"]["brand"] == "Hyatt"
+
+
+def _coherent(package):
+    hotel = package.hotels[0].offer
+    first = package.itinerary.days[0]
+    titles = [stop.title for stop in first.stops]
+    assert f"Check in at {hotel.name}" in titles or f"Drop bags at {hotel.name}" in titles
+    assert first.stops[0].kind == StopKind.ARRIVAL
+    assert first.stops[1].kind == StopKind.LODGING
+    for day in package.itinerary.days:
+        for left, right in zip(day.stops, day.stops[1:]):
+            assert right.start >= left.end
+        assert [(leg.from_stop_id, leg.to_stop_id) for leg in day.legs] == [
+            (left.id, right.id) for left, right in zip(day.stops, day.stops[1:])
+        ]
+        for leg, left, right in zip(day.legs, day.stops, day.stops[1:]):
+            assert leg.minutes <= (right.start - left.end).total_seconds() / 60
+            assert leg.minutes < 240
+
+
+def test_itinerary_matches_the_chosen_hotel_and_explains_every_gap():
+    trip = begin("demo", _request(), _profile())
+    _coherent(trip.package)
+    first_leg = trip.package.itinerary.days[0].legs[0]
+    assert first_leg.mode.value == "transit"
+    assert first_leg.minutes >= 60
+    assert all(hotel.avg_travel_min_to_attractions > 0 for hotel in trip.hotels)
+    apply_choices(trip, PackageChoices(outbound_id="out-red"))
+    _coherent(trip.package)
+    assert trip.package.itinerary.days[0].stops[1].title.startswith("Drop bags")
+
+
+def test_fixture_package_is_coherent():
+    payload = json.loads((FIXTURES / "package_kyoto.json").read_text())
+    _coherent(TravelPackage.model_validate(payload))

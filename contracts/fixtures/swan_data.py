@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -20,10 +22,7 @@ from roam_contracts.models import (
     HotelOffer,
     HotelPreferences,
     HotelSource,
-    HotelStay,
-    Itinerary,
     LoyaltyProgram,
-    PackageTotals,
     PlaceRef,
     Quote,
     SeatPref,
@@ -120,6 +119,9 @@ def _segment(carrier: str, number: str, origin: str, dest: str, depart: datetime
     )
 
 
+AIRLINE_SITES = {"JL": "https://www.jal.co.jp", "UA": "https://www.united.com", "AA": "https://www.aa.com"}
+
+
 def flight_offers() -> list[FlightOffer]:
     sfo = (37.6213, -122.379)
     kix = (34.4347, 135.244)
@@ -143,7 +145,7 @@ def flight_offers() -> list[FlightOffer]:
             fare_conditions=FareConditions(refundable=refundable, changeable=True),
             score=0,
             why=[],
-            deep_link=f"https://example.com/swan/flights/{key}",
+            deep_link=f"{AIRLINE_SITES[carrier]}/book/{key}",
             direction=direction,
         )
 
@@ -198,7 +200,7 @@ def hotel_catalog() -> list[HotelOffer]:
             amenities=["wifi", "breakfast"],
             refundable=True,
             source=HotelSource.PROVIDER,
-            deep_link="https://example.com/swan/hotels/inn-arashiyama",
+            deep_link="https://www.booking.com/hotel/jp/arashiyama-riverside-inn",
         ),
         HotelOffer(
             id="hyatt-arashiyama",
@@ -212,7 +214,7 @@ def hotel_catalog() -> list[HotelOffer]:
             amenities=["wifi", "breakfast", "gym"],
             refundable=True,
             source=HotelSource.PROVIDER,
-            deep_link="https://example.com/swan/hotels/hyatt-arashiyama",
+            deep_link="https://www.hyatt.com/hyatt-place/kyoto-arashiyama",
         ),
         HotelOffer(
             id="gion-house",
@@ -241,67 +243,35 @@ def hotel_catalog() -> list[HotelOffer]:
             amenities=["wifi", "breakfast", "pool"],
             refundable=True,
             source=HotelSource.PROVIDER,
-            deep_link="https://example.com/swan/hotels/osaka-hyatt",
+            deep_link="https://www.hyatt.com/hyatt-regency/osaka",
         ),
     ]
 
 
-def package(itinerary: Itinerary, flights: list[FlightOffer], hotels: list[HotelOffer]) -> TravelPackage:
-    outbound = next(item for item in flights if item.id == "out-jl").model_copy(update={
-        "score": 88,
-        "why": ["your favourite airline", "leaves in your morning window"],
-    })
-    inbound = next(item for item in flights if item.id == "ret-jl").model_copy(update={
-        "score": 84,
-        "why": ["your favourite airline", "leaves in your evening window"],
-    })
-    stay = next(item for item in hotels if item.id == "hyatt-arashiyama").model_copy(update={
-        "score": 91,
-        "avg_travel_min_to_attractions": 12,
-        "why": ["12 min average to your picks", "Hyatt: you're a member"],
-    })
-    activities = itinerary.bookable_total
-    flights_total = outbound.price + inbound.price
-    hotels_total = stay.total
-    savings = Decimal("0")
-    if stay.quote and stay.quote.viator_price:
-        savings = stay.quote.viator_price - stay.quote.amount
-    return TravelPackage(
-        plan_id=itinerary.plan_id,
-        outbound=outbound,
-        return_flight=inbound,
-        hotels=[HotelStay(offer=stay, check_in="2026-11-14", check_out="2026-11-16")],
-        itinerary=itinerary,
-        totals=PackageTotals(
-            flights=flights_total,
-            hotels=hotels_total,
-            activities=activities,
-            total=flights_total + hotels_total + activities,
-            currency="USD",
-            savings=savings,
-        ),
-        reasons=[
-            "JL001 is your favourite airline and leaves in the morning window.",
-            "Hyatt Place Arashiyama is a favourite brand near the western temples.",
-        ],
-    )
-
-
-def write_swan(folder: Path, itinerary: Itinerary) -> None:
+def write_swan(folder: Path, plan_id: str) -> TravelPackage:
     def dump(name: str, obj) -> None:
         if isinstance(obj, list):
             data = [item.model_dump(mode="json", by_alias=True) for item in obj]
         else:
             data = obj.model_dump(mode="json", by_alias=True)
-        (folder / name).write_text(__import__("json").dumps(data, indent=2) + "\n")
+        (folder / name).write_text(json.dumps(data, indent=2) + "\n")
 
     people = profile()
     request = trip_request()
-    flights = flight_offers()
-    hotels = hotel_catalog()
-    built = package(itinerary, flights, hotels)
     dump("profile.json", people)
     dump("trip_request_kyoto.json", request)
-    dump("flight_offers.json", flights)
-    dump("hotel_offers.json", hotels)
-    dump("package_kyoto.json", built)
+    dump("flight_offers.json", flight_offers())
+    dump("hotel_offers.json", hotel_catalog())
+
+    # The search tools read the two catalogs just written, so the package below
+    # is what the planner really produces for this profile, not a hand-made copy.
+    os.environ.pop("ROAM_SCRIPTED_AGENT", None)
+    from roam_agent.autopilot import begin
+
+    trip = begin(people.user_id, request, people, plan_id=plan_id)
+    if trip.package is None:
+        raise RuntimeError("autopilot did not reach a package")
+    dump("flight_offers.json", trip.flights)
+    dump("hotel_offers.json", trip.hotels)
+    dump("package_kyoto.json", trip.package)
+    return trip.package
