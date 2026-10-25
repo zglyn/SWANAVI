@@ -8,6 +8,7 @@ import { Photo } from "@/components/swan/Photo";
 import candidatesFx from "@fixtures/candidates_kyoto.json";
 import { getClient } from "@/lib/client";
 import { formatDateRange, nightsBetween } from "@/lib/format";
+import { fetchOsmAttractions } from "@/lib/overpass";
 
 const LEVELS: AmountLevel[] = ["none", "a_little", "some", "lots"];
 const LEVEL_LABEL = ["none", "a little", "some", "lots"];
@@ -36,7 +37,7 @@ export default function AttractionsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const client = useMemo(getClient, []);
-  const candidates = (candidatesFx as { candidates: Candidate[] }).candidates;
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [request, setRequest] = useState<TripRequest | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [density, setDensity] = useState<"light" | "balanced" | "packed">("balanced");
@@ -46,12 +47,35 @@ export default function AttractionsPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([client.getSwan(params.id), client.getProfile()])
-      .then(([view, found]) => {
+      .then(async ([view, found]) => {
+        if (cancelled) return;
         setRequest(view.request);
         setProfile(found);
+        const fromApi = view.candidates?.candidates ?? [];
+        if (fromApi.length) {
+          setCandidates(fromApi);
+          return;
+        }
+        const destination = view.request.destination;
+        if (destination.toLowerCase().includes("kyoto")) {
+          setCandidates((candidatesFx as { candidates: Candidate[] }).candidates);
+          return;
+        }
+        try {
+          const live = await fetchOsmAttractions(destination, found?.travel.interests ?? []);
+          if (!cancelled) setCandidates(live);
+        } catch {
+          if (!cancelled) setCandidates([]);
+        }
       })
-      .catch(() => setRequest(null));
+      .catch(() => {
+        if (!cancelled) setRequest(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [client, params.id]);
 
   const ranked = useMemo(() => rankForProfile(candidates, profile), [candidates, profile]);

@@ -65,6 +65,7 @@ def _view(trip: SwanTrip) -> SwanView:
         flights=trip.flights,
         hotels=trip.hotels,
         package=trip.package,
+        candidates=trip.candidates,
     )
 
 

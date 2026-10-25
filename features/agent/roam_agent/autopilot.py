@@ -12,6 +12,8 @@ from pathlib import Path
 from roam_contracts.models import (
     AttractionSelection,
     Autonomy,
+    Candidate,
+    CandidateKind,
     CandidateSet,
     Density,
     FlightOffer,
@@ -35,19 +37,25 @@ from roam_contracts.models import (
 from roam_agent.plan import DEPLANE_MIN, arrival_lodging, build_legs, schedule_stops
 from roam_agent.plan import plan as build_plan
 from roam_agent.profile_crypto import planning_profile
+from roam_tools.attractions import search_attractions
 from roam_tools.flight_search import search_flights
 from roam_tools.hotel_search import search_hotels
 from roam_tools.transport import arrival_transfer_minutes, get_transport_profile
 
 log = logging.getLogger("swan.autopilot")
 ROOT = Path(__file__).resolve().parents[3]
-CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
 PACKAGE = ROOT / "contracts" / "fixtures" / "package_kyoto.json"
 CITY_AIRPORTS = {
     "kyoto": ["KIX", "ITM"],
     "osaka": ["KIX", "ITM"],
     "tokyo": ["HND", "NRT"],
     "san francisco": ["SFO", "OAK", "SJC"],
+    "london": ["LHR", "LGW", "STN"],
+    "paris": ["CDG", "ORY"],
+    "new york": ["JFK", "EWR", "LGA"],
+    "los angeles": ["LAX"],
+    "seattle": ["SEA"],
+    "chicago": ["ORD", "MDW"],
 }
 AMOUNT_WEIGHT = {"none": 0, "a_little": 1, "some": 2, "lots": 4}
 DENSITY_CAP = {Density.LIGHT: 2, Density.BALANCED: 3, Density.PACKED: 4}
@@ -69,6 +77,7 @@ class SwanTrip:
     hotel_ids: list[str] = field(default_factory=list)
     package: TravelPackage | None = None
     chosen_ids: list[str] = field(default_factory=list)
+    candidates: CandidateSet | None = None
 
 
 def begin(user_id: str, request: TripRequest, profile: UserProfile, plan_id: str | None = None) -> SwanTrip:
@@ -80,6 +89,7 @@ def begin(user_id: str, request: TripRequest, profile: UserProfile, plan_id: str
     )
     if request.autonomy.attractions == Autonomy.I_CHOOSE:
         trip.phase = SwanPhase.ATTRACTIONS
+        trip.candidates = _pool(trip)
         log.info("swan %s waiting_attractions", trip.plan_id)
         return trip
     return advance(trip)
@@ -135,7 +145,8 @@ def advance(trip: SwanTrip) -> SwanTrip:
             trip.outbound_id = outbound[0].id
         if inbound:
             trip.return_id = inbound[0].id
-    pool = _pool()
+    pool = _pool(trip)
+    trip.candidates = pool
     trip.chosen_ids = pick_attractions(trip.profile, trip.selection, pool, _nights(trip.request))
     _ensure_hotels(trip)
     if trip.request.autonomy.hotels == Autonomy.I_CHOOSE and not trip.hotel_ids:
@@ -226,8 +237,16 @@ def PACE_FROM_PROFILE(profile: UserProfile) -> Density:
     return {Pace.RELAXED: Density.LIGHT, Pace.BALANCED: Density.BALANCED, Pace.PACKED: Density.PACKED}[profile.travel.pace]
 
 
-def _pool() -> CandidateSet:
-    return CandidateSet.model_validate(json.loads(CANDIDATES.read_text()))
+def _pool(trip: SwanTrip) -> CandidateSet:
+    if trip.candidates and trip.candidates.candidates:
+        return trip.candidates
+    interests = trip.profile.travel.interests
+    found = search_attractions(trip.request.destination, interests=interests, limit=24)
+    candidates = [
+        Candidate(id=item.id, kind=CandidateKind.ATTRACTION, attraction=item)
+        for item in found
+    ]
+    return CandidateSet(plan_id=trip.plan_id, candidates=candidates, available_hours=float(18))
 
 
 def _nights(request: TripRequest) -> int:
@@ -238,11 +257,24 @@ def _nights(request: TripRequest) -> int:
 
 def _airports(request: TripRequest, profile: UserProfile) -> tuple[list[str], list[str]]:
     if request.origin.from_home:
-        origins = profile.home.airport_codes
+        origins = list(profile.home.airport_codes)
     else:
-        origins = request.origin.airport_codes or CITY_AIRPORTS.get((request.origin.place or "").lower(), [])
+        origins = list(request.origin.airport_codes or CITY_AIRPORTS.get((request.origin.place or "").lower(), []))
     destination = request.destination.split(",")[0].strip().lower()
-    return origins or ["SFO"], CITY_AIRPORTS.get(destination, ["KIX"])
+    destinations = list(CITY_AIRPORTS.get(destination, []))
+    if not destinations:
+        try:
+            from roam_tools.aviationstack import access_key, airports_for_place
+
+            if access_key():
+                destinations = airports_for_place(request.destination)
+        except Exception:
+            destinations = []
+    if not origins:
+        origins = list(profile.home.airport_codes) or ["SFO"]
+    if not destinations:
+        log.warning("no airport codes for %s", request.destination)
+    return origins, destinations
 
 
 def _prev(day: str) -> str:
@@ -272,10 +304,30 @@ def _ensure_flights(trip: SwanTrip) -> None:
     trip.flights = sorted(merged.values(), key=lambda item: item.score, reverse=True)
 
 
+def _destination_point(destination: str) -> dict | None:
+    try:
+        import httpx
+
+        response = httpx.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": destination, "format": "json", "limit": 1},
+            headers={"User-Agent": "SwanaviTravelAgent/1.0"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        rows = response.json()
+        if not rows:
+            return None
+        return {"id": "destination", "lat": float(rows[0]["lat"]), "lng": float(rows[0]["lon"]), "weight": 1}
+    except Exception:
+        return None
+
+
 def _ensure_hotels(trip: SwanTrip) -> None:
     if trip.hotels:
         return
-    pool = _pool()
+    pool = _pool(trip)
+    trip.candidates = pool
     by_id = {item.id: item for item in pool.candidates}
     points = []
     nights = _nights(trip.request)
@@ -285,11 +337,16 @@ def _ensure_hotels(trip: SwanTrip) -> None:
         if candidate is None:
             continue
         location = candidate.attraction.location if candidate.attraction else candidate.merchant.location
+        if location is None:
+            continue
         day = (start + timedelta(days=min(index, nights - 1))).isoformat()
         weight = 2 if trip.selection and chosen in trip.selection.must_visit else 1
         points.append({"id": chosen, "lat": location.lat, "lng": location.lng, "day": day, "weight": weight})
     if not points:
-        points = [{"id": "kyoto", "lat": 35.0116, "lng": 135.7681, "day": trip.request.start_date, "weight": 1}]
+        fallback = _destination_point(trip.request.destination)
+        if fallback:
+            fallback["day"] = trip.request.start_date
+            points = [fallback]
     prefs = trip.profile.hotels
     members = [item.program for item in prefs.loyalty if item.number]
     trip.hotels = search_hotels(
@@ -361,7 +418,7 @@ def _brief(trip: SwanTrip, outbound: FlightOffer | None, inbound: FlightOffer | 
     pace = PACE[density]
     return TripBrief(
         destination=trip.request.destination,
-        timezone="Asia/Tokyo",
+        timezone="UTC",
         arrival=outbound.segments[-1] if outbound else None,
         departure=inbound.segments[0] if inbound else None,
         lodging=lodging,

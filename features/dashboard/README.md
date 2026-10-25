@@ -14,13 +14,20 @@ Next.js (App Router) + Tailwind split-screen UI. Spec: `docs/SPEC.md` §4.5.
 ```bash
 cd features/dashboard
 pnpm install
-pnpm dev            # http://localhost:3000 (landing) and /dashboard: mock data by default
-NEXT_PUBLIC_USE_MOCKS=0 pnpm dev   # talk to the real gateway at NEXT_PUBLIC_GATEWAY_URL (default :8000)
+pnpm dev:mock       # browser mock (Kyoto fixtures for flights/hotels)
+# Real destination data needs the Python gateway plus:
+#   AVIATIONSTACK_ACCESS_KEY, HOTEL_SEARCH_PROVIDER=osm (default),
+#   optional ORS_API_KEY / ROAM_ROUTING=ors, NEXT_PUBLIC_MAPBOX_TOKEN
+NEXT_PUBLIC_USE_MOCKS=0 pnpm dev   # talk to the gateway at NEXT_PUBLIC_GATEWAY_URL
 ```
 
 ## Maps
 
 Set `NEXT_PUBLIC_MAPBOX_TOKEN` to a URL-restricted public `pk.` token for the Mapbox Standard basemap. Leave it unset to use the OpenFreeMap positron basemap through MapLibre. Do not put a secret `sk.` token in this variable. The page ships the value to the browser.
+
+## Live trip data
+
+Flights use Aviationstack schedules (no fares) when `AVIATIONSTACK_ACCESS_KEY` is set. Hotels use OpenStreetMap via Overpass (`HOTEL_SEARCH_PROVIDER=osm`). Attractions use Overpass for the trip destination. The in-browser mock still serves Kyoto fixtures for flights and hotels; point `NEXT_PUBLIC_USE_MOCKS=0` at a gateway that has those env vars.
 
 ## Layout
 

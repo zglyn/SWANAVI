@@ -70,8 +70,14 @@ def rank_flights(
         depart = offer.segments[0].depart_at.isoformat()
         arrive = offer.segments[-1].arrive_at.isoformat()
         window = outbound_window if offer.direction == "outbound" else return_window
-        why: list[str] = []
-        score = max(0, 1200 - float(offer.price)) / 20
+        why: list[str] = list(offer.why)
+        price = float(offer.price)
+        if price > 0:
+            score = max(0, 1200 - price) / 20
+        else:
+            score = 40
+            if "schedule only, fare not quoted" not in why:
+                why.append("schedule only, fare not quoted")
         score += max(0, 18 - offer.duration_min / 60) * 2
         score += (2 - offer.stops) * 8
         if _fits(window, depart):
@@ -105,12 +111,30 @@ def _load_fixture() -> list[FlightOffer]:
     return [FlightOffer.model_validate(row) for row in payload]
 
 
-def _provider_offers() -> list[FlightOffer]:
-    provider = os.environ.get("FLIGHT_SEARCH_PROVIDER", "fixture")
+def _default_provider() -> str:
+    named = os.environ.get("FLIGHT_SEARCH_PROVIDER")
+    if named:
+        return named
+    from roam_tools.aviationstack import access_key
+
+    return "aviationstack" if access_key() else "fixture"
+
+
+def _provider_offers(
+    origin_codes: list[str],
+    destination_codes: list[str],
+    depart_date: str,
+    return_date: str | None,
+) -> list[FlightOffer]:
+    provider = _default_provider()
+    if provider == "aviationstack":
+        from roam_tools.aviationstack import fetch_schedule_offers
+
+        return fetch_schedule_offers(origin_codes, destination_codes, depart_date, return_date)
     if provider == "duffel":
         if not os.environ.get("DUFFEL_API_KEY"):
             raise RuntimeError("DUFFEL_API_KEY is not set")
-        raise RuntimeError("Duffel search is not enabled in this build; set FLIGHT_SEARCH_PROVIDER=fixture")
+        raise RuntimeError("Duffel search is not enabled in this build; set FLIGHT_SEARCH_PROVIDER=fixture or aviationstack")
     if provider != "fixture":
         raise RuntimeError(f"Unknown FLIGHT_SEARCH_PROVIDER {provider}")
     return _load_fixture()
@@ -135,34 +159,39 @@ def search_flights(
     key = (
         tuple(origin_codes), tuple(destination_codes), depart_date, return_date,
         outbound_window, return_window, max_stops, tuple(favourite_airlines or []),
-        avoid_red_eye, sleep_time, wake_time,
+        avoid_red_eye, sleep_time, wake_time, _default_provider(),
     )
     cached = _CACHE.get(key)
     if cached and time.monotonic() - cached[0] < TTL_SEC:
         return cached[1]
+    provider = _default_provider()
     cap = int(os.environ.get("FLIGHT_SEARCH_MAX_CALLS", "20"))
-    if _LOADS["fixture"] >= cap and os.environ.get("FLIGHT_SEARCH_PROVIDER", "fixture") == "fixture":
+    if provider == "fixture" and _LOADS["fixture"] >= cap:
         return []
-    origins = {code.upper() for code in origin_codes}
-    destinations = {code.upper() for code in destination_codes}
-    picked = []
-    for offer in _provider_offers():
-        depart = offer.segments[0]
-        arrive = offer.segments[-1]
-        depart_code = (depart.from_place.code or "").upper()
-        arrive_code = (arrive.to_place.code or "").upper()
-        if offer.direction == "outbound":
-            if depart_code not in origins or arrive_code not in destinations:
+    catalog = _provider_offers(origin_codes, destination_codes, depart_date, return_date)
+    if provider == "aviationstack":
+        picked = catalog
+    else:
+        origins = {code.upper() for code in origin_codes}
+        destinations = {code.upper() for code in destination_codes}
+        picked = []
+        for offer in catalog:
+            depart = offer.segments[0]
+            arrive = offer.segments[-1]
+            depart_code = (depart.from_place.code or "").upper()
+            arrive_code = (arrive.to_place.code or "").upper()
+            if offer.direction == "outbound":
+                if depart_code not in origins or arrive_code not in destinations:
+                    continue
+            else:
+                if depart_code not in destinations or arrive_code not in origins:
+                    continue
+            depart_day = depart.depart_at.date().isoformat()
+            if offer.direction == "outbound" and depart_day != depart_date:
                 continue
-        else:
-            if depart_code not in destinations or arrive_code not in origins:
+            if offer.direction == "return" and return_date and depart_day != return_date:
                 continue
-        depart_day = depart.depart_at.date().isoformat()
-        if offer.direction == "outbound" and depart_day != depart_date:
-            continue
-        if offer.direction == "return" and return_date and depart_day != return_date:
-            continue
-        picked.append(offer)
+            picked.append(offer)
     ranked = rank_flights(
         picked,
         outbound_window=outbound_window,

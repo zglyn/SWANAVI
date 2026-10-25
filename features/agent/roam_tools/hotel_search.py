@@ -190,14 +190,32 @@ def propose_split(
     return stays
 
 
-def _load_catalog() -> list[HotelOffer]:
-    provider = os.environ.get("HOTEL_SEARCH_PROVIDER", "fixture")
+def _default_hotel_provider() -> str:
+    named = os.environ.get("HOTEL_SEARCH_PROVIDER")
+    if named:
+        return named
+    return "osm"
+
+
+def _load_catalog(points: list[StayPoint], check_in: str, check_out: str, budget_level: str) -> list[HotelOffer]:
+    provider = _default_hotel_provider()
+    if provider == "osm":
+        from roam_tools.osm_lodging import fetch_hotels_near
+
+        if not points:
+            return []
+        lat = sum(point.lat for point in points) / len(points)
+        lng = sum(point.lng for point in points) / len(points)
+        try:
+            return fetch_hotels_near(lat, lng, check_in=check_in, check_out=check_out, budget_level=budget_level)
+        except Exception:
+            return []
     if provider == "amadeus" and not os.environ.get("AMADEUS_API_KEY"):
         raise RuntimeError("AMADEUS_API_KEY is not set")
     if provider not in {"fixture", "amadeus"}:
         raise RuntimeError(f"Unknown HOTEL_SEARCH_PROVIDER {provider}")
     if provider == "amadeus":
-        raise RuntimeError("Amadeus hotel search is not enabled in this build; set HOTEL_SEARCH_PROVIDER=fixture")
+        raise RuntimeError("Amadeus hotel search is not enabled in this build; set HOTEL_SEARCH_PROVIDER=osm or fixture")
     payload = json.loads(FIXTURE.read_text())
     return [HotelOffer.model_validate(row) for row in payload]
 
@@ -225,7 +243,7 @@ def search_hotels(
         )
         for item in attraction_points
     ]
-    catalog = _load_catalog()
+    catalog = _load_catalog(points, check_in, check_out, budget_level)
     kwargs = dict(
         budget_level=budget_level,
         brands=brands,
@@ -235,7 +253,7 @@ def search_hotels(
         member_programs=member_programs,
     )
     ranked = rank_hotels(catalog, points, **kwargs)
-    splits = propose_split(catalog, points, **kwargs)
+    splits = propose_split(catalog, points, **kwargs) if _default_hotel_provider() == "fixture" else []
     if splits:
         for stay in splits:
             stay.check_in = stay.check_in or check_in

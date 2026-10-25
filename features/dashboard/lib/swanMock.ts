@@ -24,6 +24,7 @@ type StoredTrip = {
   hotels: HotelOffer[];
   package: TravelPackage | null;
   selection: AttractionSelection | null;
+  candidates?: SwanView["candidates"];
 };
 
 function readTrips(): Record<string, StoredTrip> {
@@ -44,6 +45,7 @@ function view(id: string, trip: StoredTrip): SwanView {
     flights: trip.flights,
     hotels: trip.hotels,
     package: trip.package,
+    candidates: trip.candidates ?? null,
   };
 }
 

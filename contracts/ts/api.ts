@@ -438,4 +438,5 @@ export interface SwanView {
   flights: FlightOffer[];
   hotels: HotelOffer[];
   package?: TravelPackage | null;
+  candidates?: CandidateSet | null;
 }

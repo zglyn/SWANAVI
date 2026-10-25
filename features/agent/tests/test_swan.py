@@ -34,6 +34,14 @@ FIXTURES = ROOT / "contracts" / "fixtures"
 KEY = b"swan-test-key"
 
 
+@pytest.fixture(autouse=True)
+def _fixture_providers(monkeypatch):
+    monkeypatch.setenv("FLIGHT_SEARCH_PROVIDER", "fixture")
+    monkeypatch.setenv("HOTEL_SEARCH_PROVIDER", "fixture")
+    monkeypatch.setenv("ROAM_ATTRACTIONS", "fixture")
+    clear_flight_cache()
+
+
 def _profile() -> UserProfile:
     return UserProfile.model_validate(json.loads((FIXTURES / "profile.json").read_text()))
 
@@ -71,7 +79,8 @@ def test_sqlite_refuses_to_start_without_a_key(tmp_path, monkeypatch):
         SqliteProfileStore(str(tmp_path / "profiles.sqlite"))
 
 
-def test_flight_search_ranks_jal_and_caches():
+def test_flight_search_ranks_jal_and_caches(monkeypatch):
+    monkeypatch.setenv("FLIGHT_SEARCH_PROVIDER", "fixture")
     clear_flight_cache()
     offers = search_flights(
         ["SFO"], ["KIX"], "2026-11-13", "2026-11-16",
@@ -90,7 +99,8 @@ def test_flight_search_ranks_jal_and_caches():
     assert flight_load_count() == loads
 
 
-def test_hotel_near_picks_and_brand_and_split():
+def test_hotel_near_picks_and_brand_and_split(monkeypatch):
+    monkeypatch.setenv("HOTEL_SEARCH_PROVIDER", "fixture")
     near = [
         {"id": "bamboo", "lat": 35.017, "lng": 135.671, "weight": 2},
         {"id": "boat", "lat": 35.015, "lng": 135.676, "weight": 1},

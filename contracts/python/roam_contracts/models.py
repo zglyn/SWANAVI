@@ -728,3 +728,4 @@ class SwanView(BaseModel):
     flights: list[FlightOffer] = Field(default_factory=list)
     hotels: list[HotelOffer] = Field(default_factory=list)
     package: TravelPackage | None = None
+    candidates: CandidateSet | None = None
