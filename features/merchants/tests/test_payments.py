@@ -183,3 +183,9 @@ def test_demo_page_is_served(client):
     response = client.get("/dev/demo")
     assert response.status_code == 200
     assert "402 payment demo" in response.text
+
+
+def test_merchants_lists_every_shop_with_its_key(client):
+    shops = client.get("/merchants").json()
+    assert {"bamboo-bikes", "lucky-souvenir"} <= {s["merchant_id"] for s in shops}
+    assert all(len(s["pubkey_ed25519"]) == 64 for s in shops)

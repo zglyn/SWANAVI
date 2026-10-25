@@ -6,4 +6,4 @@ members = ["contracts/python", "features/merchants", "features/guardrail", "feat
 dev = ["pytest>=8"]
 
 [tool.pytest.ini_options]
-testpaths = ["features/agent/tests", "features/merchants/tests", "contracts/python/tests"]
+testpaths = ["features/agent/tests", "features/merchants/tests", "features/guardrail/tests", "contracts/python/tests"]

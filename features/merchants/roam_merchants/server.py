@@ -88,6 +88,12 @@ def registry(city: str):
     return [merchant.model_dump(mode="json") for merchant in directory.find_merchants(city)]
 
 
+@http.get("/merchants")
+def all_merchants():
+    """Every shop with its quote-signing key; the guardrail verifies quote signatures against these."""
+    return [merchant.model_dump(mode="json") for merchant in directory.list_merchants()]
+
+
 @http.post("/m/{merchant_id}/book")
 def book_http(merchant_id: str, body: BookRequest, x_payment: str | None = Header(default=None)):
     """No X-PAYMENT header → 402 with payment instructions. With a valid one → 200 and the booking."""

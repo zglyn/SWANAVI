@@ -1497,6 +1497,7 @@ version = "0.1.0"
 source = { editable = "features/guardrail" }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pynacl" },
     { name = "roam-contracts" },
     { name = "uvicorn" },
@@ -1506,6 +1507,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pynacl" },
     { name = "roam-contracts", editable = "contracts/python" },
     { name = "uvicorn" },
