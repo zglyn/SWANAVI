@@ -133,6 +133,7 @@ function Planner() {
               return (
                 <li key={city.label}>
                   <ChoiceRow
+                    editorial
                     pressed={draft.destination === value}
                     onClick={() => { setDraft({ ...draft, destination: value }); setQuery(city.label); }}
                   >

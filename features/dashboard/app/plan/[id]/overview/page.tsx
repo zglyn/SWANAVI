@@ -31,13 +31,7 @@ export default function OverviewPage() {
   const route = useMemo(() => (pack ? orderedRoute(pack) : null), [pack]);
 
   if (!pack || !route || route.stops.length === 0) {
-    return (
-      <div className="swan-stage">
-        <div className="swan-column">
-          <QuietScreen line={missing || pack ? "Your trip is not ready yet." : "Building your trip…"} />
-        </div>
-      </div>
-    );
+    return <QuietScreen line={missing || pack ? "Your trip is not ready yet." : "Building your trip…"} />;
   }
 
   const trip = pack;
@@ -53,16 +47,12 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="swan-stage">
-      <div className="swan-column">
-        <CinematicTrip
-          destination={trip.itinerary.brief.destination}
-          stops={planned.stops}
-          legs={planned.legs}
-          token={mapboxPublicToken()}
-          onBook={book}
-        />
-      </div>
-    </div>
+    <CinematicTrip
+      destination={trip.itinerary.brief.destination}
+      stops={planned.stops}
+      legs={planned.legs}
+      token={mapboxPublicToken()}
+      onBook={book}
+    />
   );
 }

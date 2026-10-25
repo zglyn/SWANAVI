@@ -32,9 +32,9 @@ export function ChoiceFlow({
       body: body.style.background,
       color: body.style.color,
     };
-    html.style.background = "#000000";
-    body.style.background = "#000000";
-    body.style.color = "#ffffff";
+    html.style.background = "#F6F4EF";
+    body.style.background = "#F6F4EF";
+    body.style.color = "#1C1C1A";
     return () => {
       html.style.background = previous.html;
       body.style.background = previous.body;
@@ -109,14 +109,22 @@ export function ChoiceRow({
   pressed,
   onClick,
   children,
+  editorial = false,
 }: {
   pressed?: boolean;
   onClick: () => void;
   children: ReactNode;
+  editorial?: boolean;
 }) {
   return (
-    <button type="button" className={styles.row} aria-pressed={pressed} onClick={onClick}>
-      {children}
+    <button
+      type="button"
+      className={editorial ? `${styles.row} ${styles.editorial}` : styles.row}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      <span className={styles.mark} aria-hidden="true" />
+      <span className={styles.rowText}>{children}</span>
     </button>
   );
 }

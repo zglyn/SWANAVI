@@ -15,30 +15,32 @@ export function SwanShell({
   wide?: boolean;
   map?: React.ReactNode;
 }) {
-  // Plan screens may still pass a map. The shell stays a black column and does not paint it.
+  // Plan screens may still pass a map. It stays hidden until the finished overview.
   void map;
 
   const progress = step && steps ? (
-    <div aria-hidden>
+    <div className="swan-progress-block" aria-hidden>
       <div className="swan-progress">
         <div style={{ width: `${(step / steps) * 100}%` }} />
       </div>
-      <p className="swan-muted mt-2 text-xs">Step {step} of {steps}</p>
+      <p className="swan-muted swan-step-count">Step {step} of {steps}</p>
     </div>
   ) : null;
 
   return (
     <div className="swan-stage">
-      <main className="swan-app swan-column">
-        <header className="flex items-center justify-between px-6 pt-6">
-          <Link href="/" aria-label="Swanavi home">
-            <SwanLogo />
-          </Link>
-          <Link href="/profile" className="swan-muted text-sm">Profile</Link>
-        </header>
-        {progress ? <div className="px-6 pt-4">{progress}</div> : null}
-        <div className="px-6 py-6">{children}</div>
-        {aside ? <div className="px-6 pb-10">{aside}</div> : null}
+      <main className="swan-app">
+        <div className="swan-wrap">
+          <header className="swan-bar">
+            <Link href="/" aria-label="Swanavi home">
+              <SwanLogo />
+            </Link>
+            <Link href="/profile" className="swan-muted swan-profile">Profile</Link>
+          </header>
+          {progress}
+          <div className="swan-body">{children}</div>
+          {aside ? <div className="swan-aside">{aside}</div> : null}
+        </div>
       </main>
     </div>
   );
