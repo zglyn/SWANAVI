@@ -50,6 +50,7 @@ export function ProposalWorkspace({ tripId, onReview }: { tripId: string; onRevi
   const [modifying, setModifying] = useState<Suggestion | null>(null);
   const [preview, setPreview] = useState<Suggestion | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [mapOpen, setMapOpen] = useState(false);
   const timer = useRef<number | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const focusCard = useRef<string | null>(null);
@@ -182,30 +183,29 @@ export function ProposalWorkspace({ tripId, onReview }: { tripId: string; onRevi
         <Link href="/" className="home-brand">Swanavi</Link>
         <p className="swan-muted">Trip {tripId}</p>
       </header>
-      <div className="proposal-body">
+      <div className={mapOpen ? "proposal-body is-map-open" : "proposal-body"}>
+        <div className="proposal-map">
+          <button
+            type="button"
+            className="map-peek"
+            aria-pressed={mapOpen}
+            onClick={() => setMapOpen((open) => !open)}
+          >
+            {mapOpen ? "Shrink map" : "Expand map"}
+          </button>
+          <TripMap
+            stops={mapStops}
+            arcs={[]}
+            focus={day}
+            dayLabel={current.date}
+            highlight={highlight}
+            onSelect={(id) => {
+              setHighlight(id);
+              document.getElementById(`card-${id}`)?.scrollIntoView({ block: "center" });
+            }}
+          />
+        </div>
         <div className="proposal-list">
-          <section className="proposal-summary" aria-label="Trip summary">
-            <p className="proposal-total">
-              <strong>{formatMoney(proposal.totals.total, proposal.totals.currency)}</strong> total
-              {savings > 0 ? ` · ${formatMoney(savings, proposal.totals.currency)} saved` : ""}
-            </p>
-            <p>{accepted} accepted · {review} to review</p>
-            <div className="proposal-actions">
-              <button
-                type="button"
-                className="swan-btn-ghost"
-                disabled={review === 0}
-                onClick={async () => {
-                  setProposal(await getClient().acceptAll(tripId));
-                  setAnnouncement("Accepted everything left to review.");
-                }}
-              >
-                Accept all remaining
-              </button>
-              <button type="button" className="proposal-book" disabled={accepted === 0} onClick={onReview}>Book accepted</button>
-            </div>
-            <p className="proposal-note" role="status" aria-live="polite">{announcement}</p>
-          </section>
           <h2>Flights</h2>
           {rows.filter((row) => row.kind === "flight").map((row) => row.kind === "flight" && card(row, <FlightBody row={row} />))}
           <h2>Stay</h2>
@@ -237,19 +237,28 @@ export function ProposalWorkspace({ tripId, onReview }: { tripId: string; onRevi
             <button className="home-send" type="submit" aria-label="Send a change">↑</button>
           </form>
         </div>
-        <div className="proposal-map">
-          <TripMap
-            stops={mapStops}
-            arcs={[]}
-            focus={day}
-            dayLabel={current.date}
-            highlight={highlight}
-            onSelect={(id) => {
-              setHighlight(id);
-              document.getElementById(`card-${id}`)?.scrollIntoView({ block: "center" });
-            }}
-          />
-        </div>
+        <section className="proposal-summary" aria-label="Trip summary">
+          <p className="proposal-total">
+            <strong>{formatMoney(proposal.totals.total, proposal.totals.currency)}</strong> total
+            {savings > 0 ? ` · ${formatMoney(savings, proposal.totals.currency)} saved` : ""}
+          </p>
+          <p>{accepted} accepted · {review} to review</p>
+          <div className="proposal-actions">
+            <button
+              type="button"
+              className="swan-btn-ghost"
+              disabled={review === 0}
+              onClick={async () => {
+                setProposal(await getClient().acceptAll(tripId));
+                setAnnouncement("Accepted everything left to review.");
+              }}
+            >
+              Accept all remaining
+            </button>
+            <button type="button" className="proposal-book" disabled={accepted === 0} onClick={onReview}>Book accepted</button>
+          </div>
+          <p className="proposal-note" role="status" aria-live="polite">{announcement}</p>
+        </section>
       </div>
       {modifying ? (
         <ModifySheet
