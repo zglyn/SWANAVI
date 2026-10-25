@@ -57,7 +57,6 @@ input[type="range"] { accent-color: var(--color-ink); }
   color: var(--swan-fg);
   font-family: var(--font-sans);
 }
-/* The map keeps the light palette, so route ink stays dark on light tiles when the page is dark. */
 .swan-light { color: var(--swan-fg); }
 .swan-app h1, .swan-app h2, .swan-app h3 { font-weight: 700; letter-spacing: -0.03em; }
 .swan-muted { color: var(--swan-muted); }
@@ -146,7 +145,6 @@ input[type="range"] { accent-color: var(--color-ink); }
 .swan-overview-map .swan-map { min-height: 0; }
 
 .swan-map { position: relative; height: 100%; min-height: 18rem; isolation: isolate; background: var(--swan-surface); }
-/* The engine sets position:relative on this same node, which collapses it to content height 0 and clips the canvas. */
 .swan-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
 .swan-map .swan-map-canvas { position: absolute; width: 100%; height: 100%; }
 .swan-map[data-ready="true"] .swan-map-canvas { opacity: 1; pointer-events: auto; }

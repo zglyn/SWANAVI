@@ -1,11 +1,9 @@
 import type { Insets, LngLat, Routes } from "./scene";
 
-/** A Mapbox public token. Only parseMapboxToken creates one. */
 export type MapboxToken = string & { readonly __brand: "MapboxPublicToken" };
 
 let warnedSecret = false;
 
-/** "" or unset returns null. "pk.…" returns a token. Anything else falls back to the free basemap. */
 export function parseMapboxToken(raw: string | undefined): MapboxToken | null {
   const value = raw?.trim() ?? "";
   if (!value) return null;
@@ -23,13 +21,13 @@ export interface StartCamera {
   pitch: 0 | 48;
 }
 
-type CameraMove = { padding: Insets; pitch?: number; duration: number; essential: true };
+type CameraMove = { padding?: Insets; pitch?: number; duration: number; essential: true };
 
-/** The slice of a GL map the controller drives. Both engines satisfy it through the wrappers below. */
 export interface GlMap {
   on(type: "style.load" | "error" | "webglcontextlost", listener: (event: unknown) => void): void;
   addSource(id: string, source: { type: "geojson"; data: Routes }): void;
   getSource(id: string): unknown;
+  setPadding(padding: Insets): void;
   fitBounds(bounds: [LngLat, LngLat], options: CameraMove & { maxZoom: number }): void;
   easeTo(options: CameraMove & { center?: LngLat; zoom?: number }): void;
   zoomIn(options: { duration: number }): void;
@@ -61,18 +59,12 @@ export interface RouteLayer {
 
 export interface GlSurface {
   map: GlMap;
-  /** Badge center sits on the coordinate. The element hangs to the right of a left anchor. */
   marker(element: HTMLElement, at: LngLat): GlMarker;
-  /** Route ink above roads and below labels. */
   addRouteLayer(layer: RouteLayer): void;
 }
 
 export interface Basemap {
   name: "mapbox-standard" | "openfreemap-positron";
-  /**
-   * Imports one engine and constructs one map.
-   * Resolves null when `signal` already aborted, without constructing a map.
-   */
   open(container: HTMLElement, start: StartCamera, signal: AbortSignal): Promise<GlSurface | null>;
 }
 
@@ -80,7 +72,6 @@ function pickBasemap(token: MapboxToken | null): Basemap {
   return token ? mapboxStandard(token) : openFreeMapPositron;
 }
 
-/** The one place that defines the Mapbox Standard look. */
 const STANDARD_CONFIG: { [key: string]: unknown } = {
   lightPreset: "day",
   theme: "faded",
@@ -125,6 +116,7 @@ function mapboxStandard(token: MapboxToken): Basemap {
           },
           addSource: (id, source) => map.addSource(id, source),
           getSource: (id) => map.getSource(id),
+          setPadding: (padding) => map.setPadding(padding),
           fitBounds: (bounds, options) => map.fitBounds(bounds, options),
           easeTo: (options) => map.easeTo(options),
           zoomIn: (options) => map.zoomIn(options),
@@ -198,6 +190,7 @@ const openFreeMapPositron: Basemap = {
         },
         addSource: (id, source) => map.addSource(id, source),
         getSource: (id) => map.getSource(id),
+        setPadding: (padding) => map.setPadding(padding),
         fitBounds: (bounds, options) => map.fitBounds(bounds, options),
         easeTo: (options) => map.easeTo(options),
         zoomIn: (options) => map.zoomIn(options),
@@ -217,5 +210,4 @@ const openFreeMapPositron: Basemap = {
   },
 };
 
-/** Resolved once. NEXT_PUBLIC_ variables are inlined at build time. */
 export const basemap: Basemap = pickBasemap(parseMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN));

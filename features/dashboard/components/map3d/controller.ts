@@ -6,23 +6,25 @@ export type MapFailure = "no-webgl" | "style" | "context-lost" | "engine";
 export interface ControllerEvents {
   ready(): void;
   stopPressed(id: string): void;
-  /** Reported once. The controller has already torn itself down. */
   failed(failure: MapFailure, detail?: string): void;
 }
 
 export interface TripMapController {
-  /** Idempotent. Touches only the parts whose key changed. Safe before the map is ready. */
   apply(scene: TripScene): void;
-  /** Runs the current frame again. The Fit button. */
   refit(): void;
   zoomBy(step: 1 | -1): void;
-  /** Idempotent. Aborts an open that has not constructed a map yet. */
   destroy(): void;
 }
 
 type State =
   | { phase: "sizing"; latest: TripScene; observer: ResizeObserver }
-  | { phase: "opening"; latest: TripScene; abort: AbortController; observer: ResizeObserver }
+  | {
+      phase: "opening";
+      latest: TripScene;
+      abort: AbortController;
+      observer: ResizeObserver;
+      surface: GlSurface | null;
+    }
   | {
       phase: "ready";
       surface: GlSurface;
@@ -52,7 +54,6 @@ interface MarkerEntry {
 const ROUTE_SOURCE = "swan-routes";
 const ANIMATED_MS = 900;
 
-/** One entry per role. A new RouteRole without a style fails to compile. */
 const ROUTE_STYLE: Record<RouteRole, { width: number; casing: number; dash?: [number, number] }> = {
   flight: { width: 2.5, casing: 6 },
   day: { width: 3, casing: 7, dash: [2, 1.5] },
@@ -94,17 +95,22 @@ export function createTripMapController(host: HTMLElement, first: TripScene, eve
     if (state.phase !== "sizing") return;
     const abort = new AbortController();
     const resize = state.observer;
-    state = { phase: "opening", latest: state.latest, abort, observer: resize };
+    state = { phase: "opening", latest: state.latest, abort, observer: resize, surface: null };
     let surface: GlSurface | null = null;
     try {
       surface = await basemap.open(host, startCamera(state.latest), abort.signal);
     } catch (err) {
-      if (abort.signal.aborted) return;
+      if (abort.signal.aborted || state.phase !== "opening") return;
       fail("engine", err instanceof Error ? err.message : undefined);
       return;
     }
-    if (abort.signal.aborted || state.phase !== "opening") {
+    if (state.phase !== "opening") {
       surface?.map.remove();
+      return;
+    }
+    state = { ...state, surface };
+    if (abort.signal.aborted) {
+      destroy();
       return;
     }
     if (!surface) {
@@ -174,9 +180,9 @@ export function createTripMapController(host: HTMLElement, first: TripScene, eve
       moveCamera(state.surface.map, scene, durationFor(scene, firstFrame || paddingOnly));
       framed = true;
     } else if (applied.pitch !== scene.pitch) {
+      // Omit padding. MapLibre stores easeTo padding and then adds it again on fitBounds.
       state.surface.map.easeTo({
         pitch: scene.pitch,
-        padding: scene.padding,
         duration: durationFor(scene, false),
         essential: true,
       });
@@ -186,7 +192,6 @@ export function createTripMapController(host: HTMLElement, first: TripScene, eve
       if (stop && offscreen(state.surface.map, stop.at, scene.padding, host)) {
         state.surface.map.easeTo({
           center: stop.at,
-          padding: scene.padding,
           duration: durationFor(scene, false),
           essential: true,
         });
@@ -218,7 +223,10 @@ export function createTripMapController(host: HTMLElement, first: TripScene, eve
   function destroy() {
     if (state.phase === "dead") return;
     state.observer.disconnect();
-    if (state.phase === "opening") state.abort.abort();
+    if (state.phase === "opening") {
+      state.abort.abort();
+      state.surface?.map.remove();
+    }
     if (state.phase === "ready") {
       for (const entry of state.markers.values()) entry.handle.remove();
       state.surface.map.remove();
@@ -256,8 +264,9 @@ function startCamera(scene: TripScene): { center: LngLat; zoom: number; pitch: 0
   };
 }
 
-/** Padding travels with each camera call. setPadding would stack on top of fitBounds padding. */
 function moveCamera(map: GlSurface["map"], scene: TripScene, duration: number) {
+  // MapLibre fitBounds adds the map's stored padding to the options padding. Clear first.
+  map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
   const move = { padding: scene.padding, duration, essential: true as const };
   const frame = scene.frame;
   if (frame.kind === "fit") {
@@ -269,10 +278,24 @@ function moveCamera(map: GlSurface["map"], scene: TripScene, duration: number) {
     return;
   }
   if (frame.kind === "point") {
-    map.easeTo({ ...move, center: frame.at, zoom: 13, pitch: scene.pitch });
+    const [lng, lat] = frame.at;
+    const pad = 0.002;
+    map.fitBounds(
+      [
+        [lng - pad, lat - pad],
+        [lng + pad, lat + pad],
+      ],
+      { ...move, pitch: scene.pitch, maxZoom: 13 },
+    );
     return;
   }
-  map.easeTo({ ...move, center: [0, 20], zoom: 1.5, pitch: 0 });
+  map.fitBounds(
+    [
+      [-20, -20],
+      [20, 40],
+    ],
+    { ...move, pitch: 0, maxZoom: 1.5 },
+  );
 }
 
 function syncMarkers(

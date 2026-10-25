@@ -1,5 +1,3 @@
-// Pure trip picture. No DOM, no GL. TripMap and the controller both read this.
-
 export interface MapStop {
   id: string;
   lat: number;
@@ -41,9 +39,7 @@ export interface SceneStop {
   id: string;
   at: LngLat;
   label: string;
-  /** Caller badge, else the ordinal among unbadged day stops, else "H". */
   glyph: string;
-  /** Numbered day stops are solid. Hotels, merchants, and badged stops are outline. */
   tone: "solid" | "outline";
 }
 
@@ -60,7 +56,6 @@ export interface Routes {
   features: RouteFeature[];
 }
 
-/** Never an empty bounds box. fitBounds always receives two real corners. */
 export type Frame =
   | { kind: "fit"; bounds: [sw: LngLat, ne: LngLat]; scale: "street" | "region" }
   | { kind: "point"; at: LngLat }
@@ -68,20 +63,14 @@ export type Frame =
 
 export interface TripScene {
   stops: SceneStop[];
-  /** Changes when a stop id, position, label, glyph, or tone changes. */
   stopsKey: string;
   routes: Routes;
-  /** Built from arc endpoints and day-stop ids, not from the sampled arc. */
   routesKey: string;
   frame: Frame;
-  /** Changes when the frame geometry or the padding changes. Hover, selection, and focus do not. */
   frameKey: string;
   padding: Insets;
-  /** 48 only for a 3D street frame. Region and world frames stay flat. */
   pitch: 0 | 48;
-  /** The caller's stop at `focus`, when that stop survived validation. */
   focusId: string | null;
-  /** highlight, else selectedId, when that id is still on the map. */
   activeId: string | null;
   selected: SceneStop | null;
   motion: "animate" | "instant";
@@ -89,7 +78,6 @@ export interface TripScene {
 
 export const DEFAULT_PADDING: Insets = { top: 72, right: 72, bottom: 72, left: 72 };
 
-/** Room inside each padding band for a 44px control plus a gap. */
 export const CHROME_BAND = 56;
 
 const REGION_KM = 150;
@@ -132,7 +120,6 @@ export function deriveScene(input: SceneInput): TripScene {
   };
 }
 
-/** Chrome sits inside the camera padding, at least 12px from the map edge. */
 export function chromeInsets(padding: Insets): Insets {
   const band = (side: number) => Math.max(12, side - CHROME_BAND);
   return { top: band(padding.top), right: band(padding.right), bottom: band(padding.bottom), left: band(padding.left) };
@@ -176,7 +163,6 @@ function sceneStops(input: readonly MapStop[]): { stops: SceneStop[]; dayIds: Se
     seen.add(stop.id);
     const numbered = stop.kind === "stop" && !stop.badge;
     if (numbered) ordinal += 1;
-    // The day line follows kind "stop", including badged lodging. Hotels stay off it.
     if (stop.kind === "stop") dayIds.add(stop.id);
     stops.push({
       id: stop.id,
@@ -213,7 +199,6 @@ function frameFor(stops: readonly SceneStop[], arcs: readonly SceneArc[]): Frame
   const unwrapped = unwrap(base);
   let bounds = boundsOf(unwrapped);
   const scale = spanKm(bounds) > REGION_KM ? "region" : "street";
-  // A street frame stays on the day. A region frame has to include the arc or a long-haul bow is clipped.
   if (scale === "region" && stopPoints.length > 0 && arcs.length > 0) {
     const origin = (bounds[0][0] + bounds[1][0]) / 2;
     const extra = arcs.flatMap((arc) => greatCircle(arc.from, arc.to).map((point) => alignLng(point, origin)));
