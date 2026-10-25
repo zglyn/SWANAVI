@@ -605,6 +605,16 @@ class UserProfile(BaseModel):
     autonomy: AutonomyDefaults = Field(default_factory=AutonomyDefaults)
 
 
+class Destination(BaseModel):
+    city: str
+    country_code: str
+    lat: float
+    lng: float
+    timezone: str
+    currency: str
+    airports: list[str] = Field(default_factory=list)
+
+
 class TripOrigin(BaseModel):
     from_home: bool = True
     place: str | None = None
@@ -613,6 +623,7 @@ class TripOrigin(BaseModel):
 
 class TripRequest(BaseModel):
     destination: str
+    place: Destination | None = None
     origin: TripOrigin
     start_date: str
     end_date: str
@@ -748,6 +759,7 @@ class ConversationPhase(str, Enum):
 
 class TripFacts(BaseModel):
     destination: str | None = None
+    place: Destination | None = None
     origin: TripOrigin | None = None
     start_date: str | None = None
     end_date: str | None = None
@@ -780,6 +792,7 @@ class TripFacts(BaseModel):
         assert self.travellers is not None
         return TripRequest(
             destination=self.destination,
+            place=self.place,
             origin=self.origin,
             start_date=self.start_date,
             end_date=self.end_date,

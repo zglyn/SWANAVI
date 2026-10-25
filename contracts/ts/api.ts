@@ -359,9 +359,19 @@ export interface UserProfile {
   flights: FlightPreferences;
   autonomy: AutonomyDefaults;
 }
+export interface Destination {
+  city: string;
+  country_code: string;
+  lat: number;
+  lng: number;
+  timezone: string;
+  currency: string;
+  airports: string[];
+}
 export interface TripOrigin { from_home: boolean; place?: string | null; airport_codes: string[] }
 export interface TripRequest {
   destination: string;
+  place?: Destination | null;
   origin: TripOrigin;
   start_date: string;
   end_date: string;
@@ -476,6 +486,7 @@ export interface ChatMessage {
 }
 export interface TripFacts {
   destination?: string | null;
+  place?: Destination | null;
   origin?: TripOrigin | null;
   start_date?: string | null;
   end_date?: string | null;

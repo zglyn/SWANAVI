@@ -23,11 +23,30 @@ from roam_contracts.models import (
     TripOrigin,
     UserProfile,
 )
-from roam_agent.autopilot import CITY_AIRPORTS
-
-DESTINATIONS = ("Kyoto", "Osaka", "Tokyo")
-CITY_ALIASES = {"sf": "san francisco", "bay area": "san francisco", "the bay area": "san francisco"}
-AIRPORT_CODES = {code for codes in CITY_AIRPORTS.values() for code in codes}
+DESTINATIONS = ("New York", "Kyoto", "Osaka", "Tokyo")
+CITY_ALIASES = {
+    "sf": "san francisco",
+    "bay area": "san francisco",
+    "the bay area": "san francisco",
+    "nyc": "new york",
+    "new york city": "new york",
+}
+PLACE_NAMES = {
+    "new york city": "New York",
+    "new york": "New York",
+    "nyc": "New York",
+    "kyoto": "Kyoto",
+    "osaka": "Osaka",
+    "tokyo": "Tokyo",
+}
+ORIGIN_AIRPORTS = {
+    "kyoto": ["KIX", "ITM"],
+    "osaka": ["KIX", "ITM"],
+    "tokyo": ["HND", "NRT"],
+    "san francisco": ["SFO", "OAK", "SJC"],
+    "new york": ["JFK", "LGA", "EWR"],
+}
+AIRPORT_CODES = {code for codes in ORIGIN_AIRPORTS.values() for code in codes}
 ASK_TURNS = 3
 PLAN_NOW = "Plan it now"
 SCRIPT_KNOWS = ("destination", "origin", "start_date", "end_date")
@@ -161,18 +180,21 @@ def _dates(lower: str, today: date, facts: TripFacts) -> dict[str, str]:
 
 
 def _destination(lower: str) -> str | None:
-    for found in re.finditer(r"\b(kyoto|osaka|tokyo)\b", lower):
+    for found in re.finditer(r"\b(new york city|new york|nyc|kyoto|osaka|tokyo)\b", lower):
         if not re.search(r"\b(?:from|leaving|out of)\s+$", lower[:found.start()]):
-            return found.group(1).title()
+            return PLACE_NAMES[found.group(1)]
     return None
 
 
 def _origin(text: str) -> TripOrigin | None:
     lower = text.lower()
-    city = re.search(r"\b(?:from|leaving|out of)\s+(san francisco|the bay area|bay area|sf|kyoto|osaka|tokyo)\b", lower)
+    city = re.search(
+        r"\b(?:from|leaving|out of)\s+(san francisco|the bay area|bay area|sf|new york city|new york|nyc|kyoto|osaka|tokyo)\b",
+        lower,
+    )
     if city:
         name = CITY_ALIASES.get(city.group(1), city.group(1))
-        return TripOrigin(from_home=False, place=name.title(), airport_codes=list(CITY_AIRPORTS[name]))
+        return TripOrigin(from_home=False, place=name.title(), airport_codes=list(ORIGIN_AIRPORTS[name]))
     for found in re.finditer(r"\b(?:from|leaving|out of)\s+([A-Za-z]{3})\b", text, re.IGNORECASE):
         code = found.group(1)
         if code.isupper() or code.upper() in AIRPORT_CODES:

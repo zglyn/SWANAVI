@@ -10,6 +10,7 @@ from roam_contracts.models import (
     Candidate,
     CandidateKind,
     CandidateSet,
+    Destination,
     GeoPoint,
     Itinerary,
     ItineraryDay,
@@ -158,7 +159,14 @@ def schedule_stops(stops: list[Stop], origin: GeoPoint | None, clock: datetime, 
     return placed
 
 
-def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, emit=None, plan_id: str = "plan") -> Itinerary:
+def plan(
+    brief: TripBrief,
+    selection: PlanSelection,
+    candidates: CandidateSet,
+    emit=None,
+    plan_id: str = "plan",
+    place: Destination | None = None,
+) -> Itinerary:
     if os.environ.get("ROAM_SCRIPTED_AGENT") == "1":
         payload = json.loads((FIXTURES / "itinerary_kyoto.json").read_text())
         built = Itinerary.model_validate(payload)
@@ -215,9 +223,16 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
                 "id": cid, "lat": location.lat, "lng": location.lng, "duration_min": duration,
                 "required": cid in selection.must_visit,
             })
-        origin = {"lat": hotel.lat, "lng": hotel.lng} if hotel is not None else {"lat": routed[0]["lat"], "lng": routed[0]["lng"]} if routed else {"lat": 35.01, "lng": 135.77}
+        if hotel is not None:
+            origin = {"lat": hotel.lat, "lng": hotel.lng}
+        elif routed:
+            origin = {"lat": routed[0]["lat"], "lng": routed[0]["lng"]}
+        elif place is not None:
+            origin = {"lat": place.lat, "lng": place.lng}
+        else:
+            origin = None
         order = [item["id"] for item in routed]
-        if routed:
+        if routed and origin is not None:
             result = optimize_route(routed, origin, mode.value, window_start, window_end, origin)
             order = result["order"] or order
             warnings.extend(result["warnings"])

@@ -29,6 +29,7 @@ from roam_agent import suggestions as cards
 from roam_agent.autopilot import begin
 from roam_agent.store import TripRecord, TripSnapshot, TripStore
 from roam_agent.validate import validate_itinerary
+from roam_tools.destination import lookup_destination
 
 SCRIPT = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "conversation_kyoto.json"
 Emit = Callable[..., None]
@@ -62,6 +63,29 @@ def _say(emit: Emit, trip_id: str, message: ChatMessage) -> None:
     for chunk in re.findall(r"\S+\s*", message.text):
         emit("chat.delta", chunk, {"trip_id": trip_id, "message_id": message.id, "delta": chunk})
     emit("chat.message", message.text, {"trip_id": trip_id, "message": message.model_dump(mode="json")})
+
+
+def _same_words(left: str, right: str) -> bool:
+    return " ".join(left.split()).casefold() == " ".join(right.split()).casefold()
+
+
+def attach_place(before: TripFacts, facts: TripFacts) -> TripFacts:
+    words = (facts.destination or "").strip()
+    previous = (before.destination or "").strip()
+    if not words:
+        if facts.place is None:
+            return facts
+        return facts.model_copy(update={"place": None})
+    if facts.place is not None and _same_words(words, previous):
+        return facts
+    resolved = lookup_destination(words)
+    if resolved is None:
+        if _same_words(words, previous) or facts.place is None:
+            return facts
+        return facts.model_copy(update={"place": None})
+    if facts.place == resolved:
+        return facts
+    return facts.model_copy(update={"place": resolved})
 
 
 def _brief_changed(emit: Emit, conversation: TripConversation) -> None:
@@ -98,8 +122,11 @@ def _turn(
     said = None
     if not talk.awaiting_answers(conversation):
         reply = talk.reply(conversation, before, caller.profile)
+        facts = reply.facts
         said = _message(messages, ChatRole.ASSISTANT, reply.text, controls=reply.controls)
-        conversation = conversation.model_copy(update={"brief": reply.facts, "messages": [*messages, said]})
+        messages = [*messages, said]
+    facts = attach_place(before, facts)
+    conversation = conversation.model_copy(update={"brief": facts, "messages": messages})
     record = record.model_copy(update={"user_id": record.user_id or caller.user_id, "conversation": conversation})
     store.put(record)
     if conversation.brief != before:
@@ -132,6 +159,7 @@ def plan_trip(store: TripStore, emit: Emit, record: TripRecord, caller: Caller) 
     if conversation.phase != ConversationPhase.CHATTING:
         return False
     facts, assumed = talk.with_defaults(conversation.brief, caller.profile)
+    facts = attach_place(conversation.brief, facts)
     missing = facts.missing_required()
     if missing:
         raise TripConflict(talk.still_need(missing))

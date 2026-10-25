@@ -2,25 +2,34 @@ from __future__ import annotations
 
 import httpx
 
-GEOCODE = {
-    "kyoto": (35.0116, 135.7681),
-    "osaka": (34.6937, 135.5023),
-    "tokyo": (35.6762, 139.6503),
-}
+from roam_contracts.models import Destination
 
 
-def _point(place_or_point) -> tuple[float, float] | None:
-    if isinstance(place_or_point, dict) and "lat" in place_or_point:
+def _coordinates(place_or_point) -> tuple[float, float] | None:
+    if isinstance(place_or_point, Destination):
+        return place_or_point.lat, place_or_point.lng
+    if isinstance(place_or_point, dict) and "lat" in place_or_point and "lng" in place_or_point:
         return float(place_or_point["lat"]), float(place_or_point["lng"])
-    text = str(place_or_point).lower()
-    for name, coords in GEOCODE.items():
-        if name in text:
-            return coords
+    lat = getattr(place_or_point, "lat", None)
+    lng = getattr(place_or_point, "lng", None)
+    if isinstance(lat, (int, float)) and isinstance(lng, (int, float)) and not isinstance(place_or_point, str):
+        return float(lat), float(lng)
     return None
 
 
+def _timezone_name(place_or_point) -> str:
+    if isinstance(place_or_point, Destination):
+        return place_or_point.timezone
+    if isinstance(place_or_point, dict) and isinstance(place_or_point.get("timezone"), str):
+        return place_or_point["timezone"]
+    name = getattr(place_or_point, "timezone", None)
+    if isinstance(name, str) and name and not isinstance(place_or_point, str):
+        return name
+    return "auto"
+
+
 def get_weather(place_or_point, date: str) -> dict:
-    point = _point(place_or_point)
+    point = _coordinates(place_or_point)
     if point is None:
         return {"hourly": [], "summary": "no forecast"}
     try:
@@ -30,7 +39,7 @@ def get_weather(place_or_point, date: str) -> dict:
                 "latitude": point[0],
                 "longitude": point[1],
                 "hourly": "precipitation,precipitation_probability,temperature_2m",
-                "timezone": "Asia/Tokyo",
+                "timezone": _timezone_name(place_or_point),
                 "start_date": date,
                 "end_date": date,
             },

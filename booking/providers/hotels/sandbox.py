@@ -48,7 +48,7 @@ class SandboxHotelProvider:
             "kind": "hotel",
             "status": "booked",
             "confirmationCode": _confirmation_code(stay, travelers, trip_id),
-            "price": {"amount": f"{total:.2f}", "currency": "USD"},
+            "price": {"amount": f"{total:.2f}", "currency": stay.currency or "USD"},
             "error": None,
         }
 

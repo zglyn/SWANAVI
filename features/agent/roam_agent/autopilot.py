@@ -5,7 +5,7 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -44,13 +44,6 @@ log = logging.getLogger("swan.autopilot")
 ROOT = Path(__file__).resolve().parents[3]
 CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
 PACKAGE = ROOT / "contracts" / "fixtures" / "package_kyoto.json"
-TRIP_TZ = "Asia/Tokyo"
-CITY_AIRPORTS = {
-    "kyoto": ["KIX", "ITM"],
-    "osaka": ["KIX", "ITM"],
-    "tokyo": ["HND", "NRT"],
-    "san francisco": ["SFO", "OAK", "SJC"],
-}
 AMOUNT_WEIGHT = {"none": 0, "a_little": 1, "some": 2, "lots": 4}
 DENSITY_CAP = {Density.LIGHT: 2, Density.BALANCED: 3, Density.PACKED: 4}
 PACE = {Density.LIGHT: Pace.RELAXED, Density.BALANCED: Pace.BALANCED, Density.PACKED: Pace.PACKED}
@@ -240,11 +233,11 @@ def _nights(request: TripRequest) -> int:
 
 def _airports(request: TripRequest, profile: UserProfile) -> tuple[list[str], list[str]]:
     if request.origin.from_home:
-        origins = profile.home.airport_codes
+        origins = list(profile.home.airport_codes)
     else:
-        origins = request.origin.airport_codes or CITY_AIRPORTS.get((request.origin.place or "").lower(), [])
-    destination = request.destination.split(",")[0].strip().lower()
-    return origins or ["SFO"], CITY_AIRPORTS.get(destination, ["KIX"])
+        origins = list(request.origin.airport_codes)
+    destinations = list(request.place.airports) if request.place is not None else []
+    return origins, destinations
 
 
 def _prev(day: str) -> str:
@@ -290,8 +283,15 @@ def _ensure_hotels(trip: SwanTrip) -> None:
         day = (start + timedelta(days=min(index, nights - 1))).isoformat()
         weight = 2 if trip.selection and chosen in trip.selection.must_visit else 1
         points.append({"id": chosen, "lat": location.lat, "lng": location.lng, "day": day, "weight": weight})
-    if not points:
-        points = [{"id": "kyoto", "lat": 35.0116, "lng": 135.7681, "day": trip.request.start_date, "weight": 1}]
+    if not points and trip.request.place is not None:
+        place = trip.request.place
+        points = [{
+            "id": "destination",
+            "lat": place.lat,
+            "lng": place.lng,
+            "day": trip.request.start_date,
+            "weight": 1,
+        }]
     prefs = trip.profile.hotels
     members = [item.program for item in prefs.loyalty if item.number]
     trip.hotels = search_hotels(
@@ -329,7 +329,7 @@ def _compose(trip: SwanTrip, pool: CandidateSet) -> TravelPackage:
     selection = PlanSelection(must_visit=must, maybe=[item for item in trip.chosen_ids if item not in must])
     visible = planning_profile(trip.profile)
     log.info("swan %s planning keys %s", trip.plan_id, sorted(visible.home.model_dump()))
-    itinerary = build_plan(brief, selection, pool, plan_id=trip.plan_id)
+    itinerary = build_plan(brief, selection, pool, plan_id=trip.plan_id, place=trip.request.place)
     itinerary = _lighten_first_day(itinerary, outbound, trip.profile)
     itinerary = _fit_budget(itinerary, trip, outbound, inbound, stays)
     reasons = _reasons(outbound, inbound, stays, trip)
@@ -345,10 +345,25 @@ def _compose(trip: SwanTrip, pool: CandidateSet) -> TravelPackage:
     )
 
 
+def _clock_zone(trip: SwanTrip, outbound: FlightOffer | None):
+    if trip.request.place is not None:
+        return ZoneInfo(trip.request.place.timezone)
+    if outbound is not None and outbound.segments[-1].arrive_at.tzinfo is not None:
+        return outbound.segments[-1].arrive_at.tzinfo
+    return timezone.utc
+
+
+def _timezone_name(zone) -> str:
+    key = getattr(zone, "key", None)
+    if isinstance(key, str) and key:
+        return key
+    return "UTC"
+
+
 def _brief(trip: SwanTrip, outbound: FlightOffer | None, inbound: FlightOffer | None, stays: list[HotelOffer]) -> TripBrief:
     start = date.fromisoformat(trip.request.start_date)
     end = date.fromisoformat(trip.request.end_date)
-    tz = outbound.segments[-1].arrive_at.tzinfo if outbound else ZoneInfo(TRIP_TZ)
+    tz = _clock_zone(trip, outbound)
     wake = _shift_minutes(trip.profile.sleep.wake_time, 45)
     sleep = _shift_minutes(trip.profile.sleep.sleep_time, -60)
     lodging = []
@@ -363,7 +378,7 @@ def _brief(trip: SwanTrip, outbound: FlightOffer | None, inbound: FlightOffer | 
     pace = PACE[density]
     return TripBrief(
         destination=trip.request.destination,
-        timezone=TRIP_TZ,
+        timezone=_timezone_name(tz),
         arrival=outbound.segments[-1] if outbound else None,
         departure=inbound.segments[0] if inbound else None,
         lodging=lodging,
