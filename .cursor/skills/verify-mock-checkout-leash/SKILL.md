@@ -55,8 +55,8 @@ In `checkout`, the refusal is the early return on `!decision.approved`. Change t
 | Decision | `evaluate` in `features/dashboard/lib/mock.ts` |
 | Submission and wallet | `checkout` in the same file |
 | Rules in the property | `max_per_item`, `max_daily_budget`, `verified_credential`, `category` |
-| Sync commit | `82567e7460b32c002446ba195aa6572cce920fb7` |
-| `mock.ts` sha256 at that commit | `2e0043d94693a928c01002e4f6156987f076879e82bcf8736928688936e599fe` |
+| Sync commit | `8fc0239b70588f2e06a4f599de00f8b842b96582` |
+| `mock.ts` sha256 at that commit | `6d40954c1d5055a8a59f7ff9c36232dcbf295e1597a979e32d68b40c5e206aff` |
 
 `check.mjs` prints `source_sha256` of `mock.ts` on every run. If that hash differs from the one above, the covered file has changed since the sync commit. Move the sync commit forward only after you confirm that `evaluate`, `checkout`, and this harness still describe that file at the new commit. A green run on a stale harness is not a confirmation.
 
