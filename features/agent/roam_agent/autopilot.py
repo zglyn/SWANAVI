@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from roam_contracts.models import (
     AttractionSelection,
@@ -43,6 +44,7 @@ log = logging.getLogger("swan.autopilot")
 ROOT = Path(__file__).resolve().parents[3]
 CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
 PACKAGE = ROOT / "contracts" / "fixtures" / "package_kyoto.json"
+TRIP_TZ = "Asia/Tokyo"
 CITY_AIRPORTS = {
     "kyoto": ["KIX", "ITM"],
     "osaka": ["KIX", "ITM"],
@@ -346,22 +348,22 @@ def _compose(trip: SwanTrip, pool: CandidateSet) -> TravelPackage:
 def _brief(trip: SwanTrip, outbound: FlightOffer | None, inbound: FlightOffer | None, stays: list[HotelOffer]) -> TripBrief:
     start = date.fromisoformat(trip.request.start_date)
     end = date.fromisoformat(trip.request.end_date)
-    tz = outbound.segments[-1].arrive_at.tzinfo if outbound else None
+    tz = outbound.segments[-1].arrive_at.tzinfo if outbound else ZoneInfo(TRIP_TZ)
     wake = _shift_minutes(trip.profile.sleep.wake_time, 45)
     sleep = _shift_minutes(trip.profile.sleep.sleep_time, -60)
     lodging = []
     for stay in stays:
         check_in = datetime.fromisoformat(f"{stay.check_in or trip.request.start_date}T15:00:00")
         check_out = datetime.fromisoformat(f"{stay.check_out or trip.request.end_date}T11:00:00")
-        if tz:
-            check_in = check_in.replace(tzinfo=tz)
-            check_out = check_out.replace(tzinfo=tz)
-        lodging.append(Lodging(name=stay.name, location=stay.location, check_in=check_in, check_out=check_out))
+        lodging.append(Lodging(
+            name=stay.name, location=stay.location,
+            check_in=check_in.replace(tzinfo=tz), check_out=check_out.replace(tzinfo=tz),
+        ))
     density = trip.selection.daily_density if trip.selection else PACE_FROM_PROFILE(trip.profile)
     pace = PACE[density]
     return TripBrief(
         destination=trip.request.destination,
-        timezone="Asia/Tokyo",
+        timezone=TRIP_TZ,
         arrival=outbound.segments[-1] if outbound else None,
         departure=inbound.segments[0] if inbound else None,
         lodging=lodging,
