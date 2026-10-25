@@ -1,0 +1,407 @@
+{
+  "plan_id": "nyc-demo",
+  "brief": {
+    "destination": "New York",
+    "timezone": "America/New_York",
+    "arrival": {
+      "mode": "flight",
+      "carrier": "UA",
+      "number": "UA2400",
+      "from_place": {
+        "code": "SFO",
+        "name": "San Francisco",
+        "location": {
+          "lat": 37.6213,
+          "lng": -122.379
+        }
+      },
+      "to_place": {
+        "code": "JFK",
+        "name": "John F. Kennedy International",
+        "location": {
+          "lat": 40.6413,
+          "lng": -73.7781
+        }
+      },
+      "depart_at": "2026-11-14T08:00:00-08:00",
+      "arrive_at": "2026-11-14T16:30:00-05:00",
+      "status": "scheduled",
+      "source": "fixture",
+      "terminal": null
+    },
+    "departure": {
+      "mode": "flight",
+      "carrier": "UA",
+      "number": "UA2401",
+      "from_place": {
+        "code": "JFK",
+        "name": "John F. Kennedy International",
+        "location": {
+          "lat": 40.6413,
+          "lng": -73.7781
+        }
+      },
+      "to_place": {
+        "code": "SFO",
+        "name": "San Francisco",
+        "location": {
+          "lat": 37.6213,
+          "lng": -122.379
+        }
+      },
+      "depart_at": "2026-11-17T18:00:00-05:00",
+      "arrive_at": "2026-11-17T21:15:00-08:00",
+      "status": "scheduled",
+      "source": "fixture",
+      "terminal": null
+    },
+    "lodging": [
+      {
+        "name": "Hudson Demo Hotel",
+        "address": "Midtown",
+        "location": {
+          "lat": 40.7612,
+          "lng": -73.9772
+        },
+        "check_in": "2026-11-14T18:00:00-05:00",
+        "check_out": "2026-11-17T11:00:00-05:00"
+      }
+    ],
+    "start_date": "2026-11-14T00:00:00-05:00",
+    "end_date": "2026-11-17T00:00:00-05:00",
+    "budget": "2000.00",
+    "interests": [
+      "food",
+      "museums",
+      "nature"
+    ],
+    "pace": "relaxed",
+    "preferred_modes": [
+      "walk",
+      "transit"
+    ],
+    "daily_start": "09:00",
+    "daily_end": "21:00"
+  },
+  "selection": {
+    "must_visit": [
+      "midtown-museum",
+      "central-park-walk",
+      "midtown-stroll"
+    ],
+    "maybe": [
+      "central-park-bikes",
+      "midtown-food-workshop"
+    ],
+    "excluded": [
+      "times-square-souvenir"
+    ]
+  },
+  "days": [
+    {
+      "date": "2026-11-14",
+      "stops": [
+        {
+          "id": "arrival",
+          "kind": "arrival",
+          "start": "2026-11-14T16:30:00-05:00",
+          "end": "2026-11-14T16:50:00-05:00",
+          "location": {
+            "lat": 40.6413,
+            "lng": -73.7781
+          },
+          "title": "Arrive UA2400 at JFK",
+          "attraction": null,
+          "quote": null,
+          "required": false,
+          "status": "proposed"
+        },
+        {
+          "id": "check-in",
+          "kind": "lodging",
+          "start": "2026-11-14T18:00:00-05:00",
+          "end": "2026-11-14T18:20:00-05:00",
+          "location": {
+            "lat": 40.7612,
+            "lng": -73.9772
+          },
+          "title": "Check in at Hudson Demo Hotel",
+          "attraction": null,
+          "quote": null,
+          "required": false,
+          "status": "proposed"
+        }
+      ],
+      "legs": [
+        {
+          "from_stop_id": "arrival",
+          "to_stop_id": "check-in",
+          "mode": "transit",
+          "minutes": 70,
+          "distance_km": 21.5,
+          "cost": null,
+          "source": "estimate"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "stops": [
+        {
+          "id": "midtown-museum",
+          "kind": "attraction",
+          "start": "2026-11-15T10:00:00-05:00",
+          "end": "2026-11-15T11:15:00-05:00",
+          "location": {
+            "lat": 40.7614,
+            "lng": -73.9776
+          },
+          "title": "Midtown Demo Museum",
+          "attraction": {
+            "id": "midtown-museum",
+            "name": "Midtown Demo Museum",
+            "category": "museums",
+            "location": {
+              "lat": 40.7614,
+              "lng": -73.9776
+            },
+            "area": "Midtown",
+            "description": "A small fictional museum of the city. Demo data.",
+            "image_url": null,
+            "popularity": 0.7,
+            "typical_duration_min": 75,
+            "opening_hours": "09:00-17:00",
+            "price": null,
+            "free": true,
+            "source": "curated"
+          },
+          "quote": null,
+          "required": true,
+          "status": "proposed"
+        },
+        {
+          "id": "central-park-bikes",
+          "kind": "merchant",
+          "start": "2026-11-15T14:00:00-05:00",
+          "end": "2026-11-15T16:00:00-05:00",
+          "location": {
+            "lat": 40.769,
+            "lng": -73.976
+          },
+          "title": "Two-hour bike rental",
+          "attraction": null,
+          "quote": {
+            "invoice_id": "C4D032432ABCC94A239F2D3C735E332337AC3A6A8E34A9928645BDFF22D28FCD",
+            "merchant_id": "central-park-bikes",
+            "merchant_name": "Central Park Demo Bikes",
+            "merchant_address": "rcentralparkbikesPLACEHOLDER",
+            "sku": "CP-BIKE-2H",
+            "title": "Two-hour bike rental",
+            "category": "activity",
+            "amount": "15.00",
+            "currency": "RLUSD",
+            "viator_price": null,
+            "slot_start": "2026-11-15T14:00:00-05:00",
+            "slot_end": "2026-11-15T16:00:00-05:00",
+            "location": {
+              "lat": 40.769,
+              "lng": -73.976
+            },
+            "cancel_after": "2026-11-18T16:00:00-05:00",
+            "expires_at": "2026-11-18T16:00:00-05:00",
+            "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "merchant_verified": true
+          },
+          "required": false,
+          "status": "proposed"
+        },
+        {
+          "id": "midtown-food-workshop",
+          "kind": "merchant",
+          "start": "2026-11-15T17:00:00-05:00",
+          "end": "2026-11-15T18:00:00-05:00",
+          "location": {
+            "lat": 40.7549,
+            "lng": -73.984
+          },
+          "title": "Food workshop",
+          "attraction": null,
+          "quote": {
+            "invoice_id": "99C1251EC08A1F404C085BA824A54A3022586F0BC081100411234416E53528BB",
+            "merchant_id": "midtown-food-workshop",
+            "merchant_name": "Midtown Demo Food Workshop",
+            "merchant_address": "rmidtownfoodworkshopPLACEHOLDER",
+            "sku": "MT-WORKSHOP",
+            "title": "Food workshop",
+            "category": "food",
+            "amount": "30.00",
+            "currency": "RLUSD",
+            "viator_price": null,
+            "slot_start": "2026-11-15T17:00:00-05:00",
+            "slot_end": "2026-11-15T18:00:00-05:00",
+            "location": {
+              "lat": 40.7549,
+              "lng": -73.984
+            },
+            "cancel_after": "2026-11-18T18:00:00-05:00",
+            "expires_at": "2026-11-18T18:00:00-05:00",
+            "merchant_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "merchant_verified": true
+          },
+          "required": false,
+          "status": "proposed"
+        }
+      ],
+      "legs": [
+        {
+          "from_stop_id": "midtown-museum",
+          "to_stop_id": "central-park-bikes",
+          "mode": "walk",
+          "minutes": 15,
+          "distance_km": 0.9,
+          "cost": null,
+          "source": "estimate"
+        },
+        {
+          "from_stop_id": "central-park-bikes",
+          "to_stop_id": "midtown-food-workshop",
+          "mode": "walk",
+          "minutes": 25,
+          "distance_km": 1.7,
+          "cost": null,
+          "source": "estimate"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "stops": [
+        {
+          "id": "central-park-walk",
+          "kind": "attraction",
+          "start": "2026-11-16T10:00:00-05:00",
+          "end": "2026-11-16T11:30:00-05:00",
+          "location": {
+            "lat": 40.7723,
+            "lng": -73.9712
+          },
+          "title": "Central Park Demo Walk",
+          "attraction": {
+            "id": "central-park-walk",
+            "name": "Central Park Demo Walk",
+            "category": "nature",
+            "location": {
+              "lat": 40.7723,
+              "lng": -73.9712
+            },
+            "area": "Central Park",
+            "description": "A relaxed loop on the park paths. Demo data.",
+            "image_url": null,
+            "popularity": 0.66,
+            "typical_duration_min": 90,
+            "opening_hours": "09:00-17:00",
+            "price": null,
+            "free": true,
+            "source": "curated"
+          },
+          "quote": null,
+          "required": true,
+          "status": "proposed"
+        },
+        {
+          "id": "midtown-stroll",
+          "kind": "attraction",
+          "start": "2026-11-16T12:00:00-05:00",
+          "end": "2026-11-16T12:45:00-05:00",
+          "location": {
+            "lat": 40.7565,
+            "lng": -73.978
+          },
+          "title": "Midtown Demo Stroll",
+          "attraction": {
+            "id": "midtown-stroll",
+            "name": "Midtown Demo Stroll",
+            "category": "nature",
+            "location": {
+              "lat": 40.7565,
+              "lng": -73.978
+            },
+            "area": "Midtown",
+            "description": "A short walk between Midtown blocks. Demo data.",
+            "image_url": null,
+            "popularity": 0.6,
+            "typical_duration_min": 45,
+            "opening_hours": "09:00-17:00",
+            "price": null,
+            "free": true,
+            "source": "curated"
+          },
+          "quote": null,
+          "required": true,
+          "status": "proposed"
+        }
+      ],
+      "legs": [
+        {
+          "from_stop_id": "central-park-walk",
+          "to_stop_id": "midtown-stroll",
+          "mode": "walk",
+          "minutes": 25,
+          "distance_km": 1.9,
+          "cost": null,
+          "source": "estimate"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-17",
+      "stops": [
+        {
+          "id": "check-out",
+          "kind": "lodging",
+          "start": "2026-11-17T11:00:00-05:00",
+          "end": "2026-11-17T11:20:00-05:00",
+          "location": {
+            "lat": 40.7612,
+            "lng": -73.9772
+          },
+          "title": "Check out of Hudson Demo Hotel",
+          "attraction": null,
+          "quote": null,
+          "required": false,
+          "status": "proposed"
+        },
+        {
+          "id": "departure",
+          "kind": "departure",
+          "start": "2026-11-17T18:00:00-05:00",
+          "end": "2026-11-17T18:30:00-05:00",
+          "location": {
+            "lat": 40.6413,
+            "lng": -73.7781
+          },
+          "title": "Depart UA2401 from JFK",
+          "attraction": null,
+          "quote": null,
+          "required": false,
+          "status": "proposed"
+        }
+      ],
+      "legs": [
+        {
+          "from_stop_id": "check-out",
+          "to_stop_id": "departure",
+          "mode": "transit",
+          "minutes": 70,
+          "distance_km": 21.5,
+          "cost": null,
+          "source": "estimate"
+        }
+      ]
+    }
+  ],
+  "transport_summary": "AirTrain and the subway from JFK to Midtown take about 70 minutes. Walk between Central Park and Midtown.",
+  "estimated_total": "45.00",
+  "bookable_total": "45.00",
+  "warnings": []
+}

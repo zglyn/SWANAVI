@@ -10,8 +10,10 @@ import type {
 } from "@contracts/api";
 import flightsFx from "@fixtures/flight_offers.json";
 import hotelsFx from "@fixtures/hotel_offers.json";
-import packageFx from "@fixtures/package_kyoto.json";
+import packageDemo from "@fixtures/package_demo.json";
+import packageKyoto from "@fixtures/package_kyoto.json";
 import profileFx from "@fixtures/profile.json";
+import { flightsFor, hotelsFor, isKyoto } from "./demoScope";
 
 const PROFILE_KEY = "swan.profile";
 const TOKEN_KEY = "swan.token";
@@ -54,17 +56,19 @@ function advance(trip: StoredTrip) {
     trip.package = null;
     return;
   }
-  trip.flights = flightsFx as FlightOffer[];
+  const place = trip.request.destination;
+  const pack = (isKyoto(place) ? packageKyoto : packageDemo) as TravelPackage;
+  trip.flights = flightsFor(flightsFx as FlightOffer[], place || pack.itinerary.brief.destination);
   if (auto.flights === "i_choose" && !trip.package) {
     trip.phase = "waiting_flights";
     return;
   }
-  trip.hotels = hotelsFx as HotelOffer[];
+  trip.hotels = hotelsFor(hotelsFx as HotelOffer[], place || pack.itinerary.brief.destination);
   if (auto.hotels === "i_choose" && !trip.package) {
     trip.phase = "waiting_hotels";
     return;
   }
-  trip.package = structuredClone(packageFx) as TravelPackage;
+  trip.package = structuredClone(pack);
   trip.phase = "ready";
 }
 

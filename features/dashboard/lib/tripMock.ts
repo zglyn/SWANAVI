@@ -16,10 +16,11 @@ import type {
   TripConversation,
   TripView,
 } from "@contracts/api";
-import candidatesFx from "@fixtures/candidates_kyoto.json";
-import fixture from "@fixtures/conversation_kyoto.json";
+import candidatesFx from "@fixtures/candidates_demo.json";
+import fixture from "@fixtures/conversation_demo.json";
 import flightsFx from "@fixtures/flight_offers.json";
 import hotelsFx from "@fixtures/hotel_offers.json";
+import { demoCity, flightsFor, freshenProposal, hotelsFor } from "./demoScope";
 import { suggestionTitle } from "./format";
 import { alternatives, apply, initialState, type Catalog, type Constraints, type TripState } from "./proposalOps";
 import { channelOf, mergeLines, quoteOf, withBookings } from "./tripBooking";
@@ -30,9 +31,10 @@ export interface TripMockDeps {
 }
 
 const SCRIPT = fixture as unknown as { conversation: TripConversation; proposal: Proposal };
+const PROPOSAL = freshenProposal(structuredClone(SCRIPT.proposal));
 const CATALOG: Catalog = {
-  flights: flightsFx as FlightOffer[],
-  hotels: hotelsFx as HotelOffer[],
+  flights: flightsFor(flightsFx as FlightOffer[], demoCity.destination),
+  hotels: hotelsFor(hotelsFx as HotelOffer[], demoCity.destination),
   candidates: (candidatesFx as { candidates: Candidate[] }).candidates,
 };
 const SEARCH_MS = 900;
@@ -62,7 +64,7 @@ const store = {
 };
 
 function replay(id: string, log: SuggestionAction[]): TripState {
-  const start = initialState({ ...SCRIPT.proposal, trip_id: id });
+  const start = initialState(structuredClone({ ...PROPOSAL, trip_id: id }));
   const state = log.reduce((current, action) => apply(current, action, CATALOG), start);
   return { ...state, proposal: withBookings(state.proposal, store.lines(id)) };
 }

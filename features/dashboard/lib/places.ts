@@ -1,3 +1,5 @@
+import demo from "@fixtures/demo_city.json";
+
 export interface PlaceHit {
   label: string;
   lat: number;
@@ -25,7 +27,7 @@ const CITIES: PlaceHit[] = [
   { label: "Osaka", lat: 34.6937, lng: 135.5023, airports: ["KIX", "ITM"] },
   { label: "Tokyo", lat: 35.6762, lng: 139.6503, airports: ["HND", "NRT"] },
   { label: "Los Angeles", lat: 34.0522, lng: -118.2437, airports: ["LAX"] },
-  { label: "New York", lat: 40.7128, lng: -74.006, airports: ["JFK"] },
+  { label: "New York", lat: demo.center.lat, lng: demo.center.lng, airports: [...demo.airports] },
   { label: "London", lat: 51.5072, lng: -0.1276, airports: ["LHR"] },
   { label: "Paris", lat: 48.8566, lng: 2.3522, airports: ["CDG"] },
 ];
@@ -45,6 +47,8 @@ export function nearestAirports(lat: number, lng: number): string[] {
 export function matchCity(query: string): PlaceHit | null {
   const needle = query.trim().toLowerCase();
   if (!needle) return null;
+  const alias = demo.aliases.find((name) => name.toLowerCase() === needle || needle.includes(name.toLowerCase()));
+  if (alias) return CITIES.find((city) => city.label === demo.destination) ?? null;
   return CITIES.find((city) => city.label.toLowerCase().includes(needle) || needle.includes(city.label.toLowerCase())) ?? null;
 }
 
@@ -86,6 +90,10 @@ const NAMED_STOPS: { label: string; lat: number; lng: number }[] = [
   { label: "Gion Ramen Tasting", lat: 35.0037, lng: 135.7788 },
   { label: "Arashiyama Bamboo Bike Rentals", lat: 35.017, lng: 135.6713 },
   { label: "Gion", lat: 35.0037, lng: 135.7758 },
+  ...demo.attractions.map((row) => ({ label: row.name, lat: row.lat, lng: row.lng })),
+  ...demo.hotels.map((row) => ({ label: row.name, lat: row.lat, lng: row.lng })),
+  ...demo.merchants.map((row) => ({ label: row.name, lat: row.lat, lng: row.lng })),
+  { label: demo.destination_airport.name, lat: demo.destination_airport.lat, lng: demo.destination_airport.lng },
 ];
 
 function fold(value: string) {

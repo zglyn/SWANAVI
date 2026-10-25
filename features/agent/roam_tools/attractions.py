@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -9,7 +10,8 @@ from roam_contracts.geo import haversine_km
 from roam_contracts.models import Attraction
 
 ROOT = Path(__file__).resolve().parents[3]
-CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
+KYOTO_CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
+DEMO_CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_demo.json"
 _CACHE: dict[str, list[dict]] = {}
 
 INTEREST_TAGS = {
@@ -23,10 +25,19 @@ INTEREST_TAGS = {
 }
 
 
-def _curated() -> list[Attraction]:
-    if not CANDIDATES.exists():
+def _catalog_path(place: str) -> Path | None:
+    lower = place.lower()
+    if "kyoto" in lower:
+        return KYOTO_CANDIDATES
+    if "new york" in lower or re.search(r"\bnyc\b", lower):
+        return DEMO_CANDIDATES
+    return None
+
+
+def _curated(path: Path) -> list[Attraction]:
+    if not path.exists():
         return []
-    payload = json.loads(CANDIDATES.read_text())
+    payload = json.loads(path.read_text())
     found = []
     for row in payload["candidates"]:
         if row.get("attraction"):
@@ -96,9 +107,10 @@ def search_attractions(
     limit: int = 20,
 ) -> list[Attraction]:
     interests = interests or []
-    chosen = [item for item in _curated() if place.lower().startswith("kyoto") or "kyoto" in place.lower()]
-    chosen = [item for item in chosen if _matches(item, interests)]
-    if "kyoto" not in place.lower():
+    path = _catalog_path(place)
+    if path is not None:
+        chosen = [item for item in _curated(path) if _matches(item, interests)]
+    else:
         try:
             chosen = _overpass(place, interests)
         except Exception:

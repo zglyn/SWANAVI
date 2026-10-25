@@ -33,6 +33,14 @@ def _load() -> tuple[list[MerchantProfile], list[Quote]]:
     return merchants, quotes
 
 
+def _demo_flags() -> dict[str, tuple[bool, bool]]:
+    path = FIXTURES / "demo_city.json"
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text())
+    return {row["id"]: (bool(row["indoor"]), bool(row["refundable"])) for row in payload["merchants"]}
+
+
 def sign_quote(quote: Quote) -> Quote:
     body = quote.model_copy(update={"merchant_signature": "00", "merchant_verified": None})
     signature = DEMO_SIGNING_KEY.sign(quote_signing_bytes(body)).signature.hex()
@@ -74,17 +82,19 @@ class Directory:
         return [merchant for _, merchant in found]
 
     def search_catalog(self, merchant_id: str, date: datetime | None = None) -> list[CatalogItem]:
+        flags = _demo_flags()
         items = []
         for quote in self.quotes:
             if quote.merchant_id != merchant_id:
                 continue
             if date is not None and quote.slot_start.date() != date.date():
                 continue
+            indoor, refundable = flags.get(merchant_id, (quote.category != Category.ACTIVITY, True))
             items.append(CatalogItem(
                 sku=quote.sku, merchant_id=quote.merchant_id, title=quote.title, description=quote.title,
                 category=quote.category, price=quote.amount, currency=quote.currency,
                 viator_price=quote.viator_price, slot_start=quote.slot_start, slot_end=quote.slot_end,
-                indoor=quote.category != Category.ACTIVITY, refundable=True, available=True,
+                indoor=indoor, refundable=refundable, available=True,
             ))
         return items
 

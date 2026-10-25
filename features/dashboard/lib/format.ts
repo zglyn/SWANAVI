@@ -9,15 +9,22 @@ export function suggestionTitle(row: Suggestion): string {
 export const fmt = (v: string | number | null | undefined, digits = 2) =>
   v === null || v === undefined ? "—" : Number(v).toFixed(digits);
 
-export const timeOf = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Tokyo" });
+export function timeOf(iso: string, zone?: string): string {
+  if (zone) return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: zone });
+  const match = iso.match(/T(\d{2}):(\d{2})/);
+  if (!match) return iso;
+  const hour = Number(match[1]);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${match[2]} ${suffix}`;
+}
 
 export const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 export const short = (hash: string) => `${hash.slice(0, 6)}…${hash.slice(-4)}`;
 
-const DOLLAR_LIKE = new Set(["USD", "RLUSD", "USDC"]);
+const DOLLAR_LIKE = new Set(["USD"]);
 
 export function formatMoney(amount: string | number | null | undefined, currency = "USD"): string {
   if (amount === null || amount === undefined || amount === "") return "—";

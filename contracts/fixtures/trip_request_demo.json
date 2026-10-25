@@ -1,0 +1,23 @@
+{
+  "destination": "New York",
+  "place": null,
+  "origin": {
+    "from_home": false,
+    "place": "San Francisco",
+    "airport_codes": [
+      "SFO"
+    ]
+  },
+  "start_date": "2026-11-14",
+  "end_date": "2026-11-17",
+  "outbound_window": "any",
+  "return_window": "any",
+  "travellers": 2,
+  "budget": "2000.00",
+  "autonomy": {
+    "attractions": "swan_decides",
+    "hotels": "swan_decides",
+    "flights": "swan_decides"
+  },
+  "notes": null
+}

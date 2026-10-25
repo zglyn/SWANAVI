@@ -110,5 +110,61 @@
     "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
     "city": "Kyoto",
     "country": "Japan"
+  },
+  {
+    "merchant_id": "central-park-bikes",
+    "name": "Central Park Demo Bikes",
+    "category": "activity",
+    "location": {
+      "lat": 40.769,
+      "lng": -73.976
+    },
+    "xrpl_address": "rcentralparkbikesPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/central-park-bikes/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "New York",
+    "country": "US"
+  },
+  {
+    "merchant_id": "midtown-food-workshop",
+    "name": "Midtown Demo Food Workshop",
+    "category": "food",
+    "location": {
+      "lat": 40.7549,
+      "lng": -73.984
+    },
+    "xrpl_address": "rmidtownfoodworkshopPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/midtown-food-workshop/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "New York",
+    "country": "US"
+  },
+  {
+    "merchant_id": "midtown-food-tasting",
+    "name": "Midtown Demo Food Tasting",
+    "category": "food",
+    "location": {
+      "lat": 40.754,
+      "lng": -73.983
+    },
+    "xrpl_address": "rmidtownfoodtastingPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/midtown-food-tasting/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "New York",
+    "country": "US"
+  },
+  {
+    "merchant_id": "times-square-souvenir",
+    "name": "Times Square Demo Souvenirs",
+    "category": "shopping",
+    "location": {
+      "lat": 40.758,
+      "lng": -73.9855
+    },
+    "xrpl_address": "rtimessquaresouvenirPLACEHOLDER",
+    "mcp_url": "http://localhost:8001/m/times-square-souvenir/mcp",
+    "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
+    "city": "New York",
+    "country": "US"
   }
 ]

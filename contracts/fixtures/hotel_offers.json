@@ -155,5 +155,65 @@
     "deep_link": "https://www.hyatt.com/hyatt-regency/osaka",
     "check_in": "2026-11-14",
     "check_out": "2026-11-16"
+  },
+  {
+    "id": "hudson-demo",
+    "name": "Hudson Demo Hotel",
+    "brand": null,
+    "stars": 4.0,
+    "location": {
+      "lat": 40.7612,
+      "lng": -73.9772
+    },
+    "area": "Midtown",
+    "price_per_night": "240.00",
+    "total": "720.00",
+    "currency": "USD",
+    "amenities": [
+      "wifi"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 15,
+    "score": 20.0,
+    "why": [
+      "Demo data",
+      "Midtown, a walk from Central Park"
+    ],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": null,
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-17"
+  },
+  {
+    "id": "murray-demo",
+    "name": "Murray Demo Hotel",
+    "brand": null,
+    "stars": 3.0,
+    "location": {
+      "lat": 40.7555,
+      "lng": -73.981
+    },
+    "area": "Midtown",
+    "price_per_night": "180.00",
+    "total": "540.00",
+    "currency": "USD",
+    "amenities": [
+      "wifi"
+    ],
+    "refundable": true,
+    "avg_travel_min_to_attractions": 20,
+    "score": 1.0,
+    "why": [
+      "Demo data",
+      "A cheaper Midtown stay"
+    ],
+    "image_url": null,
+    "source": "provider",
+    "quote": null,
+    "deep_link": null,
+    "check_in": "2026-11-14",
+    "check_out": "2026-11-17"
   }
 ]

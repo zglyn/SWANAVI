@@ -20,6 +20,9 @@ from roam_agent.trips import Caller, build_proposal, load_script, plan_trip, sta
 
 TODAY = date(2026, 10, 24)
 KYOTO = "Kyoto in late November, 4 days, 2 of us, love food"
+OPENING = json.loads(
+    (Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "demo_city.json").read_text()
+)["opening_prompt"]
 
 
 def _events():
@@ -86,7 +89,7 @@ def test_conversation_core_does_not_import_fastapi():
         assert "fastapi" not in (root / name).read_text(encoding="utf-8")
 
 
-def test_scripted_kyoto_reaches_a_proposal_without_an_api_key(monkeypatch):
+def test_scripted_opening_reaches_a_new_york_proposal_without_an_api_key(monkeypatch):
     monkeypatch.setattr("roam_agent.trips.lookup_destination", lambda words: None)
     monkeypatch.setenv("ROAM_SCRIPTED_AGENT", "1")
     for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "ROAM_LLM_API_KEY"):
@@ -99,7 +102,7 @@ def test_scripted_kyoto_reaches_a_proposal_without_an_api_key(monkeypatch):
     monkeypatch.setattr("roam_agent.autopilot.search_hotels", live_search)
     store = MemoryTripStore()
     events, emit = _events()
-    record = start_trip(store, emit, Caller(), KYOTO, TODAY, load_script())
+    record = start_trip(store, emit, Caller(), OPENING, TODAY, load_script())
     question_rounds = [message for message in record.conversation.messages if message.controls]
     assert len(question_rounds) <= 2
     assert all(len(message.controls) <= 2 for message in question_rounds)
@@ -110,9 +113,12 @@ def test_scripted_kyoto_reaches_a_proposal_without_an_api_key(monkeypatch):
     assert saved.conversation.phase == ConversationPhase.PROPOSAL
     package = saved.proposal.package
     assert package.outbound is not None
+    assert package.outbound.segments[-1].to_place.code == "JFK"
     assert package.return_flight is not None
+    assert package.return_flight.segments[0].from_place.code == "JFK"
     assert package.hotels
-    assert len(package.itinerary.days) == 3
+    assert package.itinerary.brief.destination == "New York"
+    assert len(package.itinerary.days) == 4
     assert any(kind == "proposal.ready" for kind, *_rest in events)
 
 
@@ -146,12 +152,12 @@ def test_trip_routes_stream_the_chat_and_refuse_a_bad_turn(monkeypatch):
     swan_http.reset()
     set_trip_store(MemoryTripStore())
     client = TestClient(app)
-    created = client.post("/api/trips", json={"message": KYOTO})
+    created = client.post("/api/trips", json={"message": OPENING})
     assert created.status_code == 200
     trip_id = created.json()["trip_id"]
     view = client.get(f"/api/trips/{trip_id}")
     assert view.status_code == 200
-    assert view.json()["conversation"]["brief"]["destination"] == "Kyoto"
+    assert view.json()["conversation"]["brief"]["destination"] == "New York"
     both = client.post(f"/api/trips/{trip_id}/messages", json={"text": "hi", "answer": {"slot": "budget", "value": "2000"}})
     assert both.status_code == 422
     neither = client.post(f"/api/trips/{trip_id}/messages", json={})

@@ -84,11 +84,79 @@ class Change:
     reason: str | None = None
 
 
-def load_catalog() -> Catalog:
-    flights = [FlightOffer.model_validate(row) for row in json.loads((FIXTURES / "flight_offers.json").read_text())]
-    hotels = [HotelOffer.model_validate(row) for row in json.loads((FIXTURES / "hotel_offers.json").read_text())]
-    candidates = [Candidate.model_validate(row) for row in json.loads((FIXTURES / "candidates_kyoto.json").read_text())["candidates"]]
+def _rows(name: str) -> list:
+    path = FIXTURES / name
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text())
+    return payload["candidates"] if isinstance(payload, dict) else payload
+
+
+def _scope_for(destination: str) -> tuple[set[str], tuple[float, float] | None]:
+    demo = json.loads((FIXTURES / "demo_city.json").read_text())
+    text = destination.lower()
+    names = [demo["destination"], *demo["aliases"]]
+    if any(name.lower() in text for name in names):
+        return set(demo["airports"]), (demo["center"]["lat"], demo["center"]["lng"])
+    if "kyoto" in text:
+        return {"KIX", "ITM"}, (35.0116, 135.7681)
+    if "osaka" in text:
+        return {"KIX", "ITM"}, (34.6937, 135.5023)
+    if "tokyo" in text:
+        return {"HND", "NRT"}, (35.6762, 139.6503)
+    return set(), None
+
+
+def _codes(offer: FlightOffer) -> set[str]:
+    found = set()
+    for segment in offer.segments:
+        if segment.from_place.code:
+            found.add(segment.from_place.code.upper())
+        if segment.to_place.code:
+            found.add(segment.to_place.code.upper())
+    return found
+
+
+def _candidate_point(candidate: Candidate):
+    if candidate.attraction is not None:
+        return candidate.attraction.location
+    if candidate.merchant is not None and candidate.merchant.location is not None:
+        return candidate.merchant.location
+    if candidate.quote is not None:
+        return candidate.quote.location
+    return None
+
+
+def _scoped(catalog: Catalog, destination: str) -> Catalog:
+    airports, center = _scope_for(destination)
+    flights = catalog.flights
+    hotels = catalog.hotels
+    candidates = catalog.candidates
+    if airports:
+        flights = [offer for offer in flights if _codes(offer) & airports]
+    if center is not None:
+        lat, lng = center
+        hotels = [
+            offer for offer in hotels
+            if haversine_km(lat, lng, offer.location.lat, offer.location.lng) <= 80
+        ]
+        kept = []
+        for candidate in candidates:
+            point = _candidate_point(candidate)
+            if point is not None and haversine_km(lat, lng, point.lat, point.lng) <= 80:
+                kept.append(candidate)
+        candidates = kept
     return Catalog(flights, hotels, candidates)
+
+
+def load_catalog(destination: str | None = None) -> Catalog:
+    flights = [FlightOffer.model_validate(row) for row in _rows("flight_offers.json")]
+    hotels = [HotelOffer.model_validate(row) for row in _rows("hotel_offers.json")]
+    candidates = [Candidate.model_validate(row) for row in _rows("candidates_kyoto.json") + _rows("candidates_demo.json")]
+    catalog = Catalog(flights, hotels, candidates)
+    if destination:
+        return _scoped(catalog, destination)
+    return catalog
 
 
 def relaxed_day_number(text: str) -> int | None:
@@ -196,7 +264,7 @@ def _set_row(proposal: Proposal, row: Suggestion) -> Proposal:
 
 
 def _options(proposal: Proposal, rejected_ids: list[str], row: Suggestion, catalog: Catalog | None = None) -> list[Suggestion]:
-    catalog = catalog or load_catalog()
+    catalog = _scoped(catalog or load_catalog(), proposal.package.itinerary.brief.destination)
     skip = set(rejected_ids)
     package = proposal.package
     if row.kind == SuggestionKind.FLIGHT:

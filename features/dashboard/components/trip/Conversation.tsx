@@ -5,15 +5,16 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TRIP_MESSAGE_KEY } from "@/lib/tripDraft";
+import { demoCity } from "@/lib/demoScope";
 import {
   advanceStream,
   answerControl,
   begin,
   commitAnswers,
   controlsReady,
+  demoScript,
   editFact,
   factChips,
-  kyotoScript,
   missingFacts,
   planNow,
   type PlayState,
@@ -22,13 +23,13 @@ import {
 const TripMap = dynamic(() => import("@/components/map3d/TripMap").then((mod) => mod.TripMap), { ssr: false });
 
 const PROGRESS = [
-  "Finding flights from SFO…",
+  `Finding flights from ${demoCity.origin.code}…`,
   "Choosing a hotel near your picks…",
   "Building day 2…",
 ];
 
 export function Conversation({ tripId, onProposal }: { tripId: string; onProposal: () => void }) {
-  const script = kyotoScript().messages;
+  const script = demoScript().messages;
   const [state, setState] = useState<PlayState | null>(null);
   const [draft, setDraft] = useState("");
   const [progress, setProgress] = useState(0);
@@ -141,10 +142,10 @@ export function Conversation({ tripId, onProposal }: { tripId: string; onProposa
         {state.mode === "planning" ? (
           <div className="convo-map">
             <TripMap
-              stops={[{ id: "kyoto", lat: 35.0116, lng: 135.7681, label: "Kyoto", kind: "stop" }]}
+              stops={[{ id: "destination", lat: demoCity.center.lat, lng: demoCity.center.lng, label: demoCity.destination, kind: "stop" }]}
               arcs={[]}
               focus={0}
-              dayLabel="Kyoto"
+              dayLabel={demoCity.destination}
               route={false}
             />
           </div>

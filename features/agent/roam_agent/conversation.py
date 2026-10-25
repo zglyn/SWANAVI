@@ -68,7 +68,7 @@ MONTH = (
 DAY = r"(\d{1,2})(?:st|nd|rd|th)?(?!\d)"
 UNTIL = r"\s*(?:-|–|to|until|through|thru)\s*"
 ISO_RANGE = re.compile(r"(\d{4}-\d{2}-\d{2})" + UNTIL + r"(\d{4}-\d{2}-\d{2})")
-DAY_RANGE = re.compile(rf"\b{MONTH}\s+{DAY}{UNTIL}(?:{MONTH}\s+)?{DAY}")
+DAY_RANGE = re.compile(rf"\b{MONTH}\s+{DAY}{UNTIL}(?:{MONTH}\s+)?{DAY}(?:,?\s+(\d{{4}}))?")
 DAY_RANGE_FIRST = re.compile(rf"\b{DAY}{UNTIL}{DAY}\s+{MONTH}")
 ONE_DAY = re.compile(rf"\b{MONTH}\s+{DAY}")
 PERIOD = re.compile(rf"\b(early|beginning of|start of|mid|late|end of|in)[\s-]+{MONTH}")
@@ -97,7 +97,7 @@ INTERESTS = {
     "food": re.compile(r"\b(?:food|foodie|eat|eating|restaurants?|ramen|sushi)\b"),
     "temples": re.compile(r"\b(?:temples?|shrines?)\b"),
     "museums": re.compile(r"\b(?:museums?|art|galleries)\b"),
-    "nature": re.compile(r"\b(?:nature|hike|hiking|gardens?|parks?|outdoors)\b"),
+    "nature": re.compile(r"\b(?:nature|hike|hiking|gardens?|parks?|outdoors|walks?)\b"),
     "nightlife": re.compile(r"\b(?:nightlife|bars|clubs)\b"),
 }
 QUESTIONS: dict[str, tuple[str, Control]] = {
@@ -156,9 +156,20 @@ def _dates(lower: str, today: date, facts: TripFacts) -> dict[str, str]:
         if found := ISO_RANGE.search(lower):
             return _span(date.fromisoformat(found.group(1)), date.fromisoformat(found.group(2)))
         if found := DAY_RANGE.search(lower):
-            start = _upcoming(_month(found.group(1)), int(found.group(2)), today)
-            end = date(start.year, _month(found.group(3) or found.group(1)), int(found.group(4)))
-            return _span(start, end if end > start else end.replace(year=end.year + 1))
+            year = int(found.group(5)) if found.group(5) else None
+            start_month = _month(found.group(1))
+            end_month = _month(found.group(3) or found.group(1))
+            if year is None:
+                start = _upcoming(start_month, int(found.group(2)), today)
+                end = date(start.year, end_month, int(found.group(4)))
+                if end <= start:
+                    end = end.replace(year=end.year + 1)
+            else:
+                start = date(year, start_month, int(found.group(2)))
+                end = date(year, end_month, int(found.group(4)))
+                if end <= start:
+                    end = date(year + 1, end_month, int(found.group(4)))
+            return _span(start, end)
         if found := DAY_RANGE_FIRST.search(lower):
             start = _upcoming(_month(found.group(3)), int(found.group(1)), today)
             return _span(start, start.replace(day=int(found.group(2))))

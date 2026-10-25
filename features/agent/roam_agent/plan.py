@@ -54,9 +54,14 @@ def _emit(emit, plan_id: str, tool: str, summary: str) -> None:
         emit({"plan_id": plan_id, "tool": tool, "summary": summary})
 
 
+def _scripted_file(destination: str, kyoto_name: str, demo_name: str) -> Path:
+    name = kyoto_name if "kyoto" in destination.lower() else demo_name
+    return FIXTURES / name
+
+
 def collect_candidates(brief: TripBrief, emit=None, plan_id: str = "plan") -> CandidateSet:
     if os.environ.get("ROAM_SCRIPTED_AGENT") == "1":
-        payload = json.loads((FIXTURES / "candidates_kyoto.json").read_text())
+        payload = json.loads(_scripted_file(brief.destination, "candidates_kyoto.json", "candidates_demo.json").read_text())
         return CandidateSet.model_validate(payload)
     profile = get_transport_profile(brief.destination)
     _emit(emit, plan_id, "get_transport_profile", profile.tips[0] if profile.tips else profile.place)
@@ -168,7 +173,7 @@ def plan(
     place: Destination | None = None,
 ) -> Itinerary:
     if os.environ.get("ROAM_SCRIPTED_AGENT") == "1":
-        payload = json.loads((FIXTURES / "itinerary_kyoto.json").read_text())
+        payload = json.loads(_scripted_file(brief.destination, "itinerary_kyoto.json", "itinerary_demo.json").read_text())
         built = Itinerary.model_validate(payload)
         built.selection = selection
         built.warnings = [*built.warnings, *flight_warnings(brief)]

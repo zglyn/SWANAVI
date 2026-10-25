@@ -5,14 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SwanMark } from "@/components/brand/SwanMark";
 import { getClient } from "@/lib/client";
+import { demoCity } from "@/lib/demoScope";
 import { TRIP_MESSAGE_KEY } from "@/lib/tripDraft";
 
-const CHIPS = [
-  "Kyoto in November, 4 days",
-  "A warm beach week under $2k",
-  "Tokyo food trip with a friend",
-  "Surprise me",
-];
+const CHIPS = demoCity.home_chips;
 
 const PLACEHOLDERS = ["Where do you want to go?", ...CHIPS];
 

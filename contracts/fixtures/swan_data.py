@@ -275,3 +275,9 @@ def write_swan(folder: Path, plan_id: str) -> TravelPackage:
     dump("hotel_offers.json", trip.hotels)
     dump("package_kyoto.json", trip.package)
     return trip.package
+
+
+def write_demo_catalogs(folder: Path) -> None:
+    from demo_data import write_catalogs
+
+    write_catalogs(folder)
