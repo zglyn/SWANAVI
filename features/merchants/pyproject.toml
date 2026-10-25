@@ -2,7 +2,7 @@
 name = "roam-merchants"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["roam-contracts", "fastapi", "uvicorn", "fastmcp", "pynacl"]
+dependencies = ["roam-contracts", "fastapi", "uvicorn", "fastmcp", "pynacl", "httpx"]
 
 [tool.uv.sources]
 roam-contracts = { workspace = true }

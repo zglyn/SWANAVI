@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +22,14 @@ def _load() -> tuple[list[MerchantProfile], list[Quote]]:
     quotes = [Quote.model_validate(row) for row in json.loads((FIXTURES / "quotes.json").read_text())]
     for merchant in merchants:
         merchant.pubkey_ed25519 = PUBLIC_KEY
+        # Real XRPL addresses from the ledger setup replace the fixture placeholders, e.g.
+        # MERCHANT_BAMBOO_BIKES_ADDRESS=r... (features/ledger writes these into .env.ledger).
+        address = os.environ.get(f"MERCHANT_{merchant.merchant_id.upper().replace('-', '_')}_ADDRESS")
+        if address:
+            merchant.xrpl_address = address
+    addresses = {merchant.merchant_id: merchant.xrpl_address for merchant in merchants}
+    quotes = [quote.model_copy(update={"merchant_address": addresses.get(quote.merchant_id, quote.merchant_address)})
+              for quote in quotes]
     return merchants, quotes
 
 
