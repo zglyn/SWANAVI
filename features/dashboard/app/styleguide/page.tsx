@@ -16,7 +16,7 @@ export default function StyleGuidePage() {
         <button type="button" className="swan-btn">Primary</button>
         <button type="button" className="swan-btn-ghost">Secondary</button>
       </div>
-      <p className="mt-8 font-mono text-5xl">1,240</p>
+      <p className="mt-8 tabular-nums text-5xl">1,240</p>
       <p className="swan-muted text-sm">Projector numbers use the mono face at this size.</p>
     </main>
   );
