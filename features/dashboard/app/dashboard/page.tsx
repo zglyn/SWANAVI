@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { Inspector } from "@/components/dashboard/Inspector";
 import { ChatPanel, PolicyCard, QuoteList } from "@/components/dashboard/TravellerPanel";
+import { BOOKING_PLAN_KEY, BOOKING_QUOTES_KEY, setBooked } from "@/lib/booking";
 import { fmt } from "@/lib/format";
 import { useDemo } from "@/lib/useDemo";
 
@@ -13,11 +14,18 @@ export default function Dashboard() {
   const w = state.wallet;
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("roam.booking");
+    const raw = sessionStorage.getItem(BOOKING_QUOTES_KEY);
     if (!raw) return;
-    sessionStorage.removeItem("roam.booking");
+    sessionStorage.removeItem(BOOKING_QUOTES_KEY);
     seedQuotes(JSON.parse(raw));
   }, [seedQuotes]);
+
+  const bookedCount = Object.values(state.status).filter((value) => value === "booked").length;
+  useEffect(() => {
+    const planId = sessionStorage.getItem(BOOKING_PLAN_KEY);
+    if (!planId || bookedCount === 0) return;
+    setBooked(planId, "activities", true);
+  }, [bookedCount]);
 
   return (
     <div className="flex min-h-screen flex-col lg:h-screen">
@@ -29,7 +37,7 @@ export default function Dashboard() {
           <Stat label="Wallet" value={w ? `${fmt(w.balance)} RLUSD` : "—"} />
           <Stat label="In escrow" value={w ? fmt(w.locked_in_escrow) : "—"} />
           <Stat label="Saved vs Viator" value={fmt(state.saved)} accent />
-          <span className="rounded-full border border-line px-2.5 py-1 font-mono text-xs text-ink-2">
+          <span className="rounded-full border border-line px-2.5 py-1 tabular-nums text-xs text-ink-2">
             {client.mode === "mock" ? "mock data" : "XRPL Devnet"}
           </span>
         </div>
@@ -71,7 +79,7 @@ export default function Dashboard() {
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <span className={`rounded-full px-3 py-1 ${accent ? "bg-matcha-soft text-matcha" : "bg-paper-2"}`}>
-      <span className="text-ink-3">{label}</span> <span className="font-mono font-semibold">{value}</span>
+      <span className="text-ink-3">{label}</span> <span className="tabular-nums font-semibold">{value}</span>
     </span>
   );
 }
