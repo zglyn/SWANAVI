@@ -32,7 +32,7 @@ bookings = BookingBook()
 mcp = FastMCP("merchant-directory")
 
 
-@mcp.tool(description="Find registered shops in a city. near is {lat, lng}. radius_km is kilometres from that point. Results are closest first. city is a name such as Kyoto.")
+@mcp.tool(description="Find registered shops in a city. near is {lat, lng}. radius_km is kilometres from that point. Results are closest first. city is a name such as New York or Kyoto.")
 def find_merchants(city: str, category: str | None = None, near: dict | None = None, radius_km: float | None = None, open_at: str | None = None) -> list[dict]:
     point = GeoPoint.model_validate(near) if near else None
     cat = Category(category) if category else None
@@ -117,7 +117,7 @@ def cancel(merchant_id: str, body: CancelRequest):
     booking = bookings.cancel(body.invoice_id)
     if booking is None or booking.merchant_id != merchant_id:
         raise HTTPException(status_code=404, detail="no such booking")
-    return booking.model_dump(mode="json")
+    return booking.model_dump(mode="json", exclude_none=True)
 
 
 @http.get("/m/{merchant_id}/bookings/{invoice_id}")
@@ -125,7 +125,7 @@ def get_booking(merchant_id: str, invoice_id: str):
     booking = bookings.by_invoice.get(invoice_id)
     if booking is None or booking.merchant_id != merchant_id:
         raise HTTPException(status_code=404, detail="no such booking")
-    return booking.model_dump(mode="json")
+    return booking.model_dump(mode="json", exclude_none=True)
 
 
 class FakeEscrow(BaseModel):
@@ -170,7 +170,8 @@ def _book(merchant_id: str, sku: str, slot_start: str, proof: PaymentProof | Non
     errors = check_payment(quote, proof, ledger.lookup(proof), utc_now())
     if errors:
         return 402, payment_required_body(quote, "; ".join(errors))
-    return 200, bookings.confirm(quote, proof).model_dump(mode="json")
+    settlement = "sandbox" if isinstance(ledger, FakeLedgerVerifier) else None
+    return 200, bookings.confirm(quote, proof, settlement=settlement).model_dump(mode="json", exclude_none=True)
 
 
 http.mount("/", mcp_app)

@@ -14,7 +14,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import httpx
 
@@ -203,13 +203,13 @@ class BookingBook:
         self.by_invoice: dict[str, Booking] = {}
         self.used_escrows: dict[tuple[str, int], str] = {}
 
-    def confirm(self, quote: Quote, proof: PaymentProof) -> Booking:
+    def confirm(self, quote: Quote, proof: PaymentProof, settlement: Literal["sandbox"] | None = None) -> Booking:
         existing = self.by_invoice.get(quote.invoice_id)
         if existing is not None and existing.status == "confirmed":
-            return existing  # a retry with the same proof gets the same booking
+            return existing
         code = hashlib.sha256(f"{quote.invoice_id}|{proof.batch_tx_hash}".encode()).hexdigest()[:6].upper()
         booking = Booking(invoice_id=quote.invoice_id, merchant_id=quote.merchant_id, sku=quote.sku,
-                          status="confirmed", confirmation_code=code)
+                          status="confirmed", confirmation_code=code, settlement=settlement)
         self.by_invoice[quote.invoice_id] = booking
         self.used_escrows[(proof.escrow_owner, proof.escrow_sequence)] = quote.invoice_id
         return booking
