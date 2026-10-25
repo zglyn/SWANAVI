@@ -277,6 +277,163 @@ class ControlLoopTests(_Modules):
         self.assertEqual(calls["flight"], ["flight-1"])
         self.assertEqual(result["loopStopped"], "on_track")
 
+    def test_missing_replan_package_records_and_continues(self) -> None:
+        calls = self._providers()
+        self.hide(
+            "booking.replan",
+            "booking.replan.cancel",
+            "booking.replan.early",
+            "booking.replan.late",
+        )
+        signals = [
+            ("cancelled", "flight-1", "flight", None),
+            ("ended_early", "hotel-1", "hotel", 60),
+            ("ended_late", "attraction-1", "attraction", 45),
+        ]
+        seen: list[str] = []
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del results
+            seen.append(plan["hotels"][0]["checkOut"])
+            tick = clock["tick"]
+            if tick > len(signals):
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            event, segment_id, kind, delta = signals[tick - 1]
+            update: dict[str, Any] = {
+                "segmentId": segment_id,
+                "kind": kind,
+                "issue": event,
+                "action": "replan",
+                "event": event,
+            }
+            if delta is not None:
+                update["deltaMinutes"] = delta
+            return {"phase": "in_progress", "onTrack": False, "updates": [update]}
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(len(result["ticks"]), len(signals) + 1)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(seen, ["2026-11-06"] * (len(signals) + 1))
+        self.assertEqual(calls["flight"], ["flight-1"])
+        self.assertEqual(calls["hotel"], ["hotel-1"])
+        self.assertEqual(calls["attraction"], ["attraction-1"])
+        for tick, (event, segment_id, kind, delta) in zip(result["ticks"], signals):
+            update = tick["updates"][0]
+            self.assertEqual(update["action"], "replan")
+            self.assertEqual(update["event"], event)
+            self.assertEqual(update["segmentId"], segment_id)
+            self.assertEqual(update["kind"], kind)
+            self.assertEqual(update.get("deltaMinutes"), delta)
+            self.assertEqual(update["replan"], "replan_not_installed")
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+
+    def test_replan_tool_shifts_a_segment(self) -> None:
+        self._providers()
+        booked_times: list[str] = []
+
+        def book_attraction(segment: dict[str, Any], travelers: list[Any], trip_id: str) -> dict[str, Any]:
+            booked_times.append(segment["time"])
+            return _booked(segment, travelers, trip_id)
+
+        self.install(
+            "booking.providers.attractions",
+            book=book_attraction,
+            book_attraction=book_attraction,
+        )
+        calls: list[tuple[Any, ...]] = []
+
+        def replan_late(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            calls.append((trip_id, now, disruption, plan["attractions"][0]["time"]))
+            shifted = json.loads(json.dumps(plan))
+            hour, minute = shifted["attractions"][0]["time"].split(":")
+            total = int(hour) * 60 + int(minute) + disruption["deltaMinutes"]
+            shifted["attractions"][0]["time"] = f"{total // 60:02d}:{total % 60:02d}"
+            return {
+                "changed": True,
+                "plan": shifted,
+                "notes": ["shifted attraction-1 by 45 minutes"],
+            }
+
+        self.install("booking.replan")
+        self.install("booking.replan.late", replan_late=replan_late)
+        seen: list[str] = []
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del results
+            seen.append(plan["attractions"][0]["time"])
+            if clock["tick"] == 1:
+                return {
+                    "phase": "in_progress",
+                    "onTrack": False,
+                    "updates": [
+                        {
+                            "segmentId": "attraction-1",
+                            "kind": "attraction",
+                            "issue": "segment ended late",
+                            "action": "replan",
+                            "event": "ended_late",
+                            "deltaMinutes": 45,
+                        }
+                    ],
+                }
+            if clock["tick"] == 2:
+                return {
+                    "phase": "in_progress",
+                    "onTrack": False,
+                    "updates": [
+                        {
+                            "segmentId": "attraction-1",
+                            "kind": "attraction",
+                            "issue": "book the shifted visit",
+                            "action": "rebook",
+                        }
+                    ],
+                }
+            return {"phase": "in_progress", "onTrack": True, "updates": []}
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(SAMPLE["attractions"][0]["time"], "09:00")
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "sample-kyoto",
+                    "2026-11-02T08:00:00Z",
+                    {
+                        "segmentId": "attraction-1",
+                        "kind": "attraction",
+                        "event": "ended_late",
+                        "deltaMinutes": 45,
+                    },
+                    "09:00",
+                )
+            ],
+        )
+        self.assertEqual(seen, ["09:00", "09:45", "09:45"])
+        self.assertEqual(booked_times, ["09:00", "09:45"])
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        shifted = result["ticks"][0]["updates"][0]
+        self.assertEqual(shifted["replan"], "changed")
+        self.assertEqual(shifted["notes"], ["shifted attraction-1 by 45 minutes"])
+        self.assertEqual(result["results"][2]["reason"], "rebooked")
+        self.assertFalse(segment_accepted(result["results"][2]))
+        self.assertTrue(segment_accepted(result["results"][0]))
+        self.assertTrue(segment_accepted(result["results"][1]))
+
     def test_loop_caps_at_five_ticks(self) -> None:
         calls = self._providers()
 
@@ -346,6 +503,502 @@ class ControlLoopTests(_Modules):
         self.assertEqual(len(result["results"]), 3)
         self.assertIsNone(result["error"])
 
+    def test_missing_guard_packages_do_not_crash(self) -> None:
+        self._providers()
+        self.hide(
+            "booking.guard",
+            "booking.guard.budget",
+            "booking.guard.spend",
+            "booking.guard.conflicts",
+            "booking.refund",
+            "booking.notify",
+            "booking.assist.tip",
+        )
+
+        def replan_cancel(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            del trip_id, now, disruption
+            shifted = json.loads(json.dumps(plan))
+            shifted["hotels"][0]["checkOut"] = "2026-11-05"
+            return {"changed": True, "plan": shifted, "notes": ["cancelled flight-1"]}
+
+        self.install("booking.replan.cancel", replan_cancel=replan_cancel)
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del plan, results
+            if clock["tick"] > 1:
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            return {
+                "phase": "in_progress",
+                "onTrack": False,
+                "updates": [
+                    {
+                        "segmentId": "flight-1",
+                        "kind": "flight",
+                        "issue": "segment cancelled",
+                        "action": "replan",
+                        "event": "cancelled",
+                    }
+                ],
+            }
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        result = handle_payload(SAMPLE)
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(result["spend"]["authorizedAmount"], 10)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertEqual(result["spend"]["currency"], "USD")
+        self.assertIsNone(result["spend"]["payAmount"])
+        self.assertEqual(result["spend"]["reason"], "authorize_spend_not_installed")
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+            self.assertEqual(item["budget"], "check_budget_not_installed")
+        cancelled = result["ticks"][0]["updates"][0]
+        self.assertEqual(cancelled["replan"], "changed")
+        self.assertEqual(cancelled["refund"], "refund_booking_not_installed")
+        self.assertEqual(cancelled["conflicts"], "check_conflicts_not_installed")
+        self.assertEqual(result["ticks"][0]["notice"], "trip_notice_not_installed")
+
+    def test_budget_rejection_is_not_accepted(self) -> None:
+        self._providers()
+        self.hide("booking.progress", "booking.guard.spend", "booking.notify")
+
+        def check_budget(trip_id: str, segment: dict[str, Any], price: dict[str, Any] | None) -> dict[str, Any]:
+            del trip_id, price
+            return {"allowed": segment.get("segmentId") != "hotel-1"}
+
+        self.install("booking.guard.budget", check_budget=check_budget)
+        result = handle_payload(SAMPLE)
+        by_id = {item["segmentId"]: item for item in result["results"]}
+
+        self.assertEqual(by_id["hotel-1"]["status"], "needs_user")
+        self.assertTrue(by_id["hotel-1"]["emailVerified"])
+        self.assertFalse(segment_accepted(by_id["hotel-1"]))
+        self.assertEqual(by_id["hotel-1"]["budget"]["allowed"], False)
+        self.assertTrue(segment_accepted(by_id["flight-1"]))
+        self.assertTrue(segment_accepted(by_id["attraction-1"]))
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+
+    def test_fake_authorize_spend_result_is_recorded(self) -> None:
+        self._providers()
+        self.hide("booking.progress", "booking.assist.tip")
+        seen: list[tuple[Any, ...]] = []
+
+        def authorize_spend(authorizedAmount: int, requestedAmount: int, currency: str) -> dict[str, Any]:
+            seen.append((authorizedAmount, requestedAmount, currency))
+            return {"payAmount": 10, "reason": "over_capture_rejected", "marker": "fake-spend"}
+
+        def trip_notice(trip_id: str, event: dict[str, Any]) -> dict[str, Any]:
+            return {"tripId": trip_id, "type": event["type"], "payAmount": event["payAmount"]}
+
+        self.install("booking.guard.spend", authorize_spend=authorize_spend)
+        self.install("booking.notify", trip_notice=trip_notice)
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(seen, [(10, 12, "USD")])
+        self.assertEqual(result["spend"]["payAmount"], 10)
+        self.assertEqual(result["spend"]["reason"], "over_capture_rejected")
+        self.assertEqual(result["spend"]["marker"], "fake-spend")
+        self.assertEqual(result["spend"]["authorizedAmount"], 10)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertEqual(result["spend"]["currency"], "USD")
+        self.assertEqual(
+            result["ticks"][0]["notice"],
+            {"tripId": "sample-kyoto", "type": "over_capture_rejected", "payAmount": 10},
+        )
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertEqual(len(result["ticks"]), 1)
+        for item in result["results"]:
+            self.assertEqual(item["status"], "booked")
+            self.assertTrue(segment_accepted(item))
+
+
+class AssistTests(_Modules):
+    def test_missing_assist_packages_do_not_crash(self) -> None:
+        self.hide(
+            "booking.progress",
+            "booking.assist",
+            "booking.assist.entry",
+            "booking.assist.hours",
+            "booking.assist.transfers",
+            "booking.assist.fx",
+            "booking.assist.weather",
+            "booking.assist.emergency",
+            "booking.assist.ride",
+            "booking.assist.table",
+            "booking.assist.luggage",
+            "booking.assist.watch",
+            "booking.assist.airport",
+            "booking.assist.afterdark",
+            "booking.assist.checkout",
+            "booking.assist.tip",
+            "booking.assist.phrase",
+            "booking.assist.wallet",
+            "booking.assist.flightstatus",
+            "booking.assist.checkin",
+            "booking.assist.dcc",
+            "booking.assist.card",
+            "booking.assist.cash",
+            "booking.assist.holidays",
+            "booking.assist.layover",
+            "booking.assist.etiquette",
+            "booking.assist.taxrefund",
+            "booking.assist.rebook",
+            "booking.assist.hold",
+            "booking.assist.connectivity",
+        )
+        result = handle_payload(SAMPLE)
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["maxTicks"], MAX_TICKS)
+        self.assertEqual(len(result["ticks"]), 1)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertEqual(result["entry"], "check_entry_not_installed")
+        self.assertEqual(result["emergency"], "emergency_card_not_installed")
+        self.assertEqual(result["fx"], "quote_fx_not_installed")
+        self.assertEqual(result["tip"], "tip_policy_not_installed")
+        self.assertEqual(result["transfer"], "check_transfer_not_installed")
+        self.assertEqual(result["luggage"], "luggage_drop_not_installed")
+        self.assertEqual(result["checkout"], "late_checkout_not_installed")
+        self.assertEqual(result["spend"]["authorizedAmount"], 10)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertEqual(result["spend"]["currency"], "USD")
+        tick = result["ticks"][0]
+        self.assertEqual(tick["watch"], "watch_not_installed")
+        self.assertEqual(tick["warnings"], [])
+        self.assertEqual(tick["airport"], "airport_leave_not_installed")
+        self.assertEqual(tick["wallet"], "trip_wallet_not_installed")
+        self.assertEqual(tick["flightStatus"], "flight_status_not_installed")
+        self.assertEqual(tick["checkIn"], "check_in_flight_not_installed")
+        self.assertEqual(tick["dcc"], "refuse_dcc_not_installed")
+        self.assertEqual(tick["card"], "pick_card_not_installed")
+        self.assertEqual(tick["cash"], "cash_needed_not_installed")
+        self.assertEqual(tick["holiday"], "holiday_closure_not_installed")
+        self.assertEqual(tick["layover"], "check_layover_not_installed")
+        self.assertEqual(tick["etiquette"], "etiquette_card_not_installed")
+        self.assertEqual(tick["taxRefund"], "tax_refund_not_installed")
+        self.assertEqual(tick["hold"], "incidental_hold_not_installed")
+        self.assertEqual(tick["holdOver"], "incidental_hold_not_installed")
+        self.assertNotIn("landing", tick)
+        self.assertNotIn("segmentRebook", tick)
+        self.assertNotIn("afterDark", tick)
+
+    def test_missing_request_ride_does_not_crash(self) -> None:
+        self.hide("booking.progress", "booking.assist.ride", "booking.assist.phrase")
+        plan = json.loads(json.dumps(SAMPLE))
+        plan["attractions"].append(
+            {
+                "segmentId": "attraction-dawn",
+                "kind": "attraction",
+                "name": "Dawn gate",
+                "city": "Kyoto",
+                "date": "2026-11-02",
+                "partySize": 1,
+                "time": "00:30",
+                "end": "2026-11-02T01:00:00Z",
+            }
+        )
+
+        result = handle_payload(plan)
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        rides = result["ticks"][0]["rides"]
+        self.assertEqual(rides[0]["segmentId"], "attraction-dawn")
+        self.assertEqual(rides[0]["pickupAt"], "2026-11-02T01:00:00Z")
+        self.assertEqual(rides[0]["result"], "request_ride_not_installed")
+        self.assertIsNone(rides[0]["rideCode"])
+        self.assertEqual(result["ticks"][0]["phrase"], "phrase_card_not_installed")
+
+    def test_scripted_entry_fx_and_tip_ceiling(self) -> None:
+        self.hide("booking.progress")
+        seen: dict[str, Any] = {}
+
+        def check_entry(source: dict[str, Any]) -> dict[str, Any]:
+            seen["entry"] = source
+            return {"ok": False, "issues": ["visaOnFile is false"]}
+
+        def quote_fx(amount: int, fromCurrency: str, toCurrency: str) -> dict[str, Any]:
+            seen["fx"] = (amount, fromCurrency, toCurrency)
+            return {"amount": 6.7, "currency": toCurrency, "reason": "quoted"}
+
+        def tip_policy(tripId: str, country: str, currency: str, requestedAmount: int) -> dict[str, Any]:
+            del tripId
+            seen["tip"] = (country, currency, requestedAmount)
+            return {"authorizedAmount": 8}
+
+        def authorize_spend(authorizedAmount: int, requestedAmount: int, currency: str) -> dict[str, Any]:
+            seen["spend"] = (authorizedAmount, requestedAmount, currency)
+            return {"payAmount": authorizedAmount, "reason": "within_limit"}
+
+        self.install("booking.assist.entry", check_entry=check_entry)
+        self.install("booking.assist.fx", quote_fx=quote_fx)
+        self.install("booking.assist.tip", tip_policy=tip_policy)
+        self.install("booking.guard.spend", authorize_spend=authorize_spend)
+
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(seen["entry"]["passportExpiry"], "2026-12-06")
+        self.assertEqual(seen["entry"]["tripEnd"], "2026-11-06")
+        self.assertIs(seen["entry"]["visaOnFile"], False)
+        self.assertEqual(seen["fx"], (1000, "JPY", "USD"))
+        self.assertEqual(seen["tip"], ("Japan", "USD", 12))
+        self.assertEqual(seen["spend"], (8, 12, "USD"))
+        self.assertEqual(result["spend"]["authorizedAmount"], 8)
+        self.assertEqual(result["tip"]["authorizedAmount"], 8)
+
+    def test_watch_warnings_act_in_the_same_tick(self) -> None:
+        order: list[str] = []
+
+        def book(segment: dict[str, Any], travelers: list[Any], trip_id: str) -> dict[str, Any]:
+            return _booked(segment, travelers, trip_id)
+
+        self.install("booking.providers.flights", book=book, book_flight=book)
+        self.install("booking.providers.hotels", book=book)
+        self.install("booking.providers.attractions", book=book, book_attraction=book)
+        self.install("booking.verify.flights", sample_email=_email, verify=_verify_match)
+        self.install("booking.verify.hotels", sample_email=_email, verify=_verify_match)
+        self.install("booking.verify.attractions", sample_email=_email, verify=_verify_match)
+
+        def watch_trip(now: str, plan: dict[str, Any], rides: list[Any], signals: list[Any], tripId: str = "") -> dict[str, Any]:
+            del now, plan, rides, signals, tripId
+            order.append("watch")
+            return {
+                "ok": False,
+                "warnings": [
+                    {
+                        "segmentId": "flight-1",
+                        "issue": "cancelled",
+                        "severity": "act",
+                        "action": "replan",
+                        "event": "cancelled",
+                    },
+                    {
+                        "segmentId": "attraction-1",
+                        "issue": "storm",
+                        "severity": "act",
+                        "action": "shift",
+                        "condition": "storm",
+                        "event": "ended_late",
+                        "deltaMinutes": 15,
+                    },
+                    {
+                        "segmentId": "flight-1",
+                        "issue": "need a ride",
+                        "severity": "act",
+                        "action": "request_ride",
+                    },
+                    {
+                        "segmentId": "flight-1",
+                        "issue": "tight transfer",
+                        "severity": "act",
+                        "action": "check_transfer",
+                    },
+                    {
+                        "segmentId": "hotel-1",
+                        "issue": "note only",
+                        "severity": "info",
+                        "action": "request_ride",
+                    },
+                ],
+            }
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del plan, results, clock
+            order.append("progress")
+            return {"phase": "day-of", "onTrack": True, "updates": []}
+
+        def replan_cancel(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            del trip_id, now, disruption
+            order.append("replan")
+            return {"changed": False, "plan": plan, "notes": []}
+
+        def replan_late(trip_id: str, now: str, plan: dict[str, Any], disruption: dict[str, Any]) -> dict[str, Any]:
+            del trip_id, now, disruption
+            order.append("shift")
+            return {"changed": False, "plan": plan, "notes": []}
+
+        def check_weather(segmentId: str, outdoor: bool, condition: str) -> dict[str, Any]:
+            order.append("weather")
+            return {"segmentId": segmentId, "outdoor": outdoor, "ok": False, "action": "shift", "reason": condition}
+
+        def request_ride(pickupAt: str, dropoffName: str, segmentId: str = "", toSegmentId: str = "", tripId: str = "") -> dict[str, Any]:
+            del pickupAt, dropoffName, toSegmentId, tripId
+            order.append("ride:" + segmentId)
+            return {"rideCode": "SANDBOX-RIDE-9"}
+
+        def check_transfer(fromSegmentId: str, toSegmentId: str, fromEnd: str, toStart: str, travelMinutes: int) -> dict[str, Any]:
+            del fromEnd, toStart, travelMinutes
+            order.append("transfer:" + fromSegmentId + ":" + toSegmentId)
+            return {"ok": False, "reason": "shortfall"}
+
+        self.install("booking.assist.watch", watch_trip=watch_trip)
+        self.install("booking.progress", trip_progress=trip_progress)
+        self.install("booking.replan.cancel", replan_cancel=replan_cancel)
+        self.install("booking.replan.late", replan_late=replan_late)
+        self.install("booking.assist.weather", check_weather=check_weather)
+        self.install("booking.assist.ride", request_ride=request_ride)
+        self.install("booking.assist.transfers", check_transfer=check_transfer)
+
+        result = handle_payload(SAMPLE)
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertEqual(len(result["ticks"]), 1)
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertLess(order.index("watch"), order.index("progress"))
+        self.assertLess(order.index("replan"), order.index("progress"))
+        self.assertLess(order.index("weather"), order.index("progress"))
+        self.assertLess(order.index("shift"), order.index("progress"))
+        self.assertLess(order.index("ride:flight-1"), order.index("progress"))
+        self.assertNotIn("ride:hotel-1", order)
+        tick = result["ticks"][0]
+        self.assertEqual(len(tick["warnings"]), 5)
+        self.assertEqual(tick["warnings"][0]["replan"], "unchanged")
+        self.assertEqual(tick["rides"][0]["rideCode"], "SANDBOX-RIDE-9")
+        self.assertEqual(tick["warnings"][3]["transfer"]["reason"], "shortfall")
+
+    def test_airport_not_ok_is_recorded_on_the_tick(self) -> None:
+        self.hide("booking.progress")
+
+        def airport_leave(tripId: str, segmentId: str, date: str, now: str, origin: str = "", destination: str = "") -> dict[str, Any]:
+            del tripId, origin, destination
+            return {"ok": False, "segmentId": segmentId, "date": date, "now": now}
+
+        self.install("booking.assist.airport", airport_leave=airport_leave)
+        result = handle_payload(SAMPLE)
+        airport = result["ticks"][0]["airport"]
+        self.assertIs(airport["ok"], False)
+        self.assertEqual(airport["segmentId"], "flight-1")
+        self.assertEqual(airport["date"], "2026-11-02")
+
+    def test_after_dark_request_ride_uses_the_walk(self) -> None:
+        self.hide("booking.progress")
+        plan = json.loads(json.dumps(SAMPLE))
+        plan["attractions"].append(
+            {
+                "segmentId": "attraction-walk",
+                "kind": "attraction",
+                "name": "Night walk",
+                "city": "Kyoto",
+                "date": "2026-11-02",
+                "partySize": 1,
+                "time": "21:00",
+                "walk": True,
+            }
+        )
+        seen: list[str] = []
+
+        def after_dark(segmentId: str, name: str, start: str, end: str, now: str = "", tripId: str = "") -> dict[str, Any]:
+            del name, start, end, now, tripId
+            seen.append(segmentId)
+            return {"action": "request_ride", "segmentId": segmentId}
+
+        def request_ride(pickupAt: str, dropoffName: str, segmentId: str = "", toSegmentId: str = "", tripId: str = "") -> dict[str, Any]:
+            del pickupAt, toSegmentId, tripId
+            seen.append(dropoffName)
+            return {"rideCode": "SANDBOX-RIDE-WALK", "segmentId": segmentId}
+
+        self.install("booking.assist.afterdark", after_dark=after_dark)
+        self.install("booking.assist.ride", request_ride=request_ride)
+        result = handle_payload(plan)
+
+        self.assertEqual(seen[0], "attraction-walk")
+        self.assertIn("Sample temple visit", seen)
+        self.assertEqual(result["ticks"][0]["afterDark"]["action"], "request_ride")
+        self.assertEqual(result["ticks"][0]["rides"][0]["rideCode"], "SANDBOX-RIDE-WALK")
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+
+    def test_concierge_records_scripted_results_without_moving_the_plan(self) -> None:
+        self.hide("booking.progress")
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertEqual(len(result["results"]), 3)
+        self.assertEqual([item["segmentId"] for item in result["results"]], ["flight-1", "hotel-1", "attraction-1"])
+        tick = result["ticks"][0]
+        self.assertEqual(tick["flightStatus"]["event"], "on_time")
+        self.assertEqual(tick["flightStatus"]["action"], "none")
+        self.assertTrue(str(tick["checkIn"]["boardingPass"]).startswith("SANDBOX-BP-"))
+        self.assertIs(tick["dcc"]["refused"], True)
+        self.assertEqual(tick["dcc"]["payAmount"], 1000)
+        self.assertEqual(tick["dcc"]["payCurrency"], "JPY")
+        self.assertEqual(tick["dcc"]["reason"], "dcc_refused")
+        self.assertEqual(tick["card"]["cardId"], "mc-japan")
+        self.assertEqual(tick["card"]["feeAmount"], 0)
+        self.assertEqual(tick["card"]["reason"], "no_fx_fee")
+        self.assertEqual(tick["cash"]["action"], "withdraw_cash")
+        self.assertEqual(f"{tick['cash']['tripAmount']:.2f}", "6.70")
+        self.assertEqual(tick["cash"]["tripCurrency"], "USD")
+        self.assertIs(tick["holiday"]["closed"], True)
+        self.assertEqual(tick["holiday"]["holiday"], "Culture Day")
+        self.assertEqual(tick["holiday"]["action"], "shift")
+        self.assertEqual(tick["holiday"]["segmentId"], "attraction-1")
+        self.assertEqual(tick["layover"]["action"], "replan")
+        self.assertEqual(tick["layover"]["shortfallMinutes"], 30)
+        self.assertEqual(tick["etiquette"]["phrase"], "写真は大丈夫ですか")
+        self.assertEqual(tick["taxRefund"]["refundAmount"], 1000)
+        self.assertEqual(tick["taxRefund"]["refundCurrency"], "JPY")
+        self.assertEqual(tick["hold"]["releaseAmount"], 160)
+        self.assertEqual(tick["hold"]["reason"], "held")
+        self.assertEqual(tick["holdOver"]["payAmount"], 200)
+        self.assertEqual(tick["holdOver"]["reason"], "over_capture")
+        self.assertEqual(result["spend"]["payAmount"], 12)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertNotIn("landing", tick)
+        self.assertNotIn("segmentRebook", tick)
+
+    def test_missing_landing_data_does_not_stop_the_loop(self) -> None:
+        self.hide("booking.progress", "booking.assist.connectivity")
+        plan = json.loads(json.dumps(SAMPLE))
+        plan["flights"][0]["end"] = "2026-11-02T09:30:00Z"
+
+        result = handle_payload(plan)
+
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["ticks"][0]["landing"], "landing_data_not_installed")
+        self.assertEqual(result["results"][0]["status"], "booked")
+        self.assertEqual(result["results"][0]["segmentId"], "flight-1")
+
+    def test_missing_rebook_segment_records_and_continues(self) -> None:
+        self.hide("booking.assist.rebook", "booking.replan.cancel")
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del plan, results
+            if clock["tick"] > 1:
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            return {
+                "phase": "in_progress",
+                "onTrack": False,
+                "updates": [
+                    {
+                        "segmentId": "flight-1",
+                        "kind": "flight",
+                        "issue": "segment cancelled",
+                        "action": "replan",
+                        "event": "cancelled",
+                    }
+                ],
+            }
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["ticks"][0]["segmentRebook"], "rebook_segment_not_installed")
+        self.assertEqual(result["results"][0]["status"], "booked")
+        self.assertEqual(result["results"][0]["segmentId"], "flight-1")
+
 
 class RuntimeTests(unittest.TestCase):
     def test_entrypoint_registers_capability_tools(self) -> None:
@@ -362,6 +1015,42 @@ class RuntimeTests(unittest.TestCase):
                 "verify_hotel_email",
                 "verify_attraction_email",
                 "trip_progress",
+                "replan_cancel",
+                "replan_early",
+                "replan_late",
+                "check_budget",
+                "authorize_spend",
+                "refund_booking",
+                "check_conflicts",
+                "trip_notice",
+                "check_entry",
+                "check_hours",
+                "check_transfer",
+                "quote_fx",
+                "check_weather",
+                "emergency_card",
+                "request_ride",
+                "hold_table",
+                "luggage_drop",
+                "watch_trip",
+                "airport_leave",
+                "after_dark",
+                "late_checkout",
+                "tip_policy",
+                "phrase_card",
+                "trip_wallet",
+                "flight_status",
+                "check_in_flight",
+                "refuse_dcc",
+                "pick_card",
+                "cash_needed",
+                "holiday_closure",
+                "check_layover",
+                "etiquette_card",
+                "tax_refund",
+                "rebook_segment",
+                "incidental_hold",
+                "landing_data",
             },
         )
         result = invoke(SAMPLE, context=None)
@@ -393,13 +1082,75 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotEqual(printed["loopStopped"], "progress_not_installed")
         updates = [update for tick in printed["ticks"] for update in tick["updates"] if isinstance(update, dict)]
         self.assertTrue(any(update.get("action") == "rebook" for update in updates))
+        replan_updates = [
+            (tick.get("tick"), update)
+            for tick in printed["ticks"]
+            if isinstance(tick, dict)
+            for update in tick.get("updates", [])
+            if isinstance(update, dict) and update.get("action") == "replan"
+        ]
+        self.assertEqual(
+            [
+                (tick, update.get("event"), update.get("deltaMinutes"), update.get("replan"))
+                for tick, update in replan_updates
+            ],
+            [
+                (1, "cancelled", None, "changed"),
+                (2, "ended_early", 60, "changed"),
+                (3, "ended_late", 45, "changed"),
+            ],
+        )
+        notes = {update.get("event"): update.get("notes") for _tick, update in replan_updates}
+        self.assertIn("marked flight-1 removed", notes["cancelled"])
+        self.assertIn("shifted hotel-1 earlier by 180 minutes", notes["cancelled"])
+        self.assertIn("shifted attraction-4 earlier by 60 minutes", notes["ended_early"])
+        self.assertIn("shifted attraction-3 later by 45 minutes", notes["ended_late"])
         self.assertIn("tick 1", trace)
         self.assertIn("action=rebook", trace)
+        self.assertIn("event=cancelled", trace)
+        self.assertIn("event=ended_early", trace)
+        self.assertIn("event=ended_late", trace)
+        self.assertIn("deltaMinutes=60", trace)
+        self.assertIn("deltaMinutes=45", trace)
+        self.assertIn("replan=changed", trace)
+        self.assertNotIn("replan_not_installed", trace)
         self.assertNotIn("progress_not_installed", trace)
         self.assertNotIn("verifier_not_installed", trace)
         for item in printed["results"]:
             self.assertEqual(item["status"], "booked")
             self.assertIs(item["emailVerified"], True)
+        self.assertEqual(printed["fx"]["amount"], 6.7)
+        self.assertEqual(printed["fx"]["fromAmount"], 1000)
+        self.assertEqual(printed["tip"]["maxTipPercent"], 0)
+        self.assertEqual(printed["tip"]["tipAmount"], 0)
+        self.assertEqual(printed["spend"]["payAmount"], 12)
+        self.assertEqual(printed["spend"]["requestedAmount"], 12)
+        self.assertEqual(printed["emergency"]["emergencyNumber"], "110")
+        tick = printed["ticks"][0]
+        self.assertEqual(tick["airport"]["leaveBy"], "2026-11-02T06:00:00Z")
+        self.assertIn("SANDBOX-RIDE-", trace)
+        self.assertIn("こちらまでお願いします", trace)
+        self.assertIn("flightStatus segmentId=flight-1 event=on_time", trace)
+        self.assertIn("flightStatus segmentId=flight-2 event=delayed", trace)
+        self.assertIn("action=replan", trace)
+        self.assertIn("SANDBOX-BP-", trace)
+        self.assertIn("dcc refused=True payAmount=1000 payCurrency=JPY reason=dcc_refused", trace)
+        self.assertIn("card cardId=mc-japan feeAmount=0 reason=no_fx_fee", trace)
+        self.assertNotIn("cardId=visa-japan", trace)
+        self.assertIn("cash action=withdraw_cash tripAmount=6.70 USD", trace)
+        self.assertIn("holiday segmentId=attraction-1 closed=True holiday=Culture Day action=shift", trace)
+        self.assertIn("layover action=replan shortfallMinutes=30", trace)
+        self.assertIn("etiquette phrase=写真は大丈夫ですか", trace)
+        self.assertIn("taxRefund refundAmount=1000 JPY quote=not_tax_advice", trace)
+        self.assertIn("SANDBOX-RB-", trace)
+        self.assertIn("hold releaseAmount=160 reason=held charged=false", trace)
+        self.assertIn("holdOver payAmount=200 reason=over_capture charged=false", trace)
+        self.assertIn("SANDBOX-ESIM-", trace)
+        self.assertEqual(printed["results"][0]["segmentId"], "flight-1")
+        self.assertEqual(printed["results"][0]["status"], "booked")
+        wallet_counts = [item["wallet"]["count"] for item in printed["ticks"] if isinstance(item, dict)]
+        self.assertEqual(wallet_counts[0], 13)
+        self.assertEqual(wallet_counts[-1], 14)
 
 
 if __name__ == "__main__":
