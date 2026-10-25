@@ -177,3 +177,9 @@ def test_xrpl_verifier_reads_a_batch_from_the_node():
     assert (evidence.destination, evidence.amount, evidence.currency) == ("rBike", Decimal("15"), "XRP")
     assert evidence.memo_invoice_ids == [invoice]
     assert evidence.validated and evidence.still_locked
+
+
+def test_demo_page_is_served(client):
+    response = client.get("/dev/demo")
+    assert response.status_code == 200
+    assert "402 payment demo" in response.text

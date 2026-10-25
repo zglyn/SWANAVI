@@ -5,9 +5,10 @@ import json
 import os
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastmcp import FastMCP
 from pydantic import BaseModel, ValidationError
 
@@ -141,6 +142,12 @@ def add_fake_escrow(body: FakeEscrow):
         amount=body.amount, currency=body.currency, memo_invoice_ids=[body.invoice_id.upper()],
     ))
     return {"ok": True}
+
+
+@http.get("/dev/demo", response_class=HTMLResponse)
+def payment_demo():
+    """A click-through page for the 402 flow against the fake ledger."""
+    return (Path(__file__).parent / "demo.html").read_text(encoding="utf-8")
 
 
 def _book(merchant_id: str, sku: str, slot_start: str, proof: PaymentProof | None) -> tuple[int, dict]:

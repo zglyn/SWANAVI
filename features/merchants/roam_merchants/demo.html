@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>402 Payment Demo</title>
+<style>
+  :root {
+    --feather: #FBFAF7; --card: #FFFFFF; --lake: #14324A; --ink: #1E2A33; --muted: #6B7780;
+    --line: #E6E2DA; --beak: #C2410C; --ok: #15803D; --ok-bg: #ECFDF3; --warn-bg: #FFF4ED; --bad: #B91C1C; --bad-bg: #FEF2F2;
+    --code-bg: #0F2233; --code-ink: #D6E2EC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --feather: #0E1A24; --card: #15242F; --lake: #9CC3E0; --ink: #E6EDF2; --muted: #93A3AF;
+      --line: #24384A; --beak: #F97316; --ok: #4ADE80; --ok-bg: #12301F; --warn-bg: #33200F; --bad: #F87171; --bad-bg: #351616;
+      --code-bg: #0A141C; --code-ink: #CFDBE5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--feather); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 26px; color: var(--lake); }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .top { margin: -8px 0 22px; } .top button { margin: 0 6px 0 0; }
+  .actors { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 22px; }
+  .actor { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 12px; text-align: center; transition: .25s; }
+  .actor b { display: block; font-size: 15px; }
+  .actor small { color: var(--muted); }
+  .actor.on { border-color: var(--beak); box-shadow: 0 0 0 4px color-mix(in srgb, var(--beak) 18%, transparent); }
+  .wire { font-size: 22px; color: var(--line); transition: .25s; }
+  .wire.on { color: var(--beak); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .actors { grid-template-columns: 1fr; } .wire { transform: rotate(90deg); justify-self: center; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: var(--lake); color: var(--feather); display: inline-grid; place-items: center; font-size: 13px; flex: none; }
+  .card.done .num { background: var(--ok); }
+  .card.fail .num { background: var(--bad); }
+  .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  select, input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--feather); color: var(--ink); font: inherit; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button { margin-top: 12px; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--lake); color: var(--feather); font: 600 14px system-ui, sans-serif; cursor: pointer; }
+  button.alt { background: transparent; color: var(--lake); border: 1px solid var(--lake); }
+  button.go { background: var(--beak); color: #fff; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .result { margin-top: 12px; border-radius: 12px; padding: 12px 14px; font-size: 14px; display: none; }
+  .result.show { display: block; }
+  .result.r402 { background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--beak) 40%, transparent); }
+  .result.r200 { background: var(--ok-bg); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+  .result.rbad { background: var(--bad-bg); border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent); }
+  .status { font: 700 13px ui-monospace, monospace; padding: 2px 8px; border-radius: 6px; background: var(--card); margin-right: 6px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 10px 0 0; font-size: 13px; }
+  dt { color: var(--muted); } dd { margin: 0; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+  .code { font: 700 30px ui-monospace, monospace; letter-spacing: 4px; color: var(--ok); margin: 6px 0; }
+  .tamper { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tamper button { margin: 0; padding: 5px 11px; font-size: 12px; }
+  .log { background: var(--code-bg); color: var(--code-ink); border-radius: 16px; padding: 14px; font: 12px/1.5 ui-monospace, Consolas, monospace; height: 100%; min-height: 420px; max-height: 900px; overflow: auto; }
+  .log .entry { border-bottom: 1px solid #ffffff14; padding: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .log .req { color: #93C5FD; } .log .s2 { color: #86EFAC; } .log .s4 { color: #FDBA74; } .log .s5 { color: #FCA5A5; }
+  .log .empty { color: #ffffff66; padding: 20px 4px; }
+  .loghead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .loghead h2 { margin: 0; font-size: 16px; color: var(--lake); }
+  .loghead button { margin: 0; padding: 5px 12px; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>402 payment demo</h1>
+  <p class="sub">You play the buyer agent. Ask to book, get a bill (HTTP 402), lock the money in escrow, then retry with proof and get a confirmed booking.</p>
+  <div class="top">
+    <button class="go" id="all">▶ Run the happy path</button>
+    <button class="alt" id="restart">Start over</button>
+  </div>
+
+  <div class="actors">
+    <div class="actor" id="a-agent"><b>Buyer agent</b><small>this page</small></div>
+    <div class="wire" id="w1">⇄</div>
+    <div class="actor" id="a-shop"><b>Shop server</b><small id="host">localhost:8001</small></div>
+    <div class="wire" id="w2">⇄</div>
+    <div class="actor" id="a-ledger"><b>XRPL ledger</b><small id="ledger-kind">fake, in memory</small></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <section class="card" id="c1">
+        <h2><span class="num">1</span>Ask to book</h2>
+        <p>The agent asks for a slot without paying. The shop should answer <b>402 Payment Required</b> with a bill.</p>
+        <label for="item">What to book</label>
+        <select id="item"></select>
+        <button id="b1">Request booking</button>
+        <div class="result" id="r1"></div>
+      </section>
+
+      <section class="card" id="c2">
+        <h2><span class="num">2</span>Lock the money in escrow</h2>
+        <p>On the real ledger this is an EscrowCreate the buyer signs. Here it's recorded on the fake ledger. Edit a field to try paying the wrong way.</p>
+        <div class="row">
+          <div><label for="e-amount">Amount</label><input id="e-amount"></div>
+          <div><label for="e-currency">Currency</label><input id="e-currency"></div>
+        </div>
+        <label for="e-dest">Send to (shop address)</label><input id="e-dest">
+        <label for="e-memo">Invoice memo</label><input id="e-memo">
+        <div class="tamper">
+          <button class="alt" data-t="amount">Underpay</button>
+          <button class="alt" data-t="dest">Wrong shop</button>
+          <button class="alt" data-t="memo">Wrong invoice</button>
+          <button class="alt" data-t="reset">Reset to the bill</button>
+        </div>
+        <button id="b2" disabled>Lock escrow</button>
+        <div class="result" id="r2"></div>
+      </section>
+
+      <section class="card" id="c3">
+        <h2><span class="num">3</span>Retry with proof of payment</h2>
+        <p>The agent repeats the booking with an <code>X-PAYMENT</code> header. The shop checks the escrow on the ledger before confirming.</p>
+        <button id="b3" disabled>Retry with X-PAYMENT</button>
+        <button id="b3bad" class="alt" disabled>Send a garbage header</button>
+        <div class="result" id="r3"></div>
+      </section>
+
+    </div>
+
+    <div>
+      <div class="loghead"><h2>On the wire</h2><button class="alt" id="clear">Clear</button></div>
+      <div class="log" id="log"><div class="empty">HTTP requests and responses show up here.</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const ITEMS = [
+  ["bamboo-bikes", "BIKE-2H", "2026-11-14T14:00:00+09:00", "2-hour bamboo grove bike rental · 15 RLUSD"],
+  ["kissa-matcha", "MATCHA-WS", "2026-11-14T16:00:00+09:00", "Matcha whisking workshop · 30 RLUSD"],
+  ["ramen-tasting", "RAMEN-5", "2026-11-14T14:00:00+09:00", "5-bowl ramen tasting · 20 RLUSD"],
+  ["gion-tea", "TEA-SET", "2026-11-14T15:00:00+09:00", "Private tea ceremony · 28 RLUSD"],
+  ["fushimi-sake", "SAKE-TOUR", "2026-11-14T11:00:00+09:00", "Brewery tasting tour · 35 RLUSD"],
+  ["nishiki-walk", "NISHIKI-WALK", "2026-11-14T12:00:00+09:00", "Guided market tasting · 22 RLUSD"],
+  ["arashiyama-boat", "BOAT-45", "2026-11-14T15:00:00+09:00", "45-minute river boat · 18 RLUSD"],
+];
+const $ = (id) => document.getElementById(id);
+const itemSel = $("item");
+$("host").textContent = location.host;
+ITEMS.forEach((it, i) => itemSel.add(new Option(`${it[0]} — ${it[3]}`, i)));
+
+let bill = null, escrow = null, n = 0;
+
+function current() { const [m, sku, slot] = ITEMS[itemSel.value]; return { m, body: { sku, slot_start: slot } }; }
+function randHex(len) { return [...crypto.getRandomValues(new Uint8Array(len / 2))].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase(); }
+function b64(s) { return btoa(String.fromCharCode(...new TextEncoder().encode(s))); }
+function unb64(s) { return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+
+function light(actors, wires) {
+  ["a-agent", "a-shop", "a-ledger"].forEach(a => $(a).classList.toggle("on", actors.includes(a)));
+  ["w1", "w2"].forEach(w => $(w).classList.toggle("on", wires.includes(w)));
+}
+
+function log(method, path, headers, body, status, resHeaders, resBody) {
+  const el = $("log");
+  if (el.querySelector(".empty")) el.innerHTML = "";
+  const cls = status < 300 ? "s2" : status < 500 ? "s4" : "s5";
+  const hdr = Object.entries(headers).filter(([k]) => k !== "Content-Type").map(([k, v]) => `\n${k}: ${v}`).join("");
+  const rh = resHeaders ? `\n${resHeaders}` : "";
+  const entry = document.createElement("div");
+  entry.className = "entry";
+  entry.innerHTML = `<span class="req">#${++n}  ${method} ${esc(path)}${esc(hdr)}${body ? "\n" + esc(JSON.stringify(body, null, 2)) : ""}</span>\n<span class="${cls}">← ${status}${esc(rh)}\n${esc(JSON.stringify(resBody, null, 2))}</span>`;
+  el.prepend(entry);
+}
+
+async function send(method, path, body, headers = {}) {
+  headers = { "Content-Type": "application/json", ...headers };
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  const receipt = res.headers.get("X-PAYMENT-RESPONSE");
+  log(method, path, headers, body, res.status, receipt ? `X-PAYMENT-RESPONSE: ${receipt}` : "", data);
+  return { status: res.status, data, receipt };
+}
+
+function show(id, cls, html) { const r = $(id); r.className = `result show ${cls}`; r.innerHTML = html; }
+function mark(card, state) { $(card).classList.remove("done", "fail"); if (state) $(card).classList.add(state); }
+
+async function step1() {
+  light(["a-agent", "a-shop"], ["w1"]);
+  const { m, body } = current();
+  const r = await send("POST", `/m/${m}/book`, body);
+  if (r.status !== 402) { mark("c1", "fail"); show("r1", "rbad", `<span class="status">${r.status}</span>Expected 402. ${esc(JSON.stringify(r.data))}`); return false; }
+  bill = r.data.accepts[0];
+  mark("c1", "done");
+  show("r1", "r402", `<span class="status">402</span><b>Payment required</b> — the shop sent a bill:
+    <dl><dt>Amount</dt><dd>${esc(bill.amount)} ${esc(bill.currency)}</dd><dt>Pay to</dt><dd>${esc(bill.pay_to)}</dd>
+    <dt>Invoice</dt><dd>${esc(bill.memo_data)}</dd><dt>Method</dt><dd>${esc(bill.scheme)} on ${esc(bill.network)}</dd>
+    <dt>Refundable until</dt><dd>${esc(bill.cancel_after)}</dd></dl>`);
+  fillEscrow();
+  $("b2").disabled = false;
+  $("b3").disabled = $("b3bad").disabled = false;
+  return true;
+}
+
+function fillEscrow() {
+  $("e-amount").value = bill.amount; $("e-currency").value = bill.currency;
+  $("e-dest").value = bill.pay_to; $("e-memo").value = bill.memo_data;
+}
+
+async function step2() {
+  light(["a-agent", "a-ledger"], ["w1", "w2"]);
+  escrow = { tx_hash: randHex(64), owner: "rDemoBuyerWallet", sequence: Math.floor(Math.random() * 1e6) };
+  const body = { ...escrow, destination: $("e-dest").value, amount: $("e-amount").value, currency: $("e-currency").value, invoice_id: $("e-memo").value };
+  const r = await send("POST", "/dev/escrows", body);
+  if (r.status !== 200) { mark("c2", "fail"); show("r2", "rbad", `<span class="status">${r.status}</span>${esc(r.data.detail || JSON.stringify(r.data))}`); return false; }
+  const tampered = body.amount !== bill.amount || body.destination !== bill.pay_to || body.invoice_id !== bill.memo_data || body.currency !== bill.currency;
+  mark("c2", "done");
+  show("r2", tampered ? "r402" : "r200", `<span class="status">locked</span>${tampered ? "Escrow recorded — but it doesn't match the bill. Step 3 should be refused." : "Escrow recorded on the ledger."}
+    <dl><dt>Tx hash</dt><dd>${escrow.tx_hash.slice(0, 16)}…</dd><dt>Escrow</dt><dd>${escrow.owner} #${escrow.sequence}</dd><dt>Holds</dt><dd>${esc(body.amount)} ${esc(body.currency)} → ${esc(body.destination)}</dd></dl>`);
+  return true;
+}
+
+async function step3(garbage = false) {
+  light(["a-agent", "a-shop", "a-ledger"], ["w1", "w2"]);
+  const { m, body } = current();
+  let header = "not-base64-garbage!!";
+  if (!garbage) {
+    if (!escrow) { show("r3", "rbad", "Lock an escrow in step 2 first."); return false; }
+    header = b64(JSON.stringify({ invoice_id: bill.memo_data, batch_tx_hash: escrow.tx_hash, escrow_owner: escrow.owner, escrow_sequence: escrow.sequence }));
+  }
+  const r = await send("POST", `/m/${m}/book`, body, { "X-PAYMENT": header });
+  if (r.status === 200) {
+    const receipt = r.receipt ? JSON.parse(unb64(r.receipt)) : null;
+    mark("c3", "done");
+    show("r3", "r200", `<span class="status">200</span><b>Booking confirmed</b><div class="code">${esc(r.data.confirmation_code)}</div>
+      <dl><dt>Status</dt><dd>${esc(r.data.status)}</dd><dt>Receipt</dt><dd>${receipt ? esc(JSON.stringify(receipt)) : "—"}</dd></dl>`);
+    light(["a-agent"], []);
+    return true;
+  }
+  mark("c3", "fail");
+  const why = r.data.error || r.data.detail || JSON.stringify(r.data);
+  show("r3", "rbad", `<span class="status">${r.status}</span><b>Refused</b> — ${esc(typeof why === "string" ? why : JSON.stringify(why))}`);
+  return false;
+}
+
+function restart() {
+  bill = escrow = null;
+  ["c1", "c2", "c3"].forEach(c => mark(c, null));
+  ["r1", "r2", "r3"].forEach(r => $(r).className = "result");
+  ["e-amount", "e-currency", "e-dest", "e-memo"].forEach(i => $(i).value = "");
+  $("b2").disabled = $("b3").disabled = $("b3bad").disabled = true;
+  light([], []);
+}
+
+const pause = (ms) => new Promise(r => setTimeout(r, ms));
+$("b1").onclick = step1;
+$("b2").onclick = step2;
+$("b3").onclick = () => step3(false);
+$("b3bad").onclick = () => step3(true);
+$("restart").onclick = restart;
+$("clear").onclick = () => { $("log").innerHTML = '<div class="empty">HTTP requests and responses show up here.</div>'; n = 0; };
+itemSel.onchange = restart;
+$("all").onclick = async () => { restart(); if (await step1()) { await pause(900); if (await step2()) { await pause(900); await step3(false); } } };
+document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => {
+  if (!bill) return;
+  const t = b.dataset.t;
+  if (t === "reset") fillEscrow();
+  if (t === "amount") $("e-amount").value = (Number(bill.amount) / 2).toFixed(2);
+  if (t === "dest") $("e-dest").value = "rSomeOtherShopAddress";
+  if (t === "memo") $("e-memo").value = randHex(64);
+});
+</script>
+</body>
+</html>
