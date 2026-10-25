@@ -3,13 +3,29 @@
 import type { Autonomy, TimeOfDayWindow, TripRequest, UserProfile } from "@contracts/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { TripMap, type MapStop } from "@/components/map3d/TripMap";
-import { SwanShell, phasePath } from "@/components/swan/Shell";
+import {
+  ChoiceField,
+  ChoiceFlow,
+  ChoiceNote,
+  ChoicePill,
+  ChoicePills,
+  ChoiceRow,
+  ChoiceSection,
+  ChoiceStack,
+  ChoiceSub,
+  ChoiceSummary,
+} from "@/components/choice/ChoiceFlow";
+import { phasePath } from "@/components/swan/Shell";
 import { getClient } from "@/lib/client";
-import { DESTINATIONS, lookupPlace, matchCity } from "@/lib/places";
+import { DESTINATIONS, lookupPlace } from "@/lib/places";
 
 const WINDOWS: TimeOfDayWindow[] = ["early_morning", "morning", "afternoon", "evening", "red_eye", "any"];
 const DRAFT = "swan.trip-draft";
+
+function windowLabel(value: string) {
+  const text = value.replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 function Planner() {
   const router = useRouter();
@@ -19,6 +35,8 @@ function Planner() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [draft, setDraft] = useState<TripRequest | null>(null);
   const [query, setQuery] = useState("Kyoto");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(DRAFT);
@@ -53,132 +71,191 @@ function Planner() {
   }
 
   async function confirm() {
-    if (!draft) return;
-    const created = await client.requestTrip(draft);
-    sessionStorage.removeItem(DRAFT);
-    router.push(phasePath(created.plan_id, created.phase));
+    if (!draft || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await client.requestTrip(draft);
+      sessionStorage.removeItem(DRAFT);
+      router.push(phasePath(created.plan_id, created.phase));
+    } catch {
+      setError("Could not send this trip. Try again.");
+      setBusy(false);
+    }
   }
 
-  if (!draft) return <SwanShell><p>Loading your profile…</p></SwanShell>;
+  if (!draft) {
+    return (
+      <ChoiceFlow title="Where to?">
+        <ChoiceNote>Loading your profile…</ChoiceNote>
+      </ChoiceFlow>
+    );
+  }
+
   const windows = WINDOWS.filter((item) => item !== "red_eye" || !profile?.flights.avoid_red_eye);
-  const destination = matchCity(draft.destination);
-  const originHit = draft.origin.from_home ? null : (draft.origin.place ? matchCity(draft.origin.place) : null);
-  const originStop: MapStop | null = draft.origin.from_home && profile
-    ? { id: "home", lat: profile.home.location.lat, lng: profile.home.location.lng, label: "Home", kind: "stop" }
-    : originHit
-      ? { id: "origin", lat: originHit.lat, lng: originHit.lng, label: originHit.label, kind: "stop" }
-      : null;
-  const destinationStop: MapStop | null = destination
-    ? { id: "destination", lat: destination.lat, lng: destination.lng, label: destination.label, kind: "stop" }
-    : null;
-  const stops = [originStop, destinationStop].filter((stop): stop is MapStop => stop !== null);
-  const arcs = originStop && destinationStop
-    ? [{ from: [originStop.lng, originStop.lat] as [number, number], to: [destinationStop.lng, destinationStop.lat] as [number, number] }]
-    : [];
+  const matches = DESTINATIONS.filter((city) => city.label.toLowerCase().includes(query.toLowerCase()));
+  const back = step > 1 ? () => go(step - 1) : undefined;
 
   return (
-    <SwanShell
+    <ChoiceFlow
+      title={
+        step === 1 ? "Where to?"
+          : step === 2 ? "From where?"
+            : step === 3 ? "When?"
+              : step === 4 ? "What time do you want to fly?"
+                : step === 5 ? "How much should Swanavi handle?"
+                  : "Confirm"
+      }
       step={step}
       steps={6}
-      map={<TripMap stops={stops} arcs={arcs} focus={Math.max(stops.length - 1, 0)} dayLabel={draft.destination} showToggle={false} />}
+      action={step === 6 ? "Confirm" : "Continue"}
+      onAction={step === 6 ? confirm : () => go(step + 1)}
+      actionDisabled={step === 6 && busy}
+      onBack={back}
     >
       {step === 1 && (
-        <section>
-          <h1 className="text-5xl">Where to?</h1>
-          <input className="swan-line mt-6 w-full rounded-2xl border px-3 py-3 text-lg" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Destination" />
-          <ul className="mt-4 space-y-2">
-            {DESTINATIONS.filter((city) => city.label.toLowerCase().includes(query.toLowerCase())).map((city) => (
-              <li key={city.label}>
-                <button type="button" className="swan-chip" onClick={() => { setDraft({ ...draft, destination: ["London", "Paris", "New York", "Los Angeles"].includes(city.label) ? city.label : `${city.label}, Japan` }); setQuery(city.label); }}>{city.label}</button>
-              </li>
-            ))}
-          </ul>
-          <p className="swan-muted mt-4">Going to {draft.destination}</p>
-        </section>
+        <ChoiceSection>
+          <ChoiceField
+            aria-label="Destination"
+            placeholder="Search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <ChoiceStack>
+            {matches.map((city) => {
+              const destination = ["London", "Paris", "New York", "Los Angeles"].includes(city.label) ? city.label : `${city.label}, Japan`;
+              const selected = draft.destination === destination || draft.destination.toLowerCase().startsWith(city.label.toLowerCase());
+              return (
+                <ChoiceRow
+                  key={city.label}
+                  pressed={selected}
+                  onClick={() => {
+                    setDraft({ ...draft, destination });
+                    setQuery(city.label);
+                  }}
+                >
+                  {city.label}
+                </ChoiceRow>
+              );
+            })}
+          </ChoiceStack>
+          <ChoiceNote>Going to {draft.destination}</ChoiceNote>
+        </ChoiceSection>
       )}
       {step === 2 && (
-        <section>
-          <h1 className="text-5xl">From where?</h1>
-          <button type="button" className="swan-chip mt-6" aria-pressed={draft.origin.from_home} onClick={() => setDraft({ ...draft, origin: { from_home: true, place: null, airport_codes: profile?.home.airport_codes ?? [] } })}>
-            From home {profile?.home.airport_codes.join(" · ")}
-          </button>
-          <label className="mt-4 block">Somewhere else
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" aria-label="Other origin" onBlur={async (event) => {
-              const hit = await lookupPlace(event.target.value);
-              if (!hit) return;
-              setDraft({ ...draft, origin: { from_home: false, place: hit.label, airport_codes: hit.airports } });
-            }} />
-          </label>
-        </section>
+        <ChoiceSection>
+          <ChoiceStack>
+            <ChoiceRow
+              pressed={draft.origin.from_home}
+              onClick={() => setDraft({ ...draft, origin: { from_home: true, place: null, airport_codes: profile?.home.airport_codes ?? [] } })}
+            >
+              From home
+              {profile?.home.airport_codes.length ? <ChoiceSub>{profile.home.airport_codes.join(" · ")}</ChoiceSub> : null}
+            </ChoiceRow>
+          </ChoiceStack>
+          <div style={{ marginTop: 20 }}>
+            <ChoiceField
+              label="Somewhere else"
+              aria-label="Other origin"
+              placeholder="City or address"
+              onBlur={async (event) => {
+                const hit = await lookupPlace(event.target.value);
+                if (!hit) return;
+                setDraft({ ...draft, origin: { from_home: false, place: hit.label, airport_codes: hit.airports } });
+              }}
+            />
+            {!draft.origin.from_home && draft.origin.place ? (
+              <ChoiceNote>{draft.origin.place}{draft.origin.airport_codes.length ? ` · ${draft.origin.airport_codes.join(" · ")}` : ""}</ChoiceNote>
+            ) : null}
+          </div>
+        </ChoiceSection>
       )}
       {step === 3 && (
-        <section>
-          <h1 className="text-5xl">When?</h1>
-          <label className="mt-6 block">Arrive
-            <input type="date" className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={draft.start_date} onChange={(event) => setDraft({ ...draft, start_date: event.target.value })} />
-          </label>
-          <label className="mt-3 block">Leave
-            <input type="date" className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={draft.end_date} onChange={(event) => setDraft({ ...draft, end_date: event.target.value })} />
-          </label>
-          <label className="mt-3 block">Travellers
-            <input type="number" min={1} className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={draft.travellers} onChange={(event) => setDraft({ ...draft, travellers: Number(event.target.value) })} />
-          </label>
-        </section>
+        <ChoiceSection>
+          <ChoiceField label="Arrive" type="date" value={draft.start_date} onChange={(event) => setDraft({ ...draft, start_date: event.target.value })} />
+          <div style={{ marginTop: 16 }}>
+            <ChoiceField label="Leave" type="date" value={draft.end_date} onChange={(event) => setDraft({ ...draft, end_date: event.target.value })} />
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <ChoiceField
+              label="Travellers"
+              type="number"
+              min={1}
+              value={draft.travellers}
+              onChange={(event) => setDraft({ ...draft, travellers: Number(event.target.value) })}
+            />
+          </div>
+        </ChoiceSection>
       )}
       {step === 4 && (
-        <section>
-          <h1 className="text-5xl">What time do you want to fly?</h1>
-          <p className="mt-6 font-medium">Outbound</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {windows.map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={draft.outbound_window === item} onClick={() => setDraft({ ...draft, outbound_window: item })}>{item.replace("_", " ")}</button>
-            ))}
-          </div>
-          <p className="mt-4 font-medium">Return</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {windows.map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={draft.return_window === item} onClick={() => setDraft({ ...draft, return_window: item })}>{item.replace("_", " ")}</button>
-            ))}
-          </div>
-        </section>
+        <>
+          <ChoiceSection title="Outbound">
+            <ChoicePills>
+              {windows.map((item) => (
+                <ChoicePill key={item} pressed={draft.outbound_window === item} onClick={() => setDraft({ ...draft, outbound_window: item })}>
+                  {windowLabel(item)}
+                </ChoicePill>
+              ))}
+            </ChoicePills>
+          </ChoiceSection>
+          <ChoiceSection title="Return">
+            <ChoicePills>
+              {windows.map((item) => (
+                <ChoicePill key={item} pressed={draft.return_window === item} onClick={() => setDraft({ ...draft, return_window: item })}>
+                  {windowLabel(item)}
+                </ChoicePill>
+              ))}
+            </ChoicePills>
+          </ChoiceSection>
+        </>
       )}
       {step === 5 && (
-        <section>
-          <h1 className="text-5xl">How much should Swanavi handle?</h1>
+        <>
           {(["attractions", "hotels", "flights"] as const).map((key) => (
-            <div key={key} className="mt-4">
-              <p className="capitalize">{key}</p>
-              <div className="mt-2 flex gap-2">
+            <ChoiceSection key={key} title={key.charAt(0).toUpperCase() + key.slice(1)}>
+              <ChoicePills>
                 {(["swan_decides", "i_choose"] as Autonomy[]).map((item) => (
-                  <button key={item} type="button" className="swan-chip" aria-pressed={draft.autonomy[key] === item} onClick={() => setDraft({ ...draft, autonomy: { ...draft.autonomy, [key]: item } })}>
+                  <ChoicePill
+                    key={item}
+                    pressed={draft.autonomy[key] === item}
+                    onClick={() => setDraft({ ...draft, autonomy: { ...draft.autonomy, [key]: item } })}
+                  >
                     {item === "swan_decides" ? "Swanavi decides" : "I choose"}
-                  </button>
+                  </ChoicePill>
                 ))}
-              </div>
-            </div>
+              </ChoicePills>
+            </ChoiceSection>
           ))}
-          <label className="mt-4 block">Budget
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={draft.budget ?? ""} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} />
-          </label>
-        </section>
+          <ChoiceSection>
+            <ChoiceField label="Budget" value={draft.budget ?? ""} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} />
+          </ChoiceSection>
+        </>
       )}
       {step === 6 && (
-        <section>
-          <h1 className="text-5xl">Confirm</h1>
-          <p className="mt-4 text-lg">{draft.destination}</p>
-          <p className="swan-muted">{draft.start_date} to {draft.end_date} · {draft.travellers} traveller{draft.travellers === 1 ? "" : "s"}</p>
-          <p className="swan-muted mt-2">Fly {draft.outbound_window.replace("_", " ")} out, {draft.return_window.replace("_", " ")} back.</p>
-          <button type="button" className="swan-btn mt-6" onClick={confirm}>Plan it</button>
-        </section>
+        <ChoiceSection>
+          <ChoiceSummary>{draft.destination}</ChoiceSummary>
+          <ChoiceNote>
+            {draft.start_date} to {draft.end_date} · {draft.travellers} traveller{draft.travellers === 1 ? "" : "s"}
+          </ChoiceNote>
+          <ChoiceNote>
+            Fly {draft.outbound_window.replace("_", " ")} out, {draft.return_window.replace("_", " ")} back.
+          </ChoiceNote>
+          <ChoiceNote>
+            {draft.origin.from_home ? "From home" : draft.origin.place || "From somewhere else"}
+            {draft.origin.airport_codes.length ? ` · ${draft.origin.airport_codes.join(" · ")}` : ""}
+          </ChoiceNote>
+          {draft.budget ? <ChoiceNote>Budget {draft.budget}</ChoiceNote> : null}
+          {error ? <ChoiceNote>{error}</ChoiceNote> : null}
+        </ChoiceSection>
       )}
-      <div className="mt-8 flex gap-3">
-        {step > 1 && <button type="button" className="swan-btn-ghost" onClick={() => go(step - 1)}>Back</button>}
-        {step < 6 && <button type="button" className="swan-btn" onClick={() => go(step + 1)}>Next</button>}
-      </div>
-    </SwanShell>
+    </ChoiceFlow>
   );
 }
 
 export default function PlanNewPage() {
-  return <Suspense fallback={<SwanShell><p>Loading…</p></SwanShell>}><Planner /></Suspense>;
+  return (
+    <Suspense fallback={<ChoiceFlow title="Where to?"><ChoiceNote>Loading…</ChoiceNote></ChoiceFlow>}>
+      <Planner />
+    </Suspense>
+  );
 }
