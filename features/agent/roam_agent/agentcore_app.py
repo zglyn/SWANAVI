@@ -5,27 +5,41 @@ import uuid
 
 from roam_contracts.models import PlanRevision, PlanSelection, PlanStatus, TripBrief
 
-from roam_agent.dynamo_store import DynamoPlanStore
+from roam_agent.dynamo_store import DynamoPlanStore, DynamoTripStore
 from roam_agent.llm import runtime_endpoints
 from roam_agent.plan import collect_candidates, plan as build_plan, revise
-from roam_agent.store import MemoryPlanStore, PlanRecord, PlanStore
+from roam_agent.store import MemoryPlanStore, MemoryTripStore, PlanRecord, PlanStore, TripStore
 
 _store: PlanStore | None = None
+_trips: TripStore | None = None
+
+
+def _dynamo() -> bool:
+    return os.environ.get("ROAM_PLAN_STORE") == "dynamodb"
 
 
 def get_store() -> PlanStore:
     global _store
     if _store is None:
-        if os.environ.get("ROAM_PLAN_STORE") == "dynamodb":
-            _store = DynamoPlanStore(os.environ.get("ROAM_PLAN_TABLE", "roam-plans"))
-        else:
-            _store = MemoryPlanStore()
+        _store = DynamoPlanStore(os.environ.get("ROAM_PLAN_TABLE", "roam-plans")) if _dynamo() else MemoryPlanStore()
     return _store
 
 
 def set_store(store: PlanStore | None) -> None:
     global _store
     _store = store
+
+
+def get_trip_store() -> TripStore:
+    global _trips
+    if _trips is None:
+        _trips = DynamoTripStore(os.environ.get("ROAM_TRIP_TABLE", "roam-trips")) if _dynamo() else MemoryTripStore()
+    return _trips
+
+
+def set_trip_store(store: TripStore | None) -> None:
+    global _trips
+    _trips = store
 
 
 def handle_invocation(payload: dict) -> dict:

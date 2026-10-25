@@ -1,7 +1,11 @@
+import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from bedrock_agentcore import BedrockAgentCoreApp
 from roam_contracts.models import (
+    BookingLine,
+    ConversationFixture,
     GeoPoint,
     Lodging,
     Pace,
@@ -13,12 +17,13 @@ from roam_contracts.models import (
     TripBrief,
 )
 
-from roam_agent.agentcore_app import handle_invocation, set_store
-from roam_agent.dynamo_store import DynamoPlanStore
+from roam_agent.agentcore_app import get_trip_store, handle_invocation, set_store, set_trip_store
+from roam_agent.dynamo_store import DynamoPlanStore, DynamoTripStore
 from roam_agent.llm import build_model, model_settings
-from roam_agent.store import PlanRecord
+from roam_agent.store import MemoryTripStore, PlanRecord, TripRecord
 
 JST = timezone(timedelta(hours=9))
+CONVERSATION = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "conversation_kyoto.json"
 
 
 def _brief() -> TripBrief:
@@ -100,14 +105,15 @@ def test_default_provider_stays_local(monkeypatch):
 
 
 class _Table:
-    def __init__(self):
+    def __init__(self, key="plan_id"):
+        self.key = key
         self.items = {}
 
     def put_item(self, TableName, Item):
-        self.items[(TableName, Item["plan_id"]["S"])] = Item
+        self.items[(TableName, Item[self.key]["S"])] = Item
 
     def get_item(self, TableName, Key):
-        item = self.items.get((TableName, Key["plan_id"]["S"]))
+        item = self.items.get((TableName, Key[self.key]["S"]))
         return {"Item": item} if item else {}
 
 
@@ -121,3 +127,37 @@ def test_dynamo_store_round_trip():
     assert store.get("missing") is None
     selection = PlanSelection(must_visit=["bamboo-grove"], maybe=[], excluded=[])
     assert selection.must_visit == ["bamboo-grove"]
+
+
+def test_trip_store_keeps_the_conversation_proposal_and_bookings(monkeypatch):
+    fixture = ConversationFixture.model_validate(json.loads(CONVERSATION.read_text()))
+    record = TripRecord(
+        user_id="u-1",
+        conversation=fixture.conversation,
+        proposal=fixture.proposal,
+        bookings=[BookingLine(suggestion_id="sug-out", channel="external", status="needs_user", error="Names needed")],
+    )
+    for store in (MemoryTripStore(), DynamoTripStore("roam-trips", client=_Table("trip_id"))):
+        store.put(record)
+        loaded = store.get("kyoto-demo")
+        assert loaded is not None
+        assert loaded.user_id == "u-1"
+        assert loaded.view() == record.view()
+        assert loaded.proposal.package.return_flight.id == fixture.proposal.package.return_flight.id
+        assert store.get("missing") is None
+    monkeypatch.setenv("ROAM_PLAN_STORE", "dynamodb")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    set_trip_store(None)
+    try:
+        assert isinstance(get_trip_store(), DynamoTripStore)
+    finally:
+        set_trip_store(None)
+
+
+def test_memory_trip_store_only_changes_on_put():
+    fixture = ConversationFixture.model_validate(json.loads(CONVERSATION.read_text()))
+    store = MemoryTripStore()
+    store.put(TripRecord(conversation=fixture.conversation))
+    loaded = store.get("kyoto-demo")
+    loaded.conversation.messages.clear()
+    assert len(store.get("kyoto-demo").conversation.messages) == len(fixture.conversation.messages)
