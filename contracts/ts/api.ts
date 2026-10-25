@@ -121,7 +121,7 @@ export type EventType =
   | "guardrail.approved" | "guardrail.blocked" | "tx.signed.agent"
   | "batch.submitted" | "batch.validated" | "batch.failed"
   | "escrow.cancelled" | "escrow.finished"
-  | "booking.confirmed" | "booking.cancelled"
+  | "booking.confirmed" | "booking.cancelled" | "booking.failed" | "booking.needs_user"
   | "weather.alert" | "wallet.updated" | "system.reset"
   | "plan.tool_call" | "plan.candidates" | "plan.ready" | "plan.invalid" | "plan.failed"
   | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready"
@@ -520,9 +520,24 @@ export interface SuggestionAction {
   constraints?: Record<string, unknown> | null;
   text?: string | null;
 }
+export type BookingChannel = "wallet" | "external";
+interface BookingBase {
+  suggestion_id: string;
+  confirmation_code: string | null;
+  error: string | null;
+}
+export type BookingLine = BookingBase & (
+  | { channel: "wallet"; status: "booked" | "blocked" | "failed"; violations: Violation[] }
+  | { channel: "external"; status: "booked" | "failed" | "needs_user" }
+);
+export interface BookRequest {
+  channel: BookingChannel;
+  travellers?: string[];
+}
 export interface TripView {
   conversation: TripConversation;
   proposal?: Proposal | null;
+  bookings: BookingLine[];
 }
 export interface SuggestionResult {
   proposal: Proposal;

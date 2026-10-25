@@ -440,8 +440,10 @@ EVENT_TYPES = (
     "batch.failed",        # data: {engine_result: str}
     "escrow.cancelled",    # data: {escrow: EscrowRef}
     "escrow.finished",     # data: {escrow: EscrowRef}
-    "booking.confirmed",   # data: {booking: Booking}
+    "booking.confirmed",   # data: {booking: Booking} from checkout, or {line: BookingLine} from a trip
     "booking.cancelled",   # data: {booking: Booking}
+    "booking.failed",      # data: {line: BookingLine}
+    "booking.needs_user",  # data: {line: BookingLine}
     "weather.alert",
     "wallet.updated",      # data: {wallet: WalletState}
     "system.reset",
@@ -899,9 +901,39 @@ class SuggestionAction(BaseModel):
     text: str | None = None
 
 
+BookingChannel = Literal["wallet", "external"]
+BOOKING_STATUSES: dict[str, set[str]] = {
+    "wallet": {"booked", "blocked", "failed"},
+    "external": {"booked", "failed", "needs_user"},
+}
+
+
+class BookingLine(BaseModel):
+    suggestion_id: str
+    channel: BookingChannel
+    status: Literal["booked", "blocked", "failed", "needs_user"]
+    confirmation_code: str | None = None
+    error: str | None = None
+    violations: list[Violation] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def status_matches_channel(self) -> BookingLine:
+        if self.status not in BOOKING_STATUSES[self.channel]:
+            raise ValueError(f"a {self.channel} booking cannot be {self.status}")
+        if self.violations and self.channel != "wallet":
+            raise ValueError("only wallet bookings carry guardrail violations")
+        return self
+
+
+class BookRequest(BaseModel):
+    channel: BookingChannel
+    travellers: list[str] = Field(default_factory=list)
+
+
 class TripView(BaseModel):
     conversation: TripConversation
     proposal: Proposal | None = None
+    bookings: list[BookingLine] = Field(default_factory=list)
 
 
 class SuggestionResult(BaseModel):
