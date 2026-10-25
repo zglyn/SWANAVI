@@ -1,0 +1,20 @@
+{
+  "destination": "Kyoto, Japan",
+  "origin": {
+    "from_home": true,
+    "place": null,
+    "airport_codes": []
+  },
+  "start_date": "2026-11-14",
+  "end_date": "2026-11-16",
+  "outbound_window": "morning",
+  "return_window": "evening",
+  "travellers": 1,
+  "budget": "2500",
+  "autonomy": {
+    "attractions": "swan_decides",
+    "hotels": "swan_decides",
+    "flights": "swan_decides"
+  },
+  "notes": null
+}

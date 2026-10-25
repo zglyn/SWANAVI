@@ -1,22 +1,35 @@
 import {
   API,
+  type AttractionSelection,
   type InspectorEvent,
+  type PackageChoices,
   type PlanRevision,
   type PlanSelection,
   type PlanView,
+  type SwanView,
+  type TravelPackage,
   type TravelSegment,
   type TripBrief,
+  type TripRequest,
+  type UserProfile,
 } from "@contracts/api";
 import type { RoamClient } from "./client";
 
 const BASE = process.env.NEXT_PUBLIC_GATEWAY_URL ?? "http://localhost:8000";
 
+function authHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("swan.token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...authHeader(), ...init?.headers },
   });
   if (!res.ok) throw new Error(`${init?.method ?? "GET"} ${path} → ${res.status}`);
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -65,4 +78,34 @@ export const realClient: RoamClient = {
       source?.close();
     };
   },
+  async demoSignIn() {
+    const result = await call<{ token: string; user_id: string }>(API.authDemo, { method: "POST" });
+    localStorage.setItem("swan.token", result.token);
+    return result;
+  },
+  async magicLink(email: string) {
+    const result = await call<{ token: string; user_id: string }>(API.authMagic, { method: "POST", body: JSON.stringify({ email }) });
+    localStorage.setItem("swan.token", result.token);
+    return result;
+  },
+  async getProfile() {
+    try {
+      return await call<UserProfile>(API.me);
+    } catch {
+      return null;
+    }
+  },
+  putProfile: (profile: UserProfile) => call<UserProfile>(API.me, { method: "PUT", body: JSON.stringify(profile) }),
+  async deleteAccount() {
+    await call(API.account, { method: "DELETE" });
+    localStorage.removeItem("swan.token");
+    localStorage.removeItem("swan.profile");
+  },
+  requestTrip: (request: TripRequest) => call(API.tripRequest, { method: "POST", body: JSON.stringify(request) }),
+  getSwan: (id: string) => call<SwanView>(API.swan(id)),
+  submitAttractions: (id: string, selection: AttractionSelection) =>
+    call(API.planAttractions(id), { method: "POST", body: JSON.stringify(selection) }),
+  choosePackage: (id: string, choices: PackageChoices) =>
+    call(API.planChoices(id), { method: "POST", body: JSON.stringify(choices) }),
+  getPackage: (id: string) => call<TravelPackage>(API.planPackage(id)),
 };

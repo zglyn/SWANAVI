@@ -13,6 +13,7 @@ from roam_contracts.models import (
     PlanSelection,
     RevisionAction,
     SegmentMode,
+    SegmentStatus,
     Stop,
     StopKind,
     StopRevision,
@@ -105,6 +106,25 @@ def test_revise_keeps_required_stops(monkeypatch):
     assert "more food" in updated.warnings
     swapped = revise(updated, PlanRevision(actions=[StopRevision(stop_id="kissa-matcha", action=RevisionAction.SWAP)]))
     assert any("Asked to swap" in warning for warning in swapped.warnings)
+
+
+def test_unverified_flight_adds_a_warning(monkeypatch):
+    monkeypatch.setenv("ROAM_SCRIPTED_AGENT", "1")
+    brief = _brief()
+    brief.arrival.status = SegmentStatus.UNVERIFIED
+    itinerary = plan(brief, PlanSelection(must_visit=["bamboo-grove"], maybe=[], excluded=[]), collect_candidates(brief))
+    assert any(warning.startswith("Unverified flight times") for warning in itinerary.warnings)
+
+
+def test_delayed_arrival_uses_the_revised_time(monkeypatch):
+    monkeypatch.delenv("ROAM_SCRIPTED_AGENT", raising=False)
+    brief = _brief()
+    brief.arrival.status = SegmentStatus.DELAYED
+    brief.arrival.arrive_at = datetime(2026, 11, 14, 13, 35, tzinfo=JST)
+    itinerary = plan(brief, PlanSelection(must_visit=[], maybe=[], excluded=[]), collect_candidates(brief))
+    arrival = next(stop for day in itinerary.days for stop in day.stops if stop.kind == StopKind.ARRIVAL)
+    assert arrival.start == brief.arrival.arrive_at
+    assert any("delayed" in warning for warning in itinerary.warnings)
 
 
 def test_plan_module_does_not_import_fastapi():
