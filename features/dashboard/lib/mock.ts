@@ -28,7 +28,7 @@ import policyFx from "@fixtures/policy.json";
 import quotesFx from "@fixtures/quotes.json";
 import type { RoamClient } from "./client";
 import { swanMock } from "./swanMock";
-import { tripMock } from "./tripMock";
+import { createTripMock } from "./tripMock";
 
 const QUOTES = quotesFx as Quote[];
 const bySku = (sku: string) => QUOTES.find((q) => q.sku === sku)!;
@@ -348,7 +348,7 @@ export const mockClient: RoamClient = {
     return () => state.listeners.delete(onEvent);
   },
   ...swanMock,
-  ...tripMock,
+  ...createTripMock({ checkout, emit }),
   async createTrip(_message: string) {
     return { trip_id: "kyoto-demo" };
   },

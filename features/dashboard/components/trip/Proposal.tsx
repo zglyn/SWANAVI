@@ -1,10 +1,11 @@
 "use client";
 
-import type { Proposal, Stop, Suggestion, SuggestionAction, SuggestionActionName, SuggestionStatus } from "@contracts/api";
+import type { BookingLine, Proposal, Stop, Suggestion, SuggestionAction, SuggestionActionName, SuggestionStatus } from "@contracts/api";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { MapStop } from "@/components/map3d/TripMap";
+import { LockIcon } from "@/components/trip/LockIcon";
 import { ModifySheet } from "@/components/trip/ModifySheet";
 import { getClient } from "@/lib/client";
 import { formatClock, formatDay, formatDuration, formatMoney, hotelPrice, legLabel, suggestionTitle, summarizeFlight } from "@/lib/format";
@@ -39,8 +40,9 @@ function isStopRow(row: Suggestion): row is StopRow {
   return row.kind === "attraction" || row.kind === "transfer";
 }
 
-export function ProposalWorkspace({ tripId }: { tripId: string }) {
+export function ProposalWorkspace({ tripId, onReview }: { tripId: string; onReview: () => void }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [bookings, setBookings] = useState<BookingLine[]>([]);
   const [day, setDay] = useState(0);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy>({});
@@ -53,7 +55,10 @@ export function ProposalWorkspace({ tripId }: { tripId: string }) {
   const focusCard = useRef<string | null>(null);
 
   useEffect(() => {
-    getClient().getTrip(tripId).then((view) => setProposal(view.proposal ?? null));
+    getClient().getTrip(tripId).then((view) => {
+      setProposal(view.proposal ?? null);
+      setBookings(view.bookings);
+    });
   }, [tripId]);
 
   useEffect(() => {
@@ -164,6 +169,7 @@ export function ProposalWorkspace({ tripId }: { tripId: string }) {
       busy={busy[row.id]}
       rejecting={rejecting === row.id}
       modifying={modifying?.id === row.id}
+      code={bookings.find((line) => line.suggestion_id === row.id)?.confirmation_code ?? null}
       actions={actions}
     >
       {body}
@@ -196,7 +202,7 @@ export function ProposalWorkspace({ tripId }: { tripId: string }) {
               >
                 Accept all remaining
               </button>
-              <button type="button" className="proposal-book" onClick={() => setAnnouncement("Booking opens on the review step.")}>Book accepted</button>
+              <button type="button" className="proposal-book" disabled={accepted === 0} onClick={onReview}>Book accepted</button>
             </div>
             <p className="proposal-note" role="status" aria-live="polite">{announcement}</p>
           </section>
@@ -290,6 +296,7 @@ function SuggestionCard({
   busy,
   rejecting,
   modifying,
+  code,
   actions,
   children,
 }: {
@@ -297,6 +304,7 @@ function SuggestionCard({
   busy: SuggestionActionName | undefined;
   rejecting: boolean;
   modifying: boolean;
+  code: string | null;
   actions: CardActions;
   children: React.ReactNode;
 }) {
@@ -324,7 +332,9 @@ function SuggestionCard({
       onMouseEnter={() => actions.hover(row.id)}
       onMouseLeave={() => actions.hover(null)}
     >
-      <p className="trip-status">{searching ? "Finding another…" : label}</p>
+      <p className="trip-status">
+        {row.status === "booked" ? <><LockIcon /> Booked{code ? ` · ${code}` : ""}</> : searching ? "Finding another…" : label}
+      </p>
       {children}
       {row.why.length ? (
         <ul className="why-chips" aria-label="Why Swan picked this">

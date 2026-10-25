@@ -1,5 +1,6 @@
 import type {
   AttractionSelection,
+  BookRequest,
   CheckoutResult,
   InspectorEvent,
   PackageChoices,
@@ -55,6 +56,8 @@ export interface RoamClient {
   suggestionAlternatives(id: string, sid: string, constraints?: Constraints): Promise<Suggestion[]>;
   actOnSuggestion(id: string, action: SuggestionAction): Promise<SuggestionResult>;
   acceptAll(id: string): Promise<Proposal>;
+  /** Results arrive as booking and guardrail events; GET the trip for the settled lines. */
+  bookTrip(id: string, request: BookRequest): Promise<{ ok: boolean }>;
 }
 
 export function getClient(): RoamClient {

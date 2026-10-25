@@ -1,6 +1,7 @@
 import {
   API,
   type AttractionSelection,
+  type BookRequest,
   type InspectorEvent,
   type PackageChoices,
   type PlanRevision,
@@ -120,4 +121,6 @@ export const realClient: RoamClient = {
   actOnSuggestion: (id: string, action: SuggestionAction) =>
     call<SuggestionResult>(API.tripSuggestion(id, action.suggestion_id), { method: "POST", body: JSON.stringify(action) }),
   acceptAll: (id: string) => call<Proposal>(API.tripAcceptAll(id), { method: "POST" }),
+  bookTrip: (id: string, request: BookRequest) =>
+    call<{ ok: boolean }>(API.tripBook(id), { method: "POST", body: JSON.stringify(request) }),
 };
