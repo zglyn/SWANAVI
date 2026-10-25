@@ -200,11 +200,12 @@ if __name__ == "__main__":
     dump("itinerary_kyoto.json", plan)
     dump("flights.json", flights(plan.brief))
     dump("plan_events.json", plan_events(cset, plan))
-    from swan_data import write_swan
+    from plan_data import write_demo_plan
+    from swan_data import write_demo_catalogs
+    from conversation_data import write_demo_conversation
 
-    write_swan(OUT, PLAN_ID)
-    from conversation_data import write_conversation
-
-    write_conversation(OUT)
+    write_demo_plan(OUT)
+    write_demo_catalogs(OUT)
+    write_demo_conversation(OUT)
     print("plan fixture", PLAN_ID)
     print("fixtures written to", OUT)

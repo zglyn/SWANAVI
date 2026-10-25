@@ -20,10 +20,11 @@ import type {
   Violation,
   WalletState,
 } from "@contracts/api";
-import candidatesFx from "@fixtures/candidates_kyoto.json";
+import candidatesFx from "@fixtures/candidates_demo.json";
 import flightsFx from "@fixtures/flights.json";
-import itineraryFx from "@fixtures/itinerary_kyoto.json";
-import planEventsFx from "@fixtures/plan_events.json";
+import itineraryFx from "@fixtures/itinerary_demo.json";
+import planEventsFx from "@fixtures/plan_events_demo.json";
+import demo from "@fixtures/demo_city.json";
 import policyFx from "@fixtures/policy.json";
 import quotesFx from "@fixtures/quotes.json";
 import type { RoamClient } from "./client";
@@ -237,6 +238,11 @@ async function replay(events: InspectorEvent[]) {
   }
 }
 
+function zoneSuffix(itinerary: Itinerary): string {
+  const sample = itinerary.days.flatMap((day) => day.stops).find((stop) => stop.start.includes("T"));
+  return sample?.start.match(/([+-]\d{2}:\d{2}|Z)$/)?.[1] ?? "Z";
+}
+
 function withMustVisits(selection: PlanSelection): Itinerary {
   const itinerary = structuredClone(itineraryFx) as Itinerary;
   itinerary.selection = selection;
@@ -251,9 +257,9 @@ function withMustVisits(selection: PlanSelection): Itinerary {
     itinerary.days[1].stops.push({
       id,
       kind: attraction ? "attraction" : "merchant",
-      start: "2026-11-15T18:00:00+09:00",
-      end: "2026-11-15T19:00:00+09:00",
-      location: attraction?.location ?? quote?.location ?? { lat: 35.01, lng: 135.76 },
+      start: `2026-11-15T18:00:00${zoneSuffix(itinerary)}`,
+      end: `2026-11-15T19:00:00${zoneSuffix(itinerary)}`,
+      location: attraction?.location ?? quote?.location ?? { lat: demo.center.lat, lng: demo.center.lng },
       title: attraction?.name ?? quote?.title ?? id,
       attraction: attraction ?? null,
       quote: quote ?? null,
@@ -292,7 +298,7 @@ export const mockClient: RoamClient = {
   },
   getWallet: async () => wallet(),
   async createPlan(brief: TripBrief) {
-    const id = "kyoto-demo";
+    const id = demo.plan_id;
     rememberPlan(id, { status: "collecting_candidates", itinerary: null });
     await replay(PLAN_EVENTS.slice(0, 4));
     rememberPlan(id, { status: "candidates_ready", itinerary: null });
@@ -350,6 +356,6 @@ export const mockClient: RoamClient = {
   ...swanMock,
   ...createTripMock({ checkout, emit }),
   async createTrip(_message: string) {
-    return { trip_id: "kyoto-demo" };
+    return { trip_id: demo.trip_id };
   },
 };

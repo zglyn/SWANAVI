@@ -289,5 +289,101 @@
     ],
     "deep_link": "https://www.united.com/book/out-red",
     "direction": "outbound"
+  },
+  {
+    "id": "nyc-out",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA2400",
+        "from_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "to_place": {
+          "code": "JFK",
+          "name": "John F. Kennedy International",
+          "location": {
+            "lat": 40.6413,
+            "lng": -73.7781
+          }
+        },
+        "depart_at": "2026-11-14T08:00:00-08:00",
+        "arrive_at": "2026-11-14T16:30:00-05:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 330,
+    "price": "420.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 10.0,
+    "why": [
+      "Demo data",
+      "Nonstop SFO to JFK"
+    ],
+    "deep_link": "https://www.united.com/book/nyc-out",
+    "direction": "outbound"
+  },
+  {
+    "id": "nyc-ret",
+    "segments": [
+      {
+        "mode": "flight",
+        "carrier": "UA",
+        "number": "UA2401",
+        "from_place": {
+          "code": "JFK",
+          "name": "John F. Kennedy International",
+          "location": {
+            "lat": 40.6413,
+            "lng": -73.7781
+          }
+        },
+        "to_place": {
+          "code": "SFO",
+          "name": "San Francisco",
+          "location": {
+            "lat": 37.6213,
+            "lng": -122.379
+          }
+        },
+        "depart_at": "2026-11-17T18:00:00-05:00",
+        "arrive_at": "2026-11-17T21:15:00-08:00",
+        "status": "scheduled",
+        "source": "fixture",
+        "terminal": null
+      }
+    ],
+    "carrier": "UA",
+    "cabin": "economy",
+    "stops": 0,
+    "duration_min": 375,
+    "price": "410.00",
+    "currency": "USD",
+    "fare_conditions": {
+      "refundable": true,
+      "changeable": true
+    },
+    "score": 8.0,
+    "why": [
+      "Demo data",
+      "Nonstop JFK to SFO"
+    ],
+    "deep_link": "https://www.united.com/book/nyc-ret",
+    "direction": "return"
   }
 ]

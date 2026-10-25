@@ -69,7 +69,14 @@ class Ok(BaseModel):
 
 @app.post("/api/plans")
 def create_plan(brief: TripBrief, background: BackgroundTasks) -> dict:
-    plan_id = "kyoto-demo" if os.environ.get("ROAM_SCRIPTED_AGENT") == "1" else uuid.uuid4().hex[:12]
+    if os.environ.get("ROAM_SCRIPTED_AGENT") != "1":
+        plan_id = uuid.uuid4().hex[:12]
+    elif "kyoto" in brief.destination.lower():
+        plan_id = "kyoto-demo"
+    else:
+        from roam_tools.demo_city import load as load_demo
+
+        plan_id = load_demo()["plan_id"]
     record = PlanRecord(plan_id=plan_id, brief=brief, status=PlanStatus.COLLECTING)
     store.put(record)
 

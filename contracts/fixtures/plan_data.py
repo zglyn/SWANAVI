@@ -185,3 +185,9 @@ def plan_events(cset: CandidateSet, plan: Itinerary) -> list[InspectorEvent]:
 
 def flights(trip: TripBrief) -> dict:
     return {"arrival": trip.arrival.model_dump(mode="json"), "departure": trip.departure.model_dump(mode="json")}
+
+
+def write_demo_plan(folder) -> None:
+    from demo_data import write_plan
+
+    write_plan(folder)

@@ -36,14 +36,17 @@ from roam_contracts.models import (
 from roam_agent.plan import DEPLANE_MIN, arrival_lodging, build_legs, schedule_stops
 from roam_agent.plan import plan as build_plan
 from roam_agent.profile_crypto import planning_profile
+from roam_tools.demo_city import freshen_package, load as load_demo
 from roam_tools.flight_search import search_flights
 from roam_tools.hotel_search import search_hotels
 from roam_tools.transport import arrival_transfer_minutes, get_transport_profile
 
 log = logging.getLogger("swan.autopilot")
 ROOT = Path(__file__).resolve().parents[3]
-CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
-PACKAGE = ROOT / "contracts" / "fixtures" / "package_kyoto.json"
+KYOTO_CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_kyoto.json"
+DEMO_CANDIDATES = ROOT / "contracts" / "fixtures" / "candidates_demo.json"
+KYOTO_PACKAGE = ROOT / "contracts" / "fixtures" / "package_kyoto.json"
+DEMO_PACKAGE = ROOT / "contracts" / "fixtures" / "package_demo.json"
 AMOUNT_WEIGHT = {"none": 0, "a_little": 1, "some": 2, "lots": 4}
 DENSITY_CAP = {Density.LIGHT: 2, Density.BALANCED: 3, Density.PACKED: 4}
 PACE = {Density.LIGHT: Pace.RELAXED, Density.BALANCED: Pace.BALANCED, Density.PACKED: Pace.PACKED}
@@ -113,7 +116,9 @@ def apply_choices(trip: SwanTrip, choices: PackageChoices) -> SwanTrip:
 
 def advance(trip: SwanTrip) -> SwanTrip:
     if _scripted(trip):
-        trip.package = TravelPackage.model_validate(json.loads(PACKAGE.read_text()))
+        trip.package = TravelPackage.model_validate(json.loads(_package_file(trip.request.destination).read_text()))
+        if not _kyoto(trip.request.destination):
+            trip.package = freshen_package(trip.package)
         trip.package.plan_id = trip.plan_id
         trip.phase = SwanPhase.READY
         log.info("swan %s package_ready scripted", trip.plan_id)
@@ -130,7 +135,7 @@ def advance(trip: SwanTrip) -> SwanTrip:
             trip.outbound_id = outbound[0].id
         if inbound:
             trip.return_id = inbound[0].id
-    pool = _pool()
+    pool = _pool(trip.request.destination)
     trip.chosen_ids = pick_attractions(trip.profile, trip.selection, pool, _nights(trip.request))
     _ensure_hotels(trip)
     if trip.request.autonomy.hotels == Autonomy.I_CHOOSE and not trip.hotel_ids:
@@ -221,8 +226,17 @@ def PACE_FROM_PROFILE(profile: UserProfile) -> Density:
     return {Pace.RELAXED: Density.LIGHT, Pace.BALANCED: Density.BALANCED, Pace.PACKED: Density.PACKED}[profile.travel.pace]
 
 
-def _pool() -> CandidateSet:
-    return CandidateSet.model_validate(json.loads(CANDIDATES.read_text()))
+def _kyoto(destination: str) -> bool:
+    return "kyoto" in destination.lower()
+
+
+def _package_file(destination: str) -> Path:
+    return KYOTO_PACKAGE if _kyoto(destination) else DEMO_PACKAGE
+
+
+def _pool(destination: str) -> CandidateSet:
+    path = KYOTO_CANDIDATES if _kyoto(destination) else DEMO_CANDIDATES
+    return CandidateSet.model_validate(json.loads(path.read_text()))
 
 
 def _nights(request: TripRequest) -> int:
@@ -270,7 +284,7 @@ def _ensure_flights(trip: SwanTrip) -> None:
 def _ensure_hotels(trip: SwanTrip) -> None:
     if trip.hotels:
         return
-    pool = _pool()
+    pool = _pool(trip.request.destination)
     by_id = {item.id: item for item in pool.candidates}
     points = []
     nights = _nights(trip.request)
@@ -289,6 +303,15 @@ def _ensure_hotels(trip: SwanTrip) -> None:
             "id": "destination",
             "lat": place.lat,
             "lng": place.lng,
+            "day": trip.request.start_date,
+            "weight": 1,
+        }]
+    elif not points and not _kyoto(trip.request.destination):
+        center = load_demo()["center"]
+        points = [{
+            "id": "destination",
+            "lat": center["lat"],
+            "lng": center["lng"],
             "day": trip.request.start_date,
             "weight": 1,
         }]
@@ -500,4 +523,4 @@ def _scripted(trip: SwanTrip) -> bool:
         return False
     if trip.selection and trip.selection.mode == Autonomy.I_CHOOSE:
         return False
-    return PACKAGE.exists()
+    return _package_file(trip.request.destination).exists()

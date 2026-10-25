@@ -217,3 +217,9 @@ def write_conversation(out: Path) -> None:
     fixture = build(out)
     payload = fixture.model_dump(mode="json", by_alias=True)
     (out / "conversation_kyoto.json").write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def write_demo_conversation(out: Path) -> None:
+    from demo_data import write_conversation_file
+
+    write_conversation_file(out)

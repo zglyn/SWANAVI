@@ -1,0 +1,84 @@
+{
+  "place": "New York",
+  "modes": [
+    {
+      "mode": "walk",
+      "typical_speed_kmh": 4.5,
+      "typical_cost": "0",
+      "best_for": "Central Park and Midtown",
+      "notes": "The stops in this demo are a short walk apart."
+    },
+    {
+      "mode": "bike",
+      "typical_speed_kmh": 12,
+      "typical_cost": "rental",
+      "best_for": "Central Park paths",
+      "notes": "Demo bike rental is two hours."
+    },
+    {
+      "mode": "transit",
+      "typical_speed_kmh": 18,
+      "typical_cost": "OMNY",
+      "best_for": "airport to Midtown",
+      "notes": "AirTrain plus subway from JFK."
+    },
+    {
+      "mode": "taxi",
+      "typical_speed_kmh": 22,
+      "typical_cost": "meter",
+      "best_for": "luggage",
+      "notes": "Unmetered flat fares from the airports vary."
+    }
+  ],
+  "passes": [
+    "OMNY or MetroCard"
+  ],
+  "transfers": [
+    {
+      "from_code": "JFK",
+      "to_area": "Midtown",
+      "options": [
+        {
+          "mode": "transit",
+          "name": "AirTrain and subway",
+          "minutes": 70,
+          "cost": "about 11 USD",
+          "frequency": "every few minutes",
+          "notes": "AirTrain to the subway, then into Midtown."
+        }
+      ]
+    },
+    {
+      "from_code": "LGA",
+      "to_area": "Midtown",
+      "options": [
+        {
+          "mode": "bus",
+          "name": "Bus and subway",
+          "minutes": 55,
+          "cost": "OMNY",
+          "frequency": "frequent",
+          "notes": "LaGuardia buses connect to the subway."
+        }
+      ]
+    },
+    {
+      "from_code": "EWR",
+      "to_area": "Midtown",
+      "options": [
+        {
+          "mode": "transit",
+          "name": "AirTrain and NJ Transit",
+          "minutes": 75,
+          "cost": "about 17 USD",
+          "frequency": "every 15 min",
+          "notes": "Newark AirTrain to a train for Penn Station."
+        }
+      ]
+    }
+  ],
+  "tips": [
+    "AirTrain and the subway from JFK to Midtown take about 70 minutes. Walk between Central Park and Midtown."
+  ],
+  "source": "curated"
+}

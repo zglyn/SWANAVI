@@ -31,7 +31,7 @@ from roam_agent.store import TripRecord, TripSnapshot, TripStore
 from roam_agent.validate import validate_itinerary
 from roam_tools.destination import lookup_destination
 
-SCRIPT = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "conversation_kyoto.json"
+SCRIPT = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "conversation_demo.json"
 Emit = Callable[..., None]
 
 
@@ -275,7 +275,9 @@ def act_on_suggestion(store: TripStore, emit: Emit, record: TripRecord, action: 
             constraints["text"] = action.text
         rows = cards.alternatives(proposal, record.rejected_ids, action.suggestion_id, constraints)
         return SuggestionResult(proposal=proposal, alternatives=rows), None
-    change = cards.apply_action(proposal, record.rejected_ids, action, cards.load_catalog())
+    change = cards.apply_action(
+        proposal, record.rejected_ids, action, cards.load_catalog(proposal.package.itinerary.brief.destination),
+    )
     if not change.changed:
         return SuggestionResult(proposal=proposal), None
     updated = record.model_copy(update={

@@ -44,6 +44,8 @@ class TransportProfile(BaseModel):
 
 def normalize_place(place: str) -> str:
     text = place.lower()
+    if "new york city" in text or "new york" in text or re.search(r"\bnyc\b", text):
+        return "new-york"
     for name in ("kyoto", "osaka", "tokyo"):
         if name in text:
             return name

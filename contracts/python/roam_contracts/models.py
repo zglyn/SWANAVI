@@ -913,12 +913,16 @@ class Proposal(BaseModel):
             ))
         for day in package.itinerary.days:
             for stop in day.stops:
-                if stop.kind != StopKind.ATTRACTION:
+                if stop.kind == StopKind.ATTRACTION:
+                    why = [stop.attraction.category] if stop.attraction is not None else []
+                elif stop.kind == StopKind.MERCHANT:
+                    name = stop.quote.merchant_name if stop.quote is not None else stop.title
+                    why = ["Demo data"] if "Demo" in name else []
+                else:
                     continue
                 rows.append(Suggestion(
                     id=f"sug-stop-{stop.id}", kind=SuggestionKind.ATTRACTION, item=stop,
-                    why=[stop.attraction.category] if stop.attraction is not None else [],
-                    alternatives_available=True,
+                    why=why, alternatives_available=True,
                 ))
         return cls(trip_id=trip_id, package=package, suggestions=rows, totals=package.totals)
 

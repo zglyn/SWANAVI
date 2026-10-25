@@ -1,11 +1,12 @@
 import type { ChatMessage, Control, Proposal, TripConversation, TripFacts } from "@contracts/api";
-import fixture from "@fixtures/conversation_kyoto.json";
+import fixture from "@fixtures/conversation_demo.json";
+import { demoCity, namesDemo } from "@/lib/demoScope";
 
-export function kyotoScript(): TripConversation {
+export function demoScript(): TripConversation {
   return (fixture as { conversation: TripConversation }).conversation;
 }
 
-export function kyotoProposal(): Proposal {
+export function demoProposal(): Proposal {
   return (fixture as { proposal: Proposal }).proposal;
 }
 
@@ -28,18 +29,22 @@ export interface PlayState {
   status: string;
 }
 
-const CONFIRMED: TripFacts = {
-  destination: "Kyoto",
-  origin: { from_home: true, place: "San Francisco", airport_codes: ["SFO"] },
-  start_date: "2026-11-14",
-  end_date: "2026-11-17",
-};
+const CONFIRMED = {
+  destination: demoCity.destination,
+  origin: { from_home: false, airport_codes: [demoCity.origin.code] },
+  start_date: demoCity.dates.start,
+  end_date: demoCity.dates.end,
+  travellers: demoCity.travellers,
+  pace: demoCity.pace,
+  interests: [...demoCity.interests],
+} as TripFacts;
 
 export function begin(script: ChatMessage[], opening: string): PlayState {
-  const first = { ...script[0], text: opening || script[0].text };
+  const text = opening || script[0].text;
+  const first = { ...script[0], text };
   return {
     messages: [first],
-    brief: {},
+    brief: namesDemo(text) ? { ...CONFIRMED } : {},
     mode: "stream",
     cursor: 1,
     shown: "",
@@ -64,7 +69,7 @@ export function advanceStream(state: PlayState, script: ChatMessage[], reduced: 
     messages: [...state.messages, message],
     shown: "",
     cursor: state.cursor + 1,
-    brief: { ...state.brief, ...CONFIRMED },
+    brief: namesDemo(state.messages[0]?.text) ? { ...state.brief, ...CONFIRMED } : state.brief,
   };
   if (message.controls.length > 0) return { ...next, mode: "ask" };
   if (missingFacts(next.brief).length === 0) return { ...next, mode: "offer" };
@@ -105,7 +110,7 @@ export function planNow(state: PlayState, script: ChatMessage[]): PlayState {
     ...state,
     messages: [...state.messages, plan],
     mode: "planning",
-    status: "Finding flights from SFO…",
+    status: `Finding flights from ${demoCity.origin.code}…`,
     brief: { ...state.brief, pace: state.brief.pace ?? "balanced" },
   };
 }
@@ -124,8 +129,19 @@ export function editFact(brief: TripFacts, id: string, value: string): TripFacts
   return brief;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function chipDates(start: string, end: string): string {
+  const startMonth = Number(start.slice(5, 7));
+  const endMonth = Number(end.slice(5, 7));
+  const startDay = Number(start.slice(8, 10));
+  const endDay = Number(end.slice(8, 10));
+  if (startMonth === endMonth) return `${MONTHS[startMonth - 1]} ${startDay}-${endDay}`;
+  return `${MONTHS[startMonth - 1]} ${startDay}-${MONTHS[endMonth - 1]} ${endDay}`;
+}
+
 export function factChips(brief: TripFacts): { id: string; label: string; known: boolean }[] {
-  const dates = brief.start_date && brief.end_date ? "Nov 14-17" : "";
+  const dates = brief.start_date && brief.end_date ? chipDates(brief.start_date, brief.end_date) : "";
   const origin = brief.origin?.airport_codes?.[0] ?? "";
   return [
     { id: "destination", label: brief.destination || "Destination", known: Boolean(brief.destination) },

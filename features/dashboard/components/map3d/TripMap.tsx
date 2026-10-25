@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { demoCity } from "@/lib/demoScope";
 import { mapboxPublicToken } from "@/lib/mapboxToken";
 
 export interface MapStop {
@@ -71,7 +72,7 @@ export function TripMap({
       try {
         const token = mapboxPublicToken();
         const opened = await openBasemap(node, token, {
-          center: drawnStops[0] ? [drawnStops[0].lng, drawnStops[0].lat] : [135.77, 35.01],
+          center: drawnStops[0] ? [drawnStops[0].lng, drawnStops[0].lat] : [demoCity.center.lng, demoCity.center.lat],
           zoom: drawnStops.length ? 11 : 2,
           pitch: reduced || flat ? 0 : 48,
         });

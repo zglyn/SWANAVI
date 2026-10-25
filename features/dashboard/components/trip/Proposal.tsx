@@ -8,6 +8,7 @@ import type { MapStop } from "@/components/map3d/TripMap";
 import { LockIcon } from "@/components/trip/LockIcon";
 import { ModifySheet } from "@/components/trip/ModifySheet";
 import { getClient } from "@/lib/client";
+import { displayCurrency } from "@/lib/demoScope";
 import { formatClock, formatDay, formatDuration, formatMoney, hotelPrice, legLabel, suggestionTitle, summarizeFlight } from "@/lib/format";
 
 const TripMap = dynamic(() => import("@/components/map3d/TripMap").then((mod) => mod.TripMap), { ssr: false });
@@ -427,7 +428,9 @@ function HotelBody({ row }: { row: Extract<Suggestion, { kind: "hotel" }> }) {
 
 function StopBody({ stop, zone }: { stop: Stop; zone: string }) {
   const minutes = Math.round((Date.parse(stop.end) - Date.parse(stop.start)) / 60000);
-  const price = stop.quote ? formatMoney(stop.quote.amount, stop.quote.currency) : stop.attraction?.free ? "Free" : null;
+  const price = stop.quote
+    ? formatMoney(stop.quote.amount, displayCurrency(stop.quote.merchant_id, stop.quote.currency))
+    : stop.attraction?.free ? "Free" : null;
   return (
     <>
       <p className="trip-card-title">{formatClock(stop.start, zone)} · {stop.title}</p>
