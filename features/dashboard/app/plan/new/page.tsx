@@ -97,9 +97,10 @@ function Planner() {
 
   const windows = WINDOWS.filter((item) => item !== "red_eye" || !profile?.flights.avoid_red_eye);
   const matches = DESTINATIONS.filter((city) => city.label.toLowerCase().includes(query.toLowerCase()));
+  const homeAirports = (profile?.home.airport_codes ?? draft.origin.airport_codes).filter(Boolean);
   const originLabel = draft.origin.from_home
-    ? `Home · ${(profile?.home.airport_codes ?? draft.origin.airport_codes).join(" · ")}`
-    : `${draft.origin.place ?? ""} · ${draft.origin.airport_codes.join(" · ")}`;
+    ? ["Home", homeAirports.join(" · ")].filter(Boolean).join(" · ")
+    : [draft.origin.place, draft.origin.airport_codes.join(" · ")].filter(Boolean).join(" · ") || "Somewhere else";
   const nights = nightsBetween(draft.start_date, draft.end_date);
   const title = step === 1 ? "Where to?"
     : step === 2 ? "From where?"
