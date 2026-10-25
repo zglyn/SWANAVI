@@ -80,4 +80,4 @@ One `api.ts` client with two implementations behind the same functions:
 
 ## 9. Config
 
-`NEXT_PUBLIC_USE_MOCKS`, `NEXT_PUBLIC_GATEWAY_URL`, `NEXT_PUBLIC_EXPLORER_BASE` (default `https://devnet.xrpl.org/transactions/`).
+`NEXT_PUBLIC_USE_MOCKS`, `NEXT_PUBLIC_GATEWAY_URL`, `NEXT_PUBLIC_EXPLORER_BASE` (default `https://devnet.xrpl.org/transactions/`), `NEXT_PUBLIC_MAPBOX_TOKEN` (public `pk.` token; unset uses the OpenFreeMap basemap).

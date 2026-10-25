@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 Currency = Literal["RLUSD", "XRP"]
 Money = Decimal  # serialized as string, e.g. "15.00"
@@ -242,6 +242,7 @@ class TravelSegment(BaseModel):
     arrive_at: datetime
     status: SegmentStatus = SegmentStatus.SCHEDULED
     source: str = "user"
+    terminal: str | None = None
 
 
 class Lodging(BaseModel):
@@ -449,6 +450,9 @@ EVENT_TYPES = (
     "plan.ready",          # data: {itinerary: Itinerary}
     "plan.invalid",        # data: {plan_id, errors: list[str]}
     "plan.failed",         # data: {plan_id, error}
+    "plan.flights_ready",
+    "plan.hotels_ready",
+    "plan.package_ready",
 )
 
 # On-ledger conventions shared by ledger (writes), merchants and guardrail (read/verify).
@@ -471,3 +475,256 @@ class InspectorEvent(BaseModel):
     tx_hash: Hash256 | None = None
     explorer_url: str | None = None
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+class BudgetLevel(str, Enum):
+    BUDGET = "budget"
+    MID = "mid"
+    PREMIUM = "premium"
+    LUXURY = "luxury"
+
+
+class Autonomy(str, Enum):
+    SWAN_DECIDES = "swan_decides"
+    I_CHOOSE = "i_choose"
+
+
+class Cabin(str, Enum):
+    ECONOMY = "economy"
+    PREMIUM_ECONOMY = "premium_economy"
+    BUSINESS = "business"
+    FIRST = "first"
+
+
+class SeatPref(str, Enum):
+    WINDOW = "window"
+    AISLE = "aisle"
+    ANY = "any"
+
+
+class TimeOfDayWindow(str, Enum):
+    RED_EYE = "red_eye"
+    EARLY_MORNING = "early_morning"
+    MORNING = "morning"
+    AFTERNOON = "afternoon"
+    EVENING = "evening"
+    ANY = "any"
+
+
+class AmountLevel(str, Enum):
+    NONE = "none"
+    A_LITTLE = "a_little"
+    SOME = "some"
+    LOTS = "lots"
+
+
+class Density(str, Enum):
+    LIGHT = "light"
+    BALANCED = "balanced"
+    PACKED = "packed"
+
+
+class Priority(str, Enum):
+    MUST = "must"
+    NICE = "nice"
+
+
+class HotelSource(str, Enum):
+    MERCHANT = "merchant_mcp"
+    PROVIDER = "provider"
+
+
+class HomeBase(BaseModel):
+    address: str
+    location: GeoPoint
+    airport_codes: list[str] = Field(default_factory=list)
+
+
+class LoyaltyProgram(BaseModel):
+    program: str
+    number: str | None = None
+
+
+class TravelPreferences(BaseModel):
+    interests: list[str] = Field(default_factory=list)
+    pace: Pace = Pace.BALANCED
+    budget_level: BudgetLevel = BudgetLevel.MID
+    preferred_modes: list[TravelMode] = Field(default_factory=lambda: [TravelMode.WALK, TravelMode.TRANSIT])
+    dietary: list[str] = Field(default_factory=list)
+    accessibility: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
+
+
+class SleepSchedule(BaseModel):
+    wake_time: str = "07:30"
+    sleep_time: str = "23:00"
+    jet_lag_buffer: bool = True
+
+
+class HotelPreferences(BaseModel):
+    favourite_brands: list[str] = Field(default_factory=list)
+    min_stars: float | None = None
+    must_have: list[str] = Field(default_factory=list)
+    room_type: str | None = None
+    loyalty: list[LoyaltyProgram] = Field(default_factory=list)
+
+
+class FlightPreferences(BaseModel):
+    favourite_airlines: list[str] = Field(default_factory=list)
+    alliances: list[str] = Field(default_factory=list)
+    cabin: Cabin = Cabin.ECONOMY
+    max_stops: int = 1
+    seat: SeatPref = SeatPref.ANY
+    loyalty: list[LoyaltyProgram] = Field(default_factory=list)
+    avoid_red_eye: bool = False
+
+
+class AutonomyDefaults(BaseModel):
+    attractions: Autonomy = Autonomy.SWAN_DECIDES
+    hotels: Autonomy = Autonomy.SWAN_DECIDES
+    flights: Autonomy = Autonomy.SWAN_DECIDES
+
+
+class UserProfile(BaseModel):
+    user_id: str
+    name: str
+    home: HomeBase
+    currency: str = "USD"
+    travel: TravelPreferences = Field(default_factory=TravelPreferences)
+    sleep: SleepSchedule = Field(default_factory=SleepSchedule)
+    hotels: HotelPreferences = Field(default_factory=HotelPreferences)
+    flights: FlightPreferences = Field(default_factory=FlightPreferences)
+    autonomy: AutonomyDefaults = Field(default_factory=AutonomyDefaults)
+
+
+class TripOrigin(BaseModel):
+    from_home: bool = True
+    place: str | None = None
+    airport_codes: list[str] = Field(default_factory=list)
+
+
+class TripRequest(BaseModel):
+    destination: str
+    origin: TripOrigin
+    start_date: str
+    end_date: str
+    outbound_window: TimeOfDayWindow = TimeOfDayWindow.ANY
+    return_window: TimeOfDayWindow = TimeOfDayWindow.ANY
+    travellers: int = 1
+    budget: Money | None = None
+    autonomy: AutonomyDefaults = Field(default_factory=AutonomyDefaults)
+    notes: str | None = None
+
+
+class AttractionPick(BaseModel):
+    candidate_id: str
+    priority: Priority
+
+
+class CategoryAmount(BaseModel):
+    category: str
+    level: AmountLevel
+
+
+class AttractionSelection(PlanSelection):
+    mode: Autonomy = Autonomy.SWAN_DECIDES
+    picks: list[AttractionPick] = Field(default_factory=list)
+    amounts: list[CategoryAmount] = Field(default_factory=list)
+    daily_density: Density = Density.BALANCED
+
+
+class FareConditions(BaseModel):
+    refundable: bool = False
+    changeable: bool = False
+
+
+class FlightOffer(BaseModel):
+    id: str
+    segments: list[TravelSegment]
+    carrier: str
+    cabin: Cabin = Cabin.ECONOMY
+    stops: int = 0
+    duration_min: int
+    price: Money
+    currency: str = "USD"
+    fare_conditions: FareConditions = Field(default_factory=FareConditions)
+    score: float = 0
+    why: list[str] = Field(default_factory=list)
+    deep_link: str | None = None
+    direction: Literal["outbound", "return"] = "outbound"
+
+
+class HotelOffer(BaseModel):
+    id: str
+    name: str
+    brand: str | None = None
+    stars: float | None = None
+    location: GeoPoint
+    area: str | None = None
+    price_per_night: Money
+    total: Money
+    currency: str = "USD"
+    amenities: list[str] = Field(default_factory=list)
+    refundable: bool = False
+    avg_travel_min_to_attractions: int = 0
+    score: float = 0
+    why: list[str] = Field(default_factory=list)
+    image_url: str | None = None
+    source: HotelSource = HotelSource.PROVIDER
+    quote: Quote | None = None
+    deep_link: str | None = None
+    check_in: str | None = None
+    check_out: str | None = None
+
+
+class HotelStay(BaseModel):
+    offer: HotelOffer
+    check_in: str
+    check_out: str
+
+
+class PackageTotals(BaseModel):
+    flights: Money = Decimal("0")
+    hotels: Money = Decimal("0")
+    activities: Money = Decimal("0")
+    total: Money = Decimal("0")
+    currency: str = "USD"
+    savings: Money = Decimal("0")
+
+
+class TravelPackage(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    plan_id: str
+    outbound: FlightOffer | None = None
+    return_flight: FlightOffer | None = Field(
+        default=None,
+        validation_alias=AliasChoices("return_flight", "return"),
+        serialization_alias="return",
+    )
+    hotels: list[HotelStay] = Field(default_factory=list)
+    itinerary: Itinerary
+    totals: PackageTotals = Field(default_factory=PackageTotals)
+    reasons: list[str] = Field(default_factory=list)
+
+
+class PackageChoices(BaseModel):
+    outbound_id: str | None = None
+    return_id: str | None = None
+    hotel_ids: list[str] = Field(default_factory=list)
+
+
+class SwanPhase(str, Enum):
+    ATTRACTIONS = "waiting_attractions"
+    FLIGHTS = "waiting_flights"
+    HOTELS = "waiting_hotels"
+    READY = "ready"
+
+
+class SwanView(BaseModel):
+    plan_id: str
+    phase: SwanPhase
+    request: TripRequest
+    flights: list[FlightOffer] = Field(default_factory=list)
+    hotels: list[HotelOffer] = Field(default_factory=list)
+    package: TravelPackage | None = None

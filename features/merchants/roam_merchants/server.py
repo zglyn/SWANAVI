@@ -10,7 +10,7 @@ from roam_merchants.directory import Directory
 
 directory = Directory()
 mcp = FastMCP("merchant-directory")
-http = FastAPI(title="Roam402 merchants")
+http = FastAPI(title="Swanavi merchants")
 
 
 @mcp.tool(description="Find registered shops in a city. near is {lat, lng}. radius_km is kilometres from that point. Results are closest first. city is a name such as Kyoto.")

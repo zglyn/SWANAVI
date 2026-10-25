@@ -93,7 +93,7 @@ function Slider(props: { label: string; value: number; min: number; max: number;
     <label className="block">
       <div className="flex items-baseline justify-between text-sm">
         <span>{props.label}</span>
-        <span className="font-mono font-semibold">{props.value} RLUSD</span>
+        <span className="tabular-nums font-semibold">{props.value} RLUSD</span>
       </div>
       <input
         type="range"
@@ -274,7 +274,7 @@ export function QuoteList({
                     )}
                     {chip && <span className={`rounded-full px-2 py-0.5 text-xs ${chip.cls}`}>{chip.label}</span>}
                     {confirmations[q.invoice_id] && st === "booked" && (
-                      <span className="rounded-full bg-paper-2 px-2 py-0.5 font-mono text-xs">#{confirmations[q.invoice_id]}</span>
+                      <span className="rounded-full bg-paper-2 px-2 py-0.5 tabular-nums text-xs">#{confirmations[q.invoice_id]}</span>
                     )}
                   </div>
                 </div>
