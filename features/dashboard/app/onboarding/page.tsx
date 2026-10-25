@@ -2,22 +2,21 @@
 
 import type { Autonomy, BudgetLevel, UserProfile } from "@contracts/api";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { TripMap } from "@/components/map3d/TripMap";
+import { useEffect, useMemo, useState } from "react";
 import { SwanShell } from "@/components/swan/Shell";
 import { getClient } from "@/lib/client";
-import { lookupPlace, nearestAirports } from "@/lib/places";
+import { nearestAirports, suggestPlaces, type PlaceHit } from "@/lib/places";
 
 const INTERESTS = ["temples", "food", "nature", "museums", "nightlife", "shopping", "crafts", "beaches"];
-const BRANDS = ["Hyatt", "Marriott", "Hilton", "IHG", "Accor", "boutique"];
-const AIRLINES = ["JL", "NH", "UA", "AA", "DL"];
-const STEPS = 8;
+const BUDGET_LABEL: Record<BudgetLevel, string> = { budget: "Budget", mid: "Mid-range", premium: "Premium", luxury: "Luxury" };
+const STEPS = 3;
+const HOME = { lat: 37.77, lng: -122.42 };
 
 function blank(): UserProfile {
   return {
     user_id: "local",
     name: "",
-    home: { address: "", location: { lat: 37.77, lng: -122.42 }, airport_codes: ["SFO"] },
+    home: { address: "", location: HOME, airport_codes: nearestAirports(HOME.lat, HOME.lng) },
     currency: "USD",
     travel: {
       interests: ["temples", "food"],
@@ -48,17 +47,38 @@ export default function OnboardingPage() {
   const client = useMemo(getClient, []);
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState<UserProfile>(blank);
-  const [avoid, setAvoid] = useState("");
-  const [loyaltyHotel, setLoyaltyHotel] = useState("");
-  const [loyaltyAir, setLoyaltyAir] = useState("");
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<PlaceHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  async function geocode() {
-    const hit = await lookupPlace(profile.home.address);
-    if (!hit) return;
+  useEffect(() => {
+    if (query.trim().length < 2 || query === profile.home.address) {
+      setHits([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      const found = await suggestPlaces(query, controller.signal);
+      if (!controller.signal.aborted) {
+        setHits(found);
+        setSearching(false);
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, profile.home.address]);
+
+  function pickHome(hit: PlaceHit) {
     setProfile({
       ...profile,
-      home: { address: hit.label, location: { lat: hit.lat, lng: hit.lng }, airport_codes: hit.airports.length ? hit.airports : nearestAirports(hit.lat, hit.lng) },
+      home: { address: hit.label, location: { lat: hit.lat, lng: hit.lng }, airport_codes: nearestAirports(hit.lat, hit.lng) },
     });
+    setQuery(hit.label);
+    setHits([]);
   }
 
   function toggle(list: string[], value: string) {
@@ -66,129 +86,104 @@ export default function OnboardingPage() {
   }
 
   async function save() {
-    const next = {
-      ...profile,
-      travel: { ...profile.travel, avoid: avoid.split(",").map((item) => item.trim()).filter(Boolean) },
-      hotels: { ...profile.hotels, loyalty: loyaltyHotel ? [{ program: loyaltyHotel, number: null }] : [] },
-      flights: { ...profile.flights, loyalty: loyaltyAir ? [{ program: loyaltyAir, number: null }] : profile.flights.loyalty },
-    };
-    await client.putProfile(next);
-    router.push("/");
+    if (busy) return;
+    setBusy(true);
+    try {
+      await client.putProfile(profile);
+      router.push("/plan/new");
+    } finally {
+      setBusy(false);
+    }
   }
 
+  const aside = (
+    <div>
+      <p className="swan-eyebrow">Two minutes, once</p>
+      <p className="mt-2 text-sm">Swanavi asks for home and what you love now. Hotel brands and airlines come up the first time they matter, and you can change anything later in your profile.</p>
+    </div>
+  );
+
   return (
-    <SwanShell step={step} steps={STEPS}>
+    <SwanShell step={step} steps={STEPS} aside={aside}>
       {step === 1 && (
         <section>
-          <h1 className="text-4xl">Where is home?</h1>
-          <label className="mt-6 block">Address
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={profile.home.address} onChange={(event) => setProfile({ ...profile, home: { ...profile.home, address: event.target.value } })} />
-          </label>
-          <button type="button" className="swan-btn-ghost mt-3" onClick={geocode}>Find it</button>
-          <div className="mt-4 h-60 overflow-hidden rounded-3xl">
-            <TripMap
-              stops={[{ id: "home", lat: profile.home.location.lat, lng: profile.home.location.lng, label: "Home", kind: "stop" }]}
-              arcs={[]}
-              focus={0}
-              dayLabel="Home"
+          <h1 className="text-4xl sm:text-5xl">Where is home?</h1>
+          <p className="swan-muted mt-3">Trips start from here. Swanavi searches flights from the airports nearby.</p>
+          <label className="mt-6 block">
+            <span className="font-medium">City or address</span>
+            <input
+              className="swan-line mt-2 w-full rounded-2xl border px-4 py-3 text-lg"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="San Francisco"
+              autoComplete="off"
+              aria-autocomplete="list"
+              aria-controls="home-suggestions"
+              aria-expanded={hits.length > 0}
             />
-          </div>
-          <p className="swan-muted mt-3 text-sm">Pin {profile.home.location.lat.toFixed(2)}, {profile.home.location.lng.toFixed(2)}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {profile.home.airport_codes.map((code) => <span key={code} className="swan-chip">{code}</span>)}
-          </div>
+          </label>
+          <ul id="home-suggestions" className="mt-2 space-y-1" role="listbox" aria-label="Suggestions" aria-busy={searching}>
+            {hits.map((hit) => (
+              <li key={`${hit.label}-${hit.lat}`} role="option" aria-selected={false}>
+                <button type="button" className="swan-card w-full px-4 py-3 text-left hover:bg-neutral-50" onClick={() => pickHome(hit)}>
+                  <span className="font-medium">{hit.label}</span>
+                  <span className="swan-muted block text-sm">{hit.airports.join(" · ")}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {profile.home.address ? (
+            <div className="mt-5">
+              <p className="font-medium">Fly from</p>
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Home airports">
+                {nearestAirports(profile.home.location.lat, profile.home.location.lng).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    className="swan-filter"
+                    aria-pressed={profile.home.airport_codes.includes(code)}
+                    onClick={() => setProfile({ ...profile, home: { ...profile.home, airport_codes: toggle(profile.home.airport_codes, code) } })}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
       {step === 2 && (
         <section>
-          <h1 className="text-4xl">What do you love?</h1>
-          <div className="mt-6 flex flex-wrap gap-2">
+          <h1 className="text-4xl sm:text-5xl">What do you love?</h1>
+          <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label="Interests">
             {INTERESTS.map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.travel.interests.includes(item)} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, interests: toggle(profile.travel.interests, item) } })}>{item}</button>
+              <button key={item} type="button" className="swan-filter capitalize" aria-pressed={profile.travel.interests.includes(item)} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, interests: toggle(profile.travel.interests, item) } })}>{item}</button>
             ))}
           </div>
-          <div className="mt-6 flex flex-wrap gap-2">
+          <p className="mt-6 font-medium">Budget</p>
+          <div className="swan-seg mt-2" role="radiogroup" aria-label="Budget">
             {(["budget", "mid", "premium", "luxury"] as BudgetLevel[]).map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.travel.budget_level === item} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, budget_level: item } })}>{item}</button>
+              <button key={item} type="button" role="radio" aria-checked={profile.travel.budget_level === item} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, budget_level: item } })}>{BUDGET_LABEL[item]}</button>
+            ))}
+          </div>
+          <p className="mt-6 font-medium">Pace</p>
+          <div className="swan-seg mt-2" role="radiogroup" aria-label="Pace">
+            {(["relaxed", "balanced", "packed"] as const).map((item) => (
+              <button key={item} type="button" role="radio" aria-checked={profile.travel.pace === item} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, pace: item } })}>{item[0].toUpperCase() + item.slice(1)}</button>
             ))}
           </div>
         </section>
       )}
       {step === 3 && (
         <section>
-          <h1 className="text-4xl">Your rhythm</h1>
-          <label className="mt-6 block">Wake
-            <input type="time" className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={profile.sleep.wake_time} onChange={(event) => setProfile({ ...profile, sleep: { ...profile.sleep, wake_time: event.target.value } })} />
-          </label>
-          <label className="mt-3 block">Bedtime
-            <input type="time" className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={profile.sleep.sleep_time} onChange={(event) => setProfile({ ...profile, sleep: { ...profile.sleep, sleep_time: event.target.value } })} />
-          </label>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(["relaxed", "balanced", "packed"] as const).map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.travel.pace === item} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, pace: item } })}>{item}</button>
-            ))}
-          </div>
-          <label className="mt-4 flex items-center gap-3">
-            <input type="checkbox" checked={profile.sleep.jet_lag_buffer} onChange={(event) => setProfile({ ...profile, sleep: { ...profile.sleep, jet_lag_buffer: event.target.checked } })} />
-            Go easy on day 1 after long flights
-          </label>
-        </section>
-      )}
-      {step === 4 && (
-        <section>
-          <h1 className="text-4xl">Getting around</h1>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {["walk", "bike", "transit", "taxi"].map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.travel.preferred_modes.includes(item as "walk")} onClick={() => setProfile({ ...profile, travel: { ...profile.travel, preferred_modes: toggle(profile.travel.preferred_modes, item) as UserProfile["travel"]["preferred_modes"] } })}>{item}</button>
-            ))}
-          </div>
-          <label className="mt-4 block">Avoid
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={avoid} placeholder="crowds, long walks" onChange={(event) => setAvoid(event.target.value)} />
-          </label>
-          <label className="mt-3 block">Accessibility
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={profile.travel.accessibility.join(", ")} onChange={(event) => setProfile({ ...profile, travel: { ...profile.travel, accessibility: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) } })} />
-          </label>
-        </section>
-      )}
-      {step === 5 && (
-        <section>
-          <h1 className="text-4xl">Hotels</h1>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {BRANDS.map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.hotels.favourite_brands.includes(item)} onClick={() => setProfile({ ...profile, hotels: { ...profile.hotels, favourite_brands: toggle(profile.hotels.favourite_brands, item) } })}>{item}</button>
-            ))}
-          </div>
-          <label className="mt-4 block">Loyalty programme
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={loyaltyHotel} onChange={(event) => setLoyaltyHotel(event.target.value)} placeholder="World of Hyatt" />
-          </label>
-        </section>
-      )}
-      {step === 6 && (
-        <section>
-          <h1 className="text-4xl">Flights</h1>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {AIRLINES.map((item) => (
-              <button key={item} type="button" className="swan-chip" aria-pressed={profile.flights.favourite_airlines.includes(item)} onClick={() => setProfile({ ...profile, flights: { ...profile.flights, favourite_airlines: toggle(profile.flights.favourite_airlines, item) } })}>{item}</button>
-            ))}
-          </div>
-          <label className="mt-4 flex items-center gap-3">
-            <input type="checkbox" checked={profile.flights.avoid_red_eye} onChange={(event) => setProfile({ ...profile, flights: { ...profile.flights, avoid_red_eye: event.target.checked } })} />
-            Avoid red-eyes
-          </label>
-          <label className="mt-3 block">Airline loyalty
-            <input className="swan-line mt-2 w-full rounded-2xl border px-3 py-3" value={loyaltyAir} onChange={(event) => setLoyaltyAir(event.target.value)} placeholder="JAL Mileage Bank" />
-          </label>
-        </section>
-      )}
-      {step === 7 && (
-        <section>
-          <h1 className="text-4xl">How much should Swanavi handle?</h1>
+          <h1 className="text-4xl sm:text-5xl">How much should Swanavi handle?</h1>
+          <p className="swan-muted mt-3">You can change this per trip.</p>
           {(["attractions", "hotels", "flights"] as const).map((key) => (
-            <div key={key} className="mt-4">
-              <p className="capitalize">{key}</p>
-              <div className="mt-2 flex gap-2">
+            <div key={key} className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-medium capitalize">{key}</p>
+              <div className="swan-seg" role="radiogroup" aria-label={key}>
                 {(["swan_decides", "i_choose"] as Autonomy[]).map((item) => (
-                  <button key={item} type="button" className="swan-chip" aria-pressed={profile.autonomy[key] === item} onClick={() => setProfile({ ...profile, autonomy: { ...profile.autonomy, [key]: item } })}>
+                  <button key={item} type="button" role="radio" aria-checked={profile.autonomy[key] === item} onClick={() => setProfile({ ...profile, autonomy: { ...profile.autonomy, [key]: item } })}>
                     {item === "swan_decides" ? "Swanavi decides" : "I choose"}
                   </button>
                 ))}
@@ -197,16 +192,11 @@ export default function OnboardingPage() {
           ))}
         </section>
       )}
-      {step === 8 && (
-        <section>
-          <h1 className="text-4xl">You are set.</h1>
-          <p className="swan-muted mt-3">{profile.home.address || "Home"} · {profile.travel.interests.join(", ") || "open interests"} · wake {profile.sleep.wake_time}</p>
-          <button type="button" className="swan-btn mt-6" onClick={save}>Save and plan a trip</button>
-        </section>
-      )}
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         {step > 1 && <button type="button" className="swan-btn-ghost" onClick={() => setStep(step - 1)}>Back</button>}
-        {step < 8 && <button type="button" className="swan-btn" onClick={() => setStep(step + 1)}>{step === 1 && !profile.home.address ? "Skip" : "Next"}</button>}
+        {step < STEPS && <button type="button" className="swan-btn" onClick={() => setStep(step + 1)}>Continue</button>}
+        {step === 1 && !profile.home.address && <button type="button" className="swan-btn-quiet" onClick={() => setStep(2)}>Skip for now</button>}
+        {step === STEPS && <button type="button" className="swan-btn" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save and plan a trip"}</button>}
       </div>
     </SwanShell>
   );

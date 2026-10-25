@@ -48,20 +48,31 @@ export function matchCity(query: string): PlaceHit | null {
   return CITIES.find((city) => city.label.toLowerCase().includes(needle) || needle.includes(city.label.toLowerCase())) ?? null;
 }
 
+export async function suggestPlaces(query: string, signal?: AbortSignal): Promise<PlaceHit[]> {
+  const needle = query.trim().toLowerCase();
+  if (needle.length < 2) return [];
+  const local = CITIES.filter((city) => city.label.toLowerCase().includes(needle));
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(query)}`, { signal });
+    if (!response.ok) return local;
+    const rows = await response.json() as { display_name: string; lat: string; lon: string }[];
+    const remote = rows.map((row) => {
+      const lat = Number(row.lat);
+      const lng = Number(row.lon);
+      return { label: row.display_name.split(",").slice(0, 3).join(","), lat, lng, airports: nearestAirports(lat, lng) };
+    });
+    const seen = new Set(local.map((city) => city.label.toLowerCase()));
+    return [...local, ...remote.filter((hit) => !seen.has(hit.label.toLowerCase()))].slice(0, 6);
+  } catch {
+    return local;
+  }
+}
+
 export async function lookupPlace(query: string): Promise<PlaceHit | null> {
   const local = matchCity(query);
   if (local) return local;
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`);
-    if (!response.ok) return null;
-    const rows = await response.json() as { display_name: string; lat: string; lon: string }[];
-    if (!rows.length) return null;
-    const lat = Number(rows[0].lat);
-    const lng = Number(rows[0].lon);
-    return { label: rows[0].display_name.split(",").slice(0, 2).join(","), lat, lng, airports: nearestAirports(lat, lng) };
-  } catch {
-    return null;
-  }
+  const hits = await suggestPlaces(query);
+  return hits[0] ?? null;
 }
 
 export const DESTINATIONS = CITIES.filter((city) => city.label !== "San Francisco");
