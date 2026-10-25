@@ -41,6 +41,18 @@ Nothing in this folder has been deployed to AWS. The local demo needs no AWS cre
 | Before `authorize_spend` | `tip_policy` | `booking.assist.tip` | `tip_policy(tripId, country, currency, requestedAmount)` |
 | A ride is requested | `phrase_card` | `booking.assist.phrase` | `phrase_card(tripId, country, dropoffName, pickupAt)` |
 | End of every tick | `trip_wallet` | `booking.assist.wallet` | `trip_wallet(tripId, codes)` |
+| Each flight on a tick | `flight_status` | `booking.assist.flightstatus` | `flight_status(tripId, now, segment)` |
+| Each flight on a tick | `check_in_flight` | `booking.assist.checkin` | `check_in_flight(now, segment, travelers)` |
+| Each tick | `refuse_dcc` | `booking.assist.dcc` | `refuse_dcc(merchantAmount, merchantCurrency, offeredAmount, offeredCurrency)` |
+| Each tick | `pick_card` | `booking.assist.card` | `pick_card(merchantCountry, amount, currency, cards)` |
+| Each tick | `cash_needed` | `booking.assist.cash` | `cash_needed(merchant, tripCurrency)` |
+| Each attraction | `holiday_closure` | `booking.assist.holidays` | `holiday_closure(segment)` |
+| Each tick, fixture connection | `check_layover` | `booking.assist.layover` | `check_layover(inbound, outbound, international)` |
+| Each tick | `etiquette_card` | `booking.assist.etiquette` | `etiquette_card(country, placeName, kind)` |
+| Each tick, before departure | `tax_refund` | `booking.assist.taxrefund` | `tax_refund(country, purchases, departAt, now)` |
+| A segment already cancelled | `rebook_segment` | `booking.assist.rebook` | `rebook_segment(tripId, now, segment, travelers, cancelled)` |
+| Each tick | `incidental_hold` | `booking.assist.hold` | `incidental_hold(authorizedHold, capturedAmount, currency, checkoutAt)` |
+| Inside 2 hours before arrival, no data | `landing_data` | `booking.assist.connectivity` | `landing_data(country, arriveAt, now, hasData)` |
 
 Provider tool input is the segment object from the plan (`from` stays `from` on flights), the traveler list `[{id, name}, ...]`, and `tripId`.
 
@@ -147,6 +159,10 @@ Each warning is stored on the tick. The loop does not wait for the next tick.
 | `phrase_card` | Each time a ride is requested | Tick `phrase` is `phrase_card_not_installed`. | Country, `dropoffName`, and `pickupAt`. The card stays on that tick. |
 | `trip_wallet` | End of every tick | Tick `wallet` is `trip_wallet_not_installed`. | The confirmation codes and `SANDBOX-RIDE-` codes already on the run. |
 
+The concierge tools are called from the same loop and their results stay on the tick. A missing import is `<tool>_not_installed` and the loop continues. The cap stays five ticks. Nothing here calls a network, AWS, Amadeus, Uber, or a card charge.
+
+`flight_status` runs for each flight. An omitted feed stays `on_time`. A demo feed may mark a different segment delayed; `action` `replan` is recorded and that call does not cancel a segment the demo already booked. `check_in_flight` runs for each flight. A date-only `departDate` is that date at `T09:00:00Z`, and a `now` inside the 24 hour window returns a `SANDBOX-BP-` boarding pass. `refuse_dcc` refuses a sample terminal offer of USD against a JPY merchant amount and pays the JPY amount. `pick_card` chooses a fixture Mastercard whose `noFxCountries` includes Japan and does not choose the Visa. `cash_needed` quotes a cash-only 1000 JPY merchant. `holiday_closure` records a Culture Day `shift` for the Japan attraction on 2026-11-03 and does not move that segment. `check_layover` uses a 60-minute international same-airport fixture when the plan has no connection. `etiquette_card` asks for the Japan shrine phrase. `tax_refund` quotes 1000 JPY back from 10000 eligible JPY before departure. That quote is not tax advice. `rebook_segment` runs only after a segment is already cancelled, returns a `SANDBOX-RB-` code for the same kind on the same day, and does not add a stop. `incidental_hold` explains a 200 hold with 40 captured (`releaseAmount` 160, reason `held`) and a 250 capture on that 200 hold (`payAmount` 200, reason `over_capture`). Nothing is charged, and the spend guard's 10 versus 12 case is unchanged. `landing_data` runs when `hasData` is false and `now` is inside the two hours before arrival, and the plan code starts with `SANDBOX-ESIM-`.
+
 The same run still calls `authorize_spend`. With the assist packages absent, the demo still finishes.
 
 `spend` on a finished run is `{authorizedAmount, requestedAmount, currency, payAmount, reason}` plus any other fields the spend tool returned.
@@ -227,6 +243,18 @@ Tests:
 
 ```bash
 PYTHONPATH=. python3 -m unittest booking.master.tests.test_master
+PYTHONPATH=. python3 -m unittest booking.assist.flightstatus.test_status
+PYTHONPATH=. python3 -m unittest booking.assist.checkin.test_checkin
+PYTHONPATH=. python3 -m unittest booking.assist.dcc.test_dcc
+PYTHONPATH=. python3 -m unittest booking.assist.card.test_card
+PYTHONPATH=. python3 -m unittest booking.assist.cash.test_cash
+PYTHONPATH=. python3 -m unittest booking.assist.holidays.test_holidays
+PYTHONPATH=. python3 -m unittest booking.assist.layover.test_layover
+PYTHONPATH=. python3 -m unittest booking.assist.etiquette.test_etiquette
+PYTHONPATH=. python3 -m unittest booking.assist.taxrefund.test_refund
+PYTHONPATH=. python3 -m unittest booking.assist.rebook.test_rebook
+PYTHONPATH=. python3 -m unittest booking.assist.hold.test_hold
+PYTHONPATH=. python3 -m unittest booking.assist.connectivity.test_connectivity
 ```
 
 The tests cover a missing verifier (`emailVerified` false, process still returns), a missing progress agent (one recorded update, loop ends, at most five ticks), a missing replan package (`replan_not_installed` recorded, loop continues, cap still five), a fake replan tool that shifts a segment (`changed: true` replaces the plan and the notes are recorded), missing guard packages (the loop still returns and records each `<tool>_not_installed`), a fake `authorize_spend` result (`payAmount` 10 and `reason` `over_capture_rejected` recorded on `spend`, with the notice kept on the tick), missing assist packages (the loop still returns and records each `<tool>_not_installed`, including a missing `request_ride`), and a `watch_trip` result whose `ok` is false (severity `act` warnings are handled in that same tick).

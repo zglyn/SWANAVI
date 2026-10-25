@@ -47,6 +47,18 @@ LATE_CHECKOUT_NOT_INSTALLED = "late_checkout_not_installed"
 TIP_POLICY_NOT_INSTALLED = "tip_policy_not_installed"
 PHRASE_CARD_NOT_INSTALLED = "phrase_card_not_installed"
 TRIP_WALLET_NOT_INSTALLED = "trip_wallet_not_installed"
+FLIGHT_STATUS_NOT_INSTALLED = "flight_status_not_installed"
+CHECK_IN_FLIGHT_NOT_INSTALLED = "check_in_flight_not_installed"
+REFUSE_DCC_NOT_INSTALLED = "refuse_dcc_not_installed"
+PICK_CARD_NOT_INSTALLED = "pick_card_not_installed"
+CASH_NEEDED_NOT_INSTALLED = "cash_needed_not_installed"
+HOLIDAY_CLOSURE_NOT_INSTALLED = "holiday_closure_not_installed"
+CHECK_LAYOVER_NOT_INSTALLED = "check_layover_not_installed"
+ETIQUETTE_CARD_NOT_INSTALLED = "etiquette_card_not_installed"
+TAX_REFUND_NOT_INSTALLED = "tax_refund_not_installed"
+REBOOK_SEGMENT_NOT_INSTALLED = "rebook_segment_not_installed"
+INCIDENTAL_HOLD_NOT_INSTALLED = "incidental_hold_not_installed"
+LANDING_DATA_NOT_INSTALLED = "landing_data_not_installed"
 
 PROVIDER_MODULES = {
     "flight": "booking.providers.flights",
@@ -130,6 +142,30 @@ PHRASE_MODULE = "booking.assist.phrase"
 PHRASE_EXPORT = "phrase_card"
 WALLET_MODULE = "booking.assist.wallet"
 WALLET_EXPORT = "trip_wallet"
+FLIGHT_STATUS_MODULE = "booking.assist.flightstatus"
+FLIGHT_STATUS_EXPORT = "flight_status"
+CHECK_IN_MODULE = "booking.assist.checkin"
+CHECK_IN_EXPORT = "check_in_flight"
+DCC_MODULE = "booking.assist.dcc"
+DCC_EXPORT = "refuse_dcc"
+CARD_MODULE = "booking.assist.card"
+CARD_EXPORT = "pick_card"
+CASH_MODULE = "booking.assist.cash"
+CASH_EXPORT = "cash_needed"
+HOLIDAY_MODULE = "booking.assist.holidays"
+HOLIDAY_EXPORT = "holiday_closure"
+LAYOVER_MODULE = "booking.assist.layover"
+LAYOVER_EXPORT = "check_layover"
+ETIQUETTE_MODULE = "booking.assist.etiquette"
+ETIQUETTE_EXPORT = "etiquette_card"
+TAX_REFUND_MODULE = "booking.assist.taxrefund"
+TAX_REFUND_EXPORT = "tax_refund"
+REBOOK_SEGMENT_MODULE = "booking.assist.rebook"
+REBOOK_SEGMENT_EXPORT = "rebook_segment"
+INCIDENTAL_HOLD_MODULE = "booking.assist.hold"
+INCIDENTAL_HOLD_EXPORT = "incidental_hold"
+LANDING_MODULE = "booking.assist.connectivity"
+LANDING_EXPORT = "landing_data"
 
 
 class ProgressNotInstalled(Exception):
@@ -325,6 +361,78 @@ def load_trip_wallet() -> Any | None:
     """Return trip_wallet, or None when booking.assist.wallet is not importable."""
 
     return _load_callable(WALLET_MODULE, WALLET_EXPORT)
+
+
+def load_flight_status() -> Any | None:
+    """Return flight_status, or None when booking.assist.flightstatus is not importable."""
+
+    return _load_callable(FLIGHT_STATUS_MODULE, FLIGHT_STATUS_EXPORT)
+
+
+def load_check_in_flight() -> Any | None:
+    """Return check_in_flight, or None when booking.assist.checkin is not importable."""
+
+    return _load_callable(CHECK_IN_MODULE, CHECK_IN_EXPORT)
+
+
+def load_refuse_dcc() -> Any | None:
+    """Return refuse_dcc, or None when booking.assist.dcc is not importable."""
+
+    return _load_callable(DCC_MODULE, DCC_EXPORT)
+
+
+def load_pick_card() -> Any | None:
+    """Return pick_card, or None when booking.assist.card is not importable."""
+
+    return _load_callable(CARD_MODULE, CARD_EXPORT)
+
+
+def load_cash_needed() -> Any | None:
+    """Return cash_needed, or None when booking.assist.cash is not importable."""
+
+    return _load_callable(CASH_MODULE, CASH_EXPORT)
+
+
+def load_holiday_closure() -> Any | None:
+    """Return holiday_closure, or None when booking.assist.holidays is not importable."""
+
+    return _load_callable(HOLIDAY_MODULE, HOLIDAY_EXPORT)
+
+
+def load_check_layover() -> Any | None:
+    """Return check_layover, or None when booking.assist.layover is not importable."""
+
+    return _load_callable(LAYOVER_MODULE, LAYOVER_EXPORT)
+
+
+def load_etiquette_card() -> Any | None:
+    """Return etiquette_card, or None when booking.assist.etiquette is not importable."""
+
+    return _load_callable(ETIQUETTE_MODULE, ETIQUETTE_EXPORT)
+
+
+def load_tax_refund() -> Any | None:
+    """Return tax_refund, or None when booking.assist.taxrefund is not importable."""
+
+    return _load_callable(TAX_REFUND_MODULE, TAX_REFUND_EXPORT)
+
+
+def load_rebook_segment() -> Any | None:
+    """Return rebook_segment, or None when booking.assist.rebook is not importable."""
+
+    return _load_callable(REBOOK_SEGMENT_MODULE, REBOOK_SEGMENT_EXPORT)
+
+
+def load_incidental_hold() -> Any | None:
+    """Return incidental_hold, or None when booking.assist.hold is not importable."""
+
+    return _load_callable(INCIDENTAL_HOLD_MODULE, INCIDENTAL_HOLD_EXPORT)
+
+
+def load_landing_data() -> Any | None:
+    """Return landing_data, or None when booking.assist.connectivity is not importable."""
+
+    return _load_callable(LANDING_MODULE, LANDING_EXPORT)
 
 
 def _load_callable(module_name: str, export: str) -> Any | None:

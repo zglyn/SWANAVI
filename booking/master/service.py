@@ -4,7 +4,8 @@ The loop calls capability tools. It does not book a supplier itself, parse
 confirmation mail, decide how to shift the day, decide a guard outcome, or
 decide an assist outcome. One replan agent is called per disruption event.
 Those agents live in booking.replan. Budget, spend, refund, conflict, notice,
-and assist tools live in their own packages.
+and assist tools live in their own packages. The concierge tools are called
+the same way and their results are recorded on the tick.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from booking.master.tools import (
     SCRIPTED_AUTHORIZED_AMOUNT,
     SCRIPTED_CURRENCY,
     SCRIPTED_EMERGENCY_COUNTRY,
+    SCRIPTED_HOLD_OVER_CAPTURE,
     SCRIPTED_HOURS_CLOSE,
     SCRIPTED_HOURS_CLOSED_WEEKDAYS,
     SCRIPTED_HOURS_OPEN,
@@ -41,20 +43,32 @@ from booking.master.tools import (
     after_dark,
     airport_leave,
     authorize_spend,
+    cash_needed,
     check_budget,
     check_conflicts,
     check_entry,
     check_hours,
+    check_in_flight,
+    check_layover,
     check_transfer,
     check_weather,
     emergency_card,
+    etiquette_card,
+    flight_status,
     hold_table,
+    holiday_closure,
+    incidental_hold,
+    landing_data,
     late_checkout,
     luggage_drop,
     phrase_card,
+    pick_card,
     quote_fx,
+    rebook_segment,
     refund_booking,
+    refuse_dcc,
     request_ride,
+    tax_refund,
     tip_policy,
     trip_notice,
     trip_progress,
@@ -86,6 +100,22 @@ _ASSIST_KEYS = (
     "checkout",
     "rides",
 )
+_GAP_KEYS = (
+    "flightStatus",
+    "checkIn",
+    "dcc",
+    "card",
+    "cash",
+    "holiday",
+    "layover",
+    "etiquette",
+    "taxRefund",
+    "landing",
+    "hold",
+    "holdOver",
+)
+_LANDING_WINDOW = timedelta(hours=2)
+_CODE_PREFIXES = ("SANDBOX-BP-", "SANDBOX-RB-", "SANDBOX-ESIM-")
 
 
 def segment_accepted(result: dict[str, Any]) -> bool:
@@ -173,6 +203,16 @@ def _control_loop(
         held.clear()
         if notices:
             tick["notice"] = notices[0] if len(notices) == 1 else notices
+        rebooked = _rebook_cancelled(
+            plan,
+            tick.get("updates") or [],
+            travelers,
+            trip_id,
+            _now(tick.get("clock") or {}),
+            assist,
+        )
+        if rebooked is not None:
+            tick["segmentRebook"] = rebooked
         tick["wallet"] = trip_wallet(trip_id, _known_codes(results, assist))
         return tick
 
@@ -187,6 +227,7 @@ def _control_loop(
         )
         assist["tickAirport"] = _airport_on_day(plan, clock, trip_id)
         assist["tickAfterDark"] = _after_dark_walks(plan, clock, trip_id, assist)
+        assist["tickGaps"] = _concierge(plan, clock, trip_id, assist, results, travelers)
         _rides_for_ending(plan, clock, trip_id, assist)
         return watch_record, warnings, notices, assist["rides"][started:]
 
@@ -1052,6 +1093,13 @@ def _stamp_tick(
     cards = assist.get("phraseCards") or []
     if cards:
         tick["phrase"] = cards[0] if len(cards) == 1 else list(cards)
+    gaps = assist.get("tickGaps")
+    if isinstance(gaps, dict):
+        for key in _GAP_KEYS:
+            value = gaps.get(key)
+            if value is None or value == []:
+                continue
+            tick[key] = value
 
 
 def _spend_ceiling(tip: Any) -> int:
@@ -1200,7 +1248,320 @@ def _known_codes(results: list[dict[str, Any]], assist: dict[str, Any]) -> list[
         code = ride.get("rideCode")
         if isinstance(code, str) and code.strip():
             codes.append(code.strip())
+    for code in assist.get("extraCodes") or []:
+        if isinstance(code, str) and code.strip():
+            codes.append(code.strip())
     return codes
+
+
+def _remember_code(assist: dict[str, Any], code: object) -> None:
+    if not isinstance(code, str) or not code.strip():
+        return
+    text = code.strip()
+    if not text.startswith(_CODE_PREFIXES):
+        return
+    codes = assist.setdefault("extraCodes", [])
+    if text not in codes:
+        codes.append(text)
+
+
+def _remember_codes(assist: dict[str, Any], value: object) -> None:
+    if isinstance(value, str):
+        _remember_code(assist, value)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _remember_codes(assist, item)
+        return
+    if not isinstance(value, dict):
+        return
+    _remember_code(assist, value.get("boardingPass"))
+    _remember_code(assist, value.get("planCode"))
+    replacement = value.get("replacement")
+    if isinstance(replacement, dict):
+        _remember_code(assist, replacement.get("confirmationCode"))
+
+
+def _concierge(
+    plan: dict[str, Any],
+    clock: dict[str, Any],
+    trip_id: str,
+    assist: dict[str, Any],
+    results: list[dict[str, Any]],
+    travelers: list[Any],
+) -> dict[str, Any]:
+    """Call the concierge tools for this tick. Record what they return.
+
+    A missing package is that tool's ``<tool>_not_installed`` string. The
+    caller keeps the loop going. These calls do not rebuild the itinerary.
+    """
+
+    now = _now(clock)
+    record: dict[str, Any] = {
+        "flightStatus": _flight_statuses(plan, clock, trip_id, results),
+        "checkIn": _flight_checkins(plan, now, results, travelers),
+        "dcc": refuse_dcc(),
+        "card": pick_card(),
+        "cash": cash_needed(),
+        "holiday": _holiday_signals(plan),
+        "layover": check_layover(),
+        "etiquette": etiquette_card(),
+        "taxRefund": tax_refund(now=now),
+        "hold": incidental_hold(),
+        "holdOver": incidental_hold(capturedAmount=SCRIPTED_HOLD_OVER_CAPTURE),
+    }
+    landing = _landing_if_due(plan, now, assist)
+    if landing is not None:
+        record["landing"] = landing
+    for key in ("checkIn", "landing"):
+        _remember_codes(assist, record.get(key))
+    return {key: value for key, value in record.items() if value is not None}
+
+
+def _flight_statuses(
+    plan: dict[str, Any],
+    clock: dict[str, Any],
+    trip_id: str,
+    results: list[dict[str, Any]],
+) -> Any:
+    outcomes: list[Any] = []
+    for kind, segment in _segments(plan):
+        if kind != "flight" or segment.get("removed") is True:
+            continue
+        segment_id = _segment_id(segment)
+        feed = _flight_feed(plan, clock, segment_id)
+        outcomes.append(
+            flight_status(
+                tripId=trip_id,
+                now=_now(clock),
+                segment=_flight_payload(segment, _confirmation_for(segment_id, results)),
+                feed=feed,
+            )
+        )
+    return _one_or_many(outcomes)
+
+
+def _flight_checkins(
+    plan: dict[str, Any],
+    now: str,
+    results: list[dict[str, Any]],
+    travelers: list[Any],
+) -> Any:
+    outcomes: list[Any] = []
+    for kind, segment in _segments(plan):
+        if kind != "flight" or segment.get("removed") is True:
+            continue
+        segment_id = _segment_id(segment)
+        outcomes.append(
+            check_in_flight(
+                now=now,
+                segment=_flight_payload(segment, _confirmation_for(segment_id, results)),
+                travelers=travelers,
+            )
+        )
+    return _one_or_many(outcomes)
+
+
+def _flight_payload(segment: dict[str, Any], confirmation: str | None) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "segmentId": _segment_id(segment),
+        "kind": "flight",
+        "from": segment.get("from") if isinstance(segment.get("from"), str) else "",
+        "to": segment.get("to") if isinstance(segment.get("to"), str) else "",
+    }
+    if isinstance(segment.get("departAt"), str) and segment["departAt"].strip():
+        payload["departAt"] = segment["departAt"].strip()
+    if isinstance(segment.get("departDate"), str) and segment["departDate"].strip():
+        payload["departDate"] = segment["departDate"].strip()
+    if confirmation is not None:
+        payload["confirmationCode"] = confirmation
+    elif "confirmationCode" in segment:
+        payload["confirmationCode"] = segment.get("confirmationCode")
+    return payload
+
+
+def _flight_feed(plan: dict[str, Any], clock: dict[str, Any], segment_id: str) -> dict[str, Any] | None:
+    """Optional sandbox feed for this tick. Omitted when the caller has none."""
+
+    raw = plan.get("flightFeeds")
+    if not isinstance(raw, list) or not segment_id:
+        return None
+    tick = clock.get("tick") if isinstance(clock, dict) else None
+    for item in raw:
+        if not isinstance(item, dict) or item.get("segmentId") != segment_id:
+            continue
+        if "tick" in item and item.get("tick") not in (None, tick):
+            continue
+        event = item.get("event")
+        if not isinstance(event, str) or not event.strip():
+            return None
+        feed: dict[str, Any] = {"event": event.strip()}
+        if "delayMinutes" in item:
+            feed["delayMinutes"] = item.get("delayMinutes")
+        return feed
+    return None
+
+
+def _confirmation_for(segment_id: str, results: list[dict[str, Any]]) -> str | None:
+    if not segment_id:
+        return None
+    for item in results:
+        if not isinstance(item, dict) or item.get("segmentId") != segment_id:
+            continue
+        code = item.get("confirmationCode")
+        if isinstance(code, str) and code.strip():
+            return code.strip()
+    return None
+
+
+def _holiday_signals(plan: dict[str, Any]) -> Any:
+    """Ask holiday_closure. A shift is recorded and the segment stays put."""
+
+    country = _destination_country(plan)
+    outcomes: list[Any] = []
+    for kind, segment in _segments(plan):
+        if kind != "attraction" or segment.get("removed") is True:
+            continue
+        outcomes.append(holiday_closure(_holiday_segment(segment, country)))
+    return _one_or_many(outcomes)
+
+
+def _holiday_segment(segment: dict[str, Any], country: str) -> dict[str, Any]:
+    payload = {
+        "segmentId": _segment_id(segment),
+        "kind": "attraction",
+        "name": segment.get("name") if isinstance(segment.get("name"), str) else "",
+        "city": segment.get("city") if isinstance(segment.get("city"), str) else "",
+        "country": segment.get("country") if isinstance(segment.get("country"), str) and segment.get("country").strip() else country,
+        "date": segment.get("date") if isinstance(segment.get("date"), str) else "",
+    }
+    return payload
+
+
+def _landing_if_due(plan: dict[str, Any], now: str, assist: dict[str, Any]) -> Any:
+    """Call landing_data when the phone has no data inside the two hours before arrival.
+
+    Arrivals are remembered from the schedule, including a flight a later tick
+    has already marked removed. The call does not move that flight.
+    """
+
+    _remember_arrivals(plan, assist)
+    current = _parse_instant(now)
+    if current is None:
+        return None
+    country = _destination_country(plan)
+    outcomes: list[Any] = []
+    for arrive_at in assist.get("arrivals") or []:
+        arrival = _parse_instant(arrive_at)
+        if arrival is None:
+            continue
+        if current < arrival - _LANDING_WINDOW or current > arrival:
+            continue
+        outcomes.append(
+            landing_data(
+                country=country,
+                arriveAt=_iso(arrival),
+                now=now,
+                hasData=False,
+            )
+        )
+    return _one_or_many(outcomes)
+
+
+def _remember_arrivals(plan: dict[str, Any], assist: dict[str, Any]) -> None:
+    remembered = assist.setdefault("arrivals", [])
+    for kind, segment in _segments(plan):
+        if kind != "flight":
+            continue
+        _start, end = _window(kind, segment)
+        if not isinstance(end, datetime):
+            continue
+        text = _iso(end)
+        if text not in remembered:
+            remembered.append(text)
+
+
+def _rebook_cancelled(
+    plan: dict[str, Any],
+    updates: list[Any],
+    travelers: list[Any],
+    trip_id: str,
+    now: str,
+    assist: dict[str, Any],
+) -> Any:
+    """Call rebook_segment only for a segment that is already cancelled.
+
+    The replacement is recorded. It is not inserted into the plan.
+    """
+
+    wanted = _cancelled_ids(plan, updates)
+    if not wanted:
+        return None
+    outcomes: list[Any] = []
+    seen: set[str] = set()
+    for kind, segment in _segments(plan):
+        segment_id = _segment_id(segment)
+        if segment_id not in wanted or segment_id in seen:
+            continue
+        seen.add(segment_id)
+        outcomes.append(
+            rebook_segment(
+                tripId=trip_id,
+                now=now,
+                segment=_rebook_payload(kind, segment),
+                travelers=travelers,
+                cancelled=True,
+            )
+        )
+    for segment_id in wanted:
+        if segment_id in seen:
+            continue
+        seen.add(segment_id)
+        outcomes.append(
+            rebook_segment(
+                tripId=trip_id,
+                now=now,
+                segment={"segmentId": segment_id},
+                travelers=travelers,
+                cancelled=True,
+            )
+        )
+    _remember_codes(assist, outcomes)
+    return _one_or_many(outcomes)
+
+
+def _cancelled_ids(plan: dict[str, Any], updates: list[Any]) -> set[str]:
+    found: set[str] = set()
+    for _kind, segment in _segments(plan):
+        if segment.get("removed") is True:
+            segment_id = _segment_id(segment)
+            if segment_id:
+                found.add(segment_id)
+    for update in updates:
+        if not isinstance(update, dict) or update.get("event") != "cancelled":
+            continue
+        segment_id = update.get("segmentId")
+        if isinstance(segment_id, str) and segment_id:
+            found.add(segment_id)
+    return found
+
+
+def _rebook_payload(kind: str, segment: dict[str, Any]) -> dict[str, Any]:
+    """Fields rebook_segment already keeps. ``removed`` stays off the copy."""
+
+    payload = dict(segment)
+    payload.pop("removed", None)
+    payload["kind"] = kind
+    payload["segmentId"] = _segment_id(segment)
+    return payload
+
+
+def _one_or_many(outcomes: list[Any]) -> Any:
+    if not outcomes:
+        return None
+    if len(outcomes) == 1:
+        return outcomes[0]
+    return outcomes
 
 
 def _ordered_stops(plan: dict[str, Any]) -> list[dict[str, Any]]:

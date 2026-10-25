@@ -36,6 +36,18 @@ from booking.master.capabilities import (
     LATE_CHECKOUT_NOT_INSTALLED,
     PHRASE_CARD_NOT_INSTALLED,
     TIP_POLICY_NOT_INSTALLED,
+    FLIGHT_STATUS_NOT_INSTALLED,
+    CHECK_IN_FLIGHT_NOT_INSTALLED,
+    REFUSE_DCC_NOT_INSTALLED,
+    PICK_CARD_NOT_INSTALLED,
+    CASH_NEEDED_NOT_INSTALLED,
+    HOLIDAY_CLOSURE_NOT_INSTALLED,
+    CHECK_LAYOVER_NOT_INSTALLED,
+    ETIQUETTE_CARD_NOT_INSTALLED,
+    TAX_REFUND_NOT_INSTALLED,
+    REBOOK_SEGMENT_NOT_INSTALLED,
+    INCIDENTAL_HOLD_NOT_INSTALLED,
+    LANDING_DATA_NOT_INSTALLED,
     ProgressNotInstalled,
     load_after_dark,
     load_airport_leave,
@@ -62,6 +74,18 @@ from booking.master.capabilities import (
     load_trip_wallet,
     load_verifier,
     load_watch_trip,
+    load_flight_status,
+    load_check_in_flight,
+    load_refuse_dcc,
+    load_pick_card,
+    load_cash_needed,
+    load_holiday_closure,
+    load_check_layover,
+    load_etiquette_card,
+    load_tax_refund,
+    load_rebook_segment,
+    load_incidental_hold,
+    load_landing_data,
 )
 
 # One scripted demo charge. The spend guard decides payAmount and reason.
@@ -81,6 +105,49 @@ SCRIPTED_HOURS_CLOSE = "17:00"
 SCRIPTED_HOURS_CLOSED_WEEKDAYS: list[int] = []
 SCRIPTED_TRAVEL_MINUTES = 30
 SCRIPTED_EMERGENCY_COUNTRY = "Japan"
+
+# Scripted concierge inputs. The packages decide the outcomes.
+SCRIPTED_DCC_MERCHANT_AMOUNT = 1000
+SCRIPTED_DCC_MERCHANT_CURRENCY = "JPY"
+SCRIPTED_DCC_OFFERED_AMOUNT = 8
+SCRIPTED_DCC_OFFERED_CURRENCY = "USD"
+SCRIPTED_CARD_AMOUNT = 1000
+SCRIPTED_CARD_CURRENCY = "JPY"
+SCRIPTED_CARD_COUNTRY = "Japan"
+SCRIPTED_CARDS = (
+    {"id": "visa-japan", "network": "visa", "fxFeePercent": 3, "noFxCountries": ["Japan"]},
+    {"id": "mc-japan", "network": "mastercard", "fxFeePercent": 2, "noFxCountries": ["Japan"]},
+)
+SCRIPTED_CASH_MERCHANT = {
+    "name": "Cash market",
+    "acceptsCard": False,
+    "amount": 1000,
+    "currency": "JPY",
+}
+SCRIPTED_CASH_TRIP_CURRENCY = "USD"
+SCRIPTED_TAX_COUNTRY = "Japan"
+SCRIPTED_TAX_PURCHASES = ({"amount": 10000, "currency": "JPY", "eligible": True},)
+SCRIPTED_TAX_DEPART_AT = "2026-11-06T09:00:00Z"
+SCRIPTED_HOLD_AUTHORIZED = 200
+SCRIPTED_HOLD_CAPTURED = 40
+SCRIPTED_HOLD_OVER_CAPTURE = 250
+SCRIPTED_HOLD_CURRENCY = "USD"
+SCRIPTED_HOLD_CHECKOUT_AT = "2026-11-06T11:00:00Z"
+SCRIPTED_ETIQUETTE_COUNTRY = "Japan"
+SCRIPTED_ETIQUETTE_PLACE = "Sample shrine"
+SCRIPTED_ETIQUETTE_KIND = "shrine"
+SCRIPTED_LAYOVER_INBOUND = {
+    "segmentId": "fixture-in",
+    "arriveAt": "2026-11-02T12:00:00Z",
+    "airport": "KIX",
+}
+SCRIPTED_LAYOVER_OUTBOUND = {
+    "segmentId": "fixture-out",
+    "departAt": "2026-11-02T13:00:00Z",
+    "airport": "KIX",
+}
+SCRIPTED_LAYOVER_INTERNATIONAL = True
+SCRIPTED_HAS_DATA = False
 
 BOOK_TOOL_BY_KIND = {
     "flight": "book_flight",
@@ -741,6 +808,210 @@ def trip_wallet(tripId: str, codes: list[str]) -> Any:
     )
 
 
+def flight_status(
+    tripId: str,
+    now: str,
+    segment: dict[str, Any],
+    feed: dict[str, Any] | None = None,
+) -> Any:
+    """Call booking.assist.flightstatus.flight_status for one flight.
+
+    An omitted feed is left off the call so the package reports on_time.
+    """
+
+    fields: dict[str, Any] = {"tripId": tripId, "now": now, "segment": segment}
+    if feed is not None:
+        fields["feed"] = feed
+    return _assist(load_flight_status, FLIGHT_STATUS_NOT_INSTALLED, fields)
+
+
+def check_in_flight(now: str, segment: dict[str, Any], travelers: list[Any]) -> Any:
+    """Call booking.assist.checkin.check_in_flight for one flight."""
+
+    return _assist(
+        load_check_in_flight,
+        CHECK_IN_FLIGHT_NOT_INSTALLED,
+        {"now": now, "segment": segment, "travelers": travelers},
+    )
+
+
+def refuse_dcc(
+    merchantAmount: int = SCRIPTED_DCC_MERCHANT_AMOUNT,
+    merchantCurrency: str = SCRIPTED_DCC_MERCHANT_CURRENCY,
+    offeredAmount: int = SCRIPTED_DCC_OFFERED_AMOUNT,
+    offeredCurrency: str = SCRIPTED_DCC_OFFERED_CURRENCY,
+) -> Any:
+    """Call booking.assist.dcc.refuse_dcc for a sample terminal offer.
+
+    The scripted offer is a JPY merchant amount with a USD terminal offer.
+    """
+
+    return _assist(
+        load_refuse_dcc,
+        REFUSE_DCC_NOT_INSTALLED,
+        {
+            "merchantAmount": merchantAmount,
+            "merchantCurrency": merchantCurrency,
+            "offeredAmount": offeredAmount,
+            "offeredCurrency": offeredCurrency,
+        },
+    )
+
+
+def pick_card(
+    merchantCountry: str = SCRIPTED_CARD_COUNTRY,
+    amount: int = SCRIPTED_CARD_AMOUNT,
+    currency: str = SCRIPTED_CARD_CURRENCY,
+    cards: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Call booking.assist.card.pick_card. The Visa fixture must not be chosen."""
+
+    return _assist(
+        load_pick_card,
+        PICK_CARD_NOT_INSTALLED,
+        {
+            "merchantCountry": merchantCountry,
+            "amount": amount,
+            "currency": currency,
+            "cards": list(SCRIPTED_CARDS if cards is None else cards),
+        },
+    )
+
+
+def cash_needed(
+    merchant: dict[str, Any] | None = None,
+    tripCurrency: str = SCRIPTED_CASH_TRIP_CURRENCY,
+) -> Any:
+    """Call booking.assist.cash.cash_needed for a cash-only merchant."""
+
+    return _assist(
+        load_cash_needed,
+        CASH_NEEDED_NOT_INSTALLED,
+        {
+            "merchant": dict(SCRIPTED_CASH_MERCHANT if merchant is None else merchant),
+            "tripCurrency": tripCurrency,
+        },
+    )
+
+
+def holiday_closure(segment: dict[str, Any]) -> Any:
+    """Call booking.assist.holidays.holiday_closure for one segment."""
+
+    return _assist(load_holiday_closure, HOLIDAY_CLOSURE_NOT_INSTALLED, {"segment": segment})
+
+
+def check_layover(
+    inbound: dict[str, Any] | None = None,
+    outbound: dict[str, Any] | None = None,
+    international: bool = SCRIPTED_LAYOVER_INTERNATIONAL,
+) -> Any:
+    """Call booking.assist.layover.check_layover.
+
+    The scripted fixture is a 60-minute international connection at one airport.
+    """
+
+    return _assist(
+        load_check_layover,
+        CHECK_LAYOVER_NOT_INSTALLED,
+        {
+            "inbound": dict(SCRIPTED_LAYOVER_INBOUND if inbound is None else inbound),
+            "outbound": dict(SCRIPTED_LAYOVER_OUTBOUND if outbound is None else outbound),
+            "international": international,
+        },
+    )
+
+
+def etiquette_card(
+    country: str = SCRIPTED_ETIQUETTE_COUNTRY,
+    placeName: str = SCRIPTED_ETIQUETTE_PLACE,
+    kind: str = SCRIPTED_ETIQUETTE_KIND,
+) -> Any:
+    """Call booking.assist.etiquette.etiquette_card for one stop."""
+
+    return _assist(
+        load_etiquette_card,
+        ETIQUETTE_CARD_NOT_INSTALLED,
+        {"country": country, "placeName": placeName, "kind": kind},
+    )
+
+
+def tax_refund(
+    country: str = SCRIPTED_TAX_COUNTRY,
+    purchases: list[dict[str, Any]] | None = None,
+    departAt: str = SCRIPTED_TAX_DEPART_AT,
+    now: str = "",
+) -> Any:
+    """Call booking.assist.taxrefund.tax_refund. This is a quote, not tax advice."""
+
+    return _assist(
+        load_tax_refund,
+        TAX_REFUND_NOT_INSTALLED,
+        {
+            "country": country,
+            "purchases": list(SCRIPTED_TAX_PURCHASES if purchases is None else purchases),
+            "departAt": departAt,
+            "now": now,
+        },
+    )
+
+
+def rebook_segment(
+    tripId: str,
+    now: str,
+    segment: dict[str, Any],
+    travelers: list[Any],
+    cancelled: bool = True,
+) -> Any:
+    """Call booking.assist.rebook.rebook_segment for one already-cancelled segment."""
+
+    return _assist(
+        load_rebook_segment,
+        REBOOK_SEGMENT_NOT_INSTALLED,
+        {
+            "tripId": tripId,
+            "now": now,
+            "segment": segment,
+            "travelers": travelers,
+            "cancelled": cancelled,
+        },
+    )
+
+
+def incidental_hold(
+    authorizedHold: int = SCRIPTED_HOLD_AUTHORIZED,
+    capturedAmount: int = SCRIPTED_HOLD_CAPTURED,
+    currency: str = SCRIPTED_HOLD_CURRENCY,
+    checkoutAt: str = SCRIPTED_HOLD_CHECKOUT_AT,
+) -> Any:
+    """Call booking.assist.hold.incidental_hold. Nothing is charged."""
+
+    return _assist(
+        load_incidental_hold,
+        INCIDENTAL_HOLD_NOT_INSTALLED,
+        {
+            "authorizedHold": authorizedHold,
+            "capturedAmount": capturedAmount,
+            "currency": currency,
+            "checkoutAt": checkoutAt,
+        },
+    )
+
+
+def landing_data(
+    country: str,
+    arriveAt: str,
+    now: str,
+    hasData: bool = SCRIPTED_HAS_DATA,
+) -> Any:
+    """Call booking.assist.connectivity.landing_data. The plan code is a sandbox label."""
+
+    return _assist(
+        load_landing_data,
+        LANDING_DATA_NOT_INSTALLED,
+        {"country": country, "arriveAt": arriveAt, "now": now, "hasData": hasData},
+    )
+
+
 def watch_trip(
     now: str,
     plan: dict[str, Any],
@@ -945,4 +1216,16 @@ RUNTIME_TOOLS = {
     "tip_policy": tip_policy,
     "phrase_card": phrase_card,
     "trip_wallet": trip_wallet,
+    "flight_status": flight_status,
+    "check_in_flight": check_in_flight,
+    "refuse_dcc": refuse_dcc,
+    "pick_card": pick_card,
+    "cash_needed": cash_needed,
+    "holiday_closure": holiday_closure,
+    "check_layover": check_layover,
+    "etiquette_card": etiquette_card,
+    "tax_refund": tax_refund,
+    "rebook_segment": rebook_segment,
+    "incidental_hold": incidental_hold,
+    "landing_data": landing_data,
 }

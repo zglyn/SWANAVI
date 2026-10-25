@@ -638,6 +638,18 @@ class AssistTests(_Modules):
             "booking.assist.tip",
             "booking.assist.phrase",
             "booking.assist.wallet",
+            "booking.assist.flightstatus",
+            "booking.assist.checkin",
+            "booking.assist.dcc",
+            "booking.assist.card",
+            "booking.assist.cash",
+            "booking.assist.holidays",
+            "booking.assist.layover",
+            "booking.assist.etiquette",
+            "booking.assist.taxrefund",
+            "booking.assist.rebook",
+            "booking.assist.hold",
+            "booking.assist.connectivity",
         )
         result = handle_payload(SAMPLE)
 
@@ -661,6 +673,19 @@ class AssistTests(_Modules):
         self.assertEqual(tick["warnings"], [])
         self.assertEqual(tick["airport"], "airport_leave_not_installed")
         self.assertEqual(tick["wallet"], "trip_wallet_not_installed")
+        self.assertEqual(tick["flightStatus"], "flight_status_not_installed")
+        self.assertEqual(tick["checkIn"], "check_in_flight_not_installed")
+        self.assertEqual(tick["dcc"], "refuse_dcc_not_installed")
+        self.assertEqual(tick["card"], "pick_card_not_installed")
+        self.assertEqual(tick["cash"], "cash_needed_not_installed")
+        self.assertEqual(tick["holiday"], "holiday_closure_not_installed")
+        self.assertEqual(tick["layover"], "check_layover_not_installed")
+        self.assertEqual(tick["etiquette"], "etiquette_card_not_installed")
+        self.assertEqual(tick["taxRefund"], "tax_refund_not_installed")
+        self.assertEqual(tick["hold"], "incidental_hold_not_installed")
+        self.assertEqual(tick["holdOver"], "incidental_hold_not_installed")
+        self.assertNotIn("landing", tick)
+        self.assertNotIn("segmentRebook", tick)
         self.assertNotIn("afterDark", tick)
 
     def test_missing_request_ride_does_not_crash(self) -> None:
@@ -890,6 +915,90 @@ class AssistTests(_Modules):
         self.assertEqual(result["ticks"][0]["rides"][0]["rideCode"], "SANDBOX-RIDE-WALK")
         self.assertEqual(result["loopStopped"], "progress_not_installed")
 
+    def test_concierge_records_scripted_results_without_moving_the_plan(self) -> None:
+        self.hide("booking.progress")
+        original = json.loads(json.dumps(SAMPLE))
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(SAMPLE, original)
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertEqual(len(result["results"]), 3)
+        self.assertEqual([item["segmentId"] for item in result["results"]], ["flight-1", "hotel-1", "attraction-1"])
+        tick = result["ticks"][0]
+        self.assertEqual(tick["flightStatus"]["event"], "on_time")
+        self.assertEqual(tick["flightStatus"]["action"], "none")
+        self.assertTrue(str(tick["checkIn"]["boardingPass"]).startswith("SANDBOX-BP-"))
+        self.assertIs(tick["dcc"]["refused"], True)
+        self.assertEqual(tick["dcc"]["payAmount"], 1000)
+        self.assertEqual(tick["dcc"]["payCurrency"], "JPY")
+        self.assertEqual(tick["dcc"]["reason"], "dcc_refused")
+        self.assertEqual(tick["card"]["cardId"], "mc-japan")
+        self.assertEqual(tick["card"]["feeAmount"], 0)
+        self.assertEqual(tick["card"]["reason"], "no_fx_fee")
+        self.assertEqual(tick["cash"]["action"], "withdraw_cash")
+        self.assertEqual(f"{tick['cash']['tripAmount']:.2f}", "6.70")
+        self.assertEqual(tick["cash"]["tripCurrency"], "USD")
+        self.assertIs(tick["holiday"]["closed"], True)
+        self.assertEqual(tick["holiday"]["holiday"], "Culture Day")
+        self.assertEqual(tick["holiday"]["action"], "shift")
+        self.assertEqual(tick["holiday"]["segmentId"], "attraction-1")
+        self.assertEqual(tick["layover"]["action"], "replan")
+        self.assertEqual(tick["layover"]["shortfallMinutes"], 30)
+        self.assertEqual(tick["etiquette"]["phrase"], "写真は大丈夫ですか")
+        self.assertEqual(tick["taxRefund"]["refundAmount"], 1000)
+        self.assertEqual(tick["taxRefund"]["refundCurrency"], "JPY")
+        self.assertEqual(tick["hold"]["releaseAmount"], 160)
+        self.assertEqual(tick["hold"]["reason"], "held")
+        self.assertEqual(tick["holdOver"]["payAmount"], 200)
+        self.assertEqual(tick["holdOver"]["reason"], "over_capture")
+        self.assertEqual(result["spend"]["payAmount"], 12)
+        self.assertEqual(result["spend"]["requestedAmount"], 12)
+        self.assertNotIn("landing", tick)
+        self.assertNotIn("segmentRebook", tick)
+
+    def test_missing_landing_data_does_not_stop_the_loop(self) -> None:
+        self.hide("booking.progress", "booking.assist.connectivity")
+        plan = json.loads(json.dumps(SAMPLE))
+        plan["flights"][0]["end"] = "2026-11-02T09:30:00Z"
+
+        result = handle_payload(plan)
+
+        self.assertEqual(result["loopStopped"], "progress_not_installed")
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["ticks"][0]["landing"], "landing_data_not_installed")
+        self.assertEqual(result["results"][0]["status"], "booked")
+        self.assertEqual(result["results"][0]["segmentId"], "flight-1")
+
+    def test_missing_rebook_segment_records_and_continues(self) -> None:
+        self.hide("booking.assist.rebook", "booking.replan.cancel")
+
+        def trip_progress(plan: dict[str, Any], results: list[dict[str, Any]], clock: dict[str, Any]) -> dict[str, Any]:
+            del plan, results
+            if clock["tick"] > 1:
+                return {"phase": "in_progress", "onTrack": True, "updates": []}
+            return {
+                "phase": "in_progress",
+                "onTrack": False,
+                "updates": [
+                    {
+                        "segmentId": "flight-1",
+                        "kind": "flight",
+                        "issue": "segment cancelled",
+                        "action": "replan",
+                        "event": "cancelled",
+                    }
+                ],
+            }
+
+        self.install("booking.progress", trip_progress=trip_progress)
+        result = handle_payload(SAMPLE)
+
+        self.assertEqual(result["loopStopped"], "on_track")
+        self.assertLessEqual(len(result["ticks"]), MAX_TICKS)
+        self.assertEqual(result["ticks"][0]["segmentRebook"], "rebook_segment_not_installed")
+        self.assertEqual(result["results"][0]["status"], "booked")
+        self.assertEqual(result["results"][0]["segmentId"], "flight-1")
+
 
 class RuntimeTests(unittest.TestCase):
     def test_entrypoint_registers_capability_tools(self) -> None:
@@ -930,6 +1039,18 @@ class RuntimeTests(unittest.TestCase):
                 "tip_policy",
                 "phrase_card",
                 "trip_wallet",
+                "flight_status",
+                "check_in_flight",
+                "refuse_dcc",
+                "pick_card",
+                "cash_needed",
+                "holiday_closure",
+                "check_layover",
+                "etiquette_card",
+                "tax_refund",
+                "rebook_segment",
+                "incidental_hold",
+                "landing_data",
             },
         )
         result = invoke(SAMPLE, context=None)
@@ -998,6 +1119,38 @@ class RuntimeTests(unittest.TestCase):
         for item in printed["results"]:
             self.assertEqual(item["status"], "booked")
             self.assertIs(item["emailVerified"], True)
+        self.assertEqual(printed["fx"]["amount"], 6.7)
+        self.assertEqual(printed["fx"]["fromAmount"], 1000)
+        self.assertEqual(printed["tip"]["maxTipPercent"], 0)
+        self.assertEqual(printed["tip"]["tipAmount"], 0)
+        self.assertEqual(printed["spend"]["payAmount"], 12)
+        self.assertEqual(printed["spend"]["requestedAmount"], 12)
+        self.assertEqual(printed["emergency"]["emergencyNumber"], "110")
+        tick = printed["ticks"][0]
+        self.assertEqual(tick["airport"]["leaveBy"], "2026-11-02T06:00:00Z")
+        self.assertIn("SANDBOX-RIDE-", trace)
+        self.assertIn("こちらまでお願いします", trace)
+        self.assertIn("flightStatus segmentId=flight-1 event=on_time", trace)
+        self.assertIn("flightStatus segmentId=flight-2 event=delayed", trace)
+        self.assertIn("action=replan", trace)
+        self.assertIn("SANDBOX-BP-", trace)
+        self.assertIn("dcc refused=True payAmount=1000 payCurrency=JPY reason=dcc_refused", trace)
+        self.assertIn("card cardId=mc-japan feeAmount=0 reason=no_fx_fee", trace)
+        self.assertNotIn("cardId=visa-japan", trace)
+        self.assertIn("cash action=withdraw_cash tripAmount=6.70 USD", trace)
+        self.assertIn("holiday segmentId=attraction-1 closed=True holiday=Culture Day action=shift", trace)
+        self.assertIn("layover action=replan shortfallMinutes=30", trace)
+        self.assertIn("etiquette phrase=写真は大丈夫ですか", trace)
+        self.assertIn("taxRefund refundAmount=1000 JPY quote=not_tax_advice", trace)
+        self.assertIn("SANDBOX-RB-", trace)
+        self.assertIn("hold releaseAmount=160 reason=held charged=false", trace)
+        self.assertIn("holdOver payAmount=200 reason=over_capture charged=false", trace)
+        self.assertIn("SANDBOX-ESIM-", trace)
+        self.assertEqual(printed["results"][0]["segmentId"], "flight-1")
+        self.assertEqual(printed["results"][0]["status"], "booked")
+        wallet_counts = [item["wallet"]["count"] for item in printed["ticks"] if isinstance(item, dict)]
+        self.assertEqual(wallet_counts[0], 13)
+        self.assertEqual(wallet_counts[-1], 14)
 
 
 if __name__ == "__main__":

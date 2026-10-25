@@ -135,6 +135,24 @@ def _with_later_segments(payload: dict) -> dict:
         for flight in flights:
             if isinstance(flight, dict) and not isinstance(flight.get("international"), bool):
                 flight["international"] = True
+        # A later departure the sample tests do not pin. Tick clocks on
+        # 2026-11-02 sit inside its 24 hour check-in window. The delayed
+        # feed is only for this segment, so flight-1 stays booked.
+        flights.append(
+            {
+                "segmentId": "flight-2",
+                "kind": "flight",
+                "from": "KIX",
+                "to": "NRT",
+                "departDate": "2026-11-03",
+                "cabin": "economy",
+                "travelerIds": ["t1"],
+                "international": True,
+            }
+        )
+    plan["flightFeeds"] = [
+        {"tick": 1, "segmentId": "flight-2", "event": "delayed", "delayMinutes": 40},
+    ]
     attractions = plan.get("attractions")
     if not isinstance(attractions, list):
         attractions = []
@@ -282,6 +300,104 @@ def invoke_runtime(payload: dict) -> dict:
     return body
 
 
+def _proof_lines(tick: dict) -> list[str]:
+    """One readable line per concierge result recorded on this tick."""
+
+    lines: list[str] = []
+    for item in _as_list(tick.get("flightStatus")):
+        if not isinstance(item, dict):
+            lines.append(f"flightStatus={item}")
+            continue
+        lines.append(
+            "flightStatus "
+            f"segmentId={item.get('segmentId')} event={item.get('event')} "
+            f"delayMinutes={item.get('delayMinutes')} action={item.get('action')}"
+        )
+    for item in _as_list(tick.get("checkIn")):
+        if not isinstance(item, dict):
+            lines.append(f"checkIn={item}")
+            continue
+        if isinstance(item.get("boardingPass"), str):
+            lines.append(
+                f"checkIn segmentId={item.get('segmentId')} status={item.get('status')} "
+                f"boardingPass={item.get('boardingPass')}"
+            )
+    dcc = tick.get("dcc")
+    if isinstance(dcc, dict):
+        lines.append(
+            f"dcc refused={dcc.get('refused')} payAmount={dcc.get('payAmount')} "
+            f"payCurrency={dcc.get('payCurrency')} reason={dcc.get('reason')}"
+        )
+    card = tick.get("card")
+    if isinstance(card, dict):
+        lines.append(
+            f"card cardId={card.get('cardId')} feeAmount={card.get('feeAmount')} "
+            f"reason={card.get('reason')}"
+        )
+    cash = tick.get("cash")
+    if isinstance(cash, dict):
+        amount = cash.get("tripAmount")
+        shown = f"{amount:.2f}" if isinstance(amount, (int, float)) and not isinstance(amount, bool) else amount
+        lines.append(
+            f"cash action={cash.get('action')} tripAmount={shown} {cash.get('tripCurrency')}"
+        )
+    for item in _as_list(tick.get("holiday")):
+        if isinstance(item, dict) and item.get("holiday") == "Culture Day":
+            lines.append(
+                f"holiday segmentId={item.get('segmentId')} closed={item.get('closed')} "
+                f"holiday={item.get('holiday')} action={item.get('action')}"
+            )
+    layover = tick.get("layover")
+    if isinstance(layover, dict):
+        lines.append(
+            f"layover action={layover.get('action')} shortfallMinutes={layover.get('shortfallMinutes')}"
+        )
+    etiquette = tick.get("etiquette")
+    if isinstance(etiquette, dict):
+        lines.append(f"etiquette phrase={etiquette.get('phrase')}")
+    tax = tick.get("taxRefund")
+    if isinstance(tax, dict):
+        lines.append(
+            f"taxRefund refundAmount={tax.get('refundAmount')} {tax.get('refundCurrency')} "
+            "quote=not_tax_advice"
+        )
+    for item in _as_list(tick.get("segmentRebook")):
+        if not isinstance(item, dict):
+            lines.append(f"segmentRebook={item}")
+            continue
+        replacement = item.get("replacement") if isinstance(item.get("replacement"), dict) else {}
+        lines.append(
+            f"segmentRebook segmentId={item.get('segmentId')} "
+            f"confirmationCode={replacement.get('confirmationCode')} "
+            f"kind={replacement.get('kind')} departDate={replacement.get('departDate')} "
+            f"date={replacement.get('date')}"
+        )
+    hold = tick.get("hold")
+    if isinstance(hold, dict):
+        lines.append(
+            f"hold releaseAmount={hold.get('releaseAmount')} reason={hold.get('reason')} charged=false"
+        )
+    over = tick.get("holdOver")
+    if isinstance(over, dict):
+        lines.append(
+            f"holdOver payAmount={over.get('payAmount')} reason={over.get('reason')} charged=false"
+        )
+    for item in _as_list(tick.get("landing")):
+        if not isinstance(item, dict):
+            lines.append(f"landing={item}")
+            continue
+        lines.append(f"landing planCode={item.get('planCode')} action={item.get('action')}")
+    return lines
+
+
+def _as_list(value: object) -> list:
+    if isinstance(value, list):
+        return value
+    if value is None:
+        return []
+    return [value]
+
+
 def write_trace(result: dict, stream: object | None = None) -> None:
     """Print one line per tick and one line per recorded update."""
 
@@ -329,6 +445,8 @@ def write_trace(result: dict, stream: object | None = None) -> None:
             print(f"  rides={tick.get('rides')}", file=out)
         if "wallet" in tick:
             print(f"  wallet={tick.get('wallet')}", file=out)
+        for line in _proof_lines(tick):
+            print(f"  {line}", file=out)
         if tick.get("warnings"):
             print(f"  warnings={tick.get('warnings')}", file=out)
         for update in updates:
