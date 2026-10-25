@@ -1,0 +1,1111 @@
+{
+  "tripId": "kyoto-demo",
+  "results": [
+    {
+      "segmentId": "out-jl",
+      "kind": "flight",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-DB251B18C747",
+      "emailVerified": true,
+      "reason": "confirmation code, route, depart date, and traveler names are in the email",
+      "budget": {
+        "allowed": true,
+        "remaining": "0.00",
+        "currency": "USD",
+        "reason": "spentAmount + proposedAmount is within budgetAmount"
+      }
+    },
+    {
+      "segmentId": "hotel-hyatt-place-arashiyama",
+      "kind": "hotel",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-7078E4C530A6",
+      "emailVerified": true,
+      "reason": "confirmation code, city, check-in, check-out, and guest names are in the email",
+      "budget": {
+        "allowed": true,
+        "remaining": "0.00",
+        "currency": "USD",
+        "reason": "spentAmount + proposedAmount is within budgetAmount"
+      }
+    },
+    {
+      "segmentId": "kinkakuji",
+      "kind": "attraction",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-41668D591EC8",
+      "emailVerified": false,
+      "reason": "rebooked"
+    },
+    {
+      "segmentId": "tenryuji",
+      "kind": "attraction",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-8D9E3E7965D9",
+      "emailVerified": true,
+      "reason": "confirmation code, attraction name, date, and party size match",
+      "budget": {
+        "allowed": true,
+        "remaining": "0.00",
+        "currency": "USD",
+        "reason": "spentAmount + proposedAmount is within budgetAmount"
+      }
+    },
+    {
+      "segmentId": "nishiki",
+      "kind": "attraction",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-57157036DEEC",
+      "emailVerified": true,
+      "reason": "confirmation code, attraction name, date, and party size match",
+      "budget": {
+        "allowed": true,
+        "remaining": "0.00",
+        "currency": "USD",
+        "reason": "spentAmount + proposedAmount is within budgetAmount"
+      }
+    },
+    {
+      "segmentId": "pontocho",
+      "kind": "attraction",
+      "status": "booked",
+      "confirmationCode": "SANDBOX-EA983A01861F",
+      "emailVerified": true,
+      "reason": "confirmation code, attraction name, date, and party size match",
+      "budget": {
+        "allowed": true,
+        "remaining": "0.00",
+        "currency": "USD",
+        "reason": "spentAmount + proposedAmount is within budgetAmount"
+      }
+    }
+  ],
+  "ticks": [
+    {
+      "tick": 1,
+      "clock": {
+        "tick": 1,
+        "now": "2026-11-15T00:00:00Z"
+      },
+      "phase": "in_progress",
+      "onTrack": false,
+      "updates": [
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+          "action": "rebook"
+        },
+        {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "issue": "segment cancelled",
+          "action": "replan",
+          "event": "cancelled",
+          "deltaMinutes": null,
+          "replan": "changed",
+          "notes": [
+            "marked tenryuji removed",
+            "shifted nishiki earlier by 120 minutes",
+            "shifted pontocho earlier by 120 minutes"
+          ],
+          "conflicts": {
+            "conflicts": [
+              {
+                "segmentA": "hotel-hyatt-place-arashiyama",
+                "segmentB": "kinkakuji",
+                "overlapMinutes": 120
+              },
+              {
+                "segmentA": "hotel-hyatt-place-arashiyama",
+                "segmentB": "nishiki",
+                "overlapMinutes": 120
+              },
+              {
+                "segmentA": "hotel-hyatt-place-arashiyama",
+                "segmentB": "pontocho",
+                "overlapMinutes": 120
+              },
+              {
+                "segmentA": "nishiki",
+                "segmentB": "pontocho",
+                "overlapMinutes": 55
+              }
+            ]
+          },
+          "refund": {
+            "segmentId": "tenryuji",
+            "status": "refunded",
+            "refundCode": "SANDBOX-REF-554F62F66696",
+            "amount": "39.00",
+            "currency": "USD",
+            "reason": null
+          },
+          "hours": {
+            "segmentId": "kinkakuji",
+            "ok": false,
+            "reason": "ends after closing"
+          }
+        }
+      ],
+      "watch": {
+        "ok": false,
+        "warnings": [
+          {
+            "segmentId": "tenryuji",
+            "issue": "signal event cancelled needs a replan",
+            "severity": "act",
+            "action": "replan"
+          }
+        ]
+      },
+      "warnings": [
+        {
+          "segmentId": "tenryuji",
+          "issue": "signal event cancelled needs a replan",
+          "severity": "act",
+          "action": "replan",
+          "replan": "unchanged"
+        }
+      ],
+      "rides": [
+        {
+          "segmentId": "kinkakuji",
+          "toSegmentId": "tenryuji",
+          "pickupAt": "2026-11-14T18:06:00Z",
+          "dropoffName": "Tenryū-ji",
+          "rideCode": "SANDBOX-RIDE-2105BD1B335F",
+          "result": {
+            "status": "requested",
+            "rideCode": "SANDBOX-RIDE-2105BD1B335F",
+            "pickupAt": "2026-11-14T18:06:00Z",
+            "dropoffName": "Tenryū-ji",
+            "partySize": null,
+            "reason": null
+          }
+        }
+      ],
+      "phrase": {
+        "language": "ja",
+        "card": "こちらまでお願いします\nTenryū-ji\n\n2026-11-14T18:06:00Z"
+      },
+      "flightStatus": {
+        "segmentId": "out-jl",
+        "event": "on_time",
+        "delayMinutes": 0,
+        "action": "none",
+        "departAt": "2026-11-13"
+      },
+      "checkIn": {
+        "segmentId": "out-jl",
+        "status": "missed",
+        "boardingPass": null,
+        "opensAt": "2026-11-12T09:00:00Z",
+        "error": null
+      },
+      "dcc": {
+        "payAmount": 1000,
+        "payCurrency": "JPY",
+        "refused": true,
+        "reason": "dcc_refused"
+      },
+      "card": {
+        "cardId": "mc-japan",
+        "fxFeePercent": 0,
+        "feeAmount": 0,
+        "payAmount": 1000,
+        "currency": "JPY",
+        "reason": "no_fx_fee"
+      },
+      "cash": {
+        "merchant": "Cash market",
+        "action": "withdraw_cash",
+        "cashAmount": 1000,
+        "cashCurrency": "JPY",
+        "tripAmount": 6.7,
+        "tripCurrency": "USD",
+        "reason": "quoted"
+      },
+      "holiday": [
+        {
+          "segmentId": "kinkakuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "tenryuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "nishiki",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "pontocho",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        }
+      ],
+      "layover": {
+        "ok": false,
+        "gapMinutes": 60,
+        "minimumMinutes": 90,
+        "shortfallMinutes": 30,
+        "action": "replan",
+        "reason": "short"
+      },
+      "etiquette": {
+        "country": "Japan",
+        "kind": "shrine",
+        "rules": [
+          "shoes off before the hall",
+          "bow once at the gate",
+          "photography of the inner hall is restricted"
+        ],
+        "phrase": "写真は大丈夫ですか",
+        "phraseLanguage": "ja",
+        "phraseMeaning": "May I take a photo?",
+        "reason": "none"
+      },
+      "taxRefund": {
+        "status": "missed",
+        "refundAmount": 1000,
+        "refundCurrency": "JPY",
+        "eligibleSpend": 10000,
+        "claimBefore": "2026-11-06T09:00:00Z",
+        "reason": "departed"
+      },
+      "hold": {
+        "authorizedHold": 200,
+        "capturedAmount": 40,
+        "releaseAmount": 160,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 40,
+        "reason": "held"
+      },
+      "holdOver": {
+        "authorizedHold": 200,
+        "capturedAmount": 250,
+        "releaseAmount": 0,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 200,
+        "reason": "over_capture"
+      },
+      "notice": {
+        "tripId": "kyoto-demo",
+        "subject": "Trip kyoto-demo: cancelled (tenryuji) — marked tenryuji removed | shifted nishiki earlier by 120 minutes | shifted pontocho earlier by 120 minutes",
+        "body": "Traveler notice for trip kyoto-demo.\nEvent: cancelled.\nA segment on this trip was cancelled.\nSegment: tenryuji.\nNotes:\nmarked tenryuji removed\nshifted nishiki earlier by 120 minutes\nshifted pontocho earlier by 120 minutes"
+      },
+      "segmentRebook": {
+        "segmentId": "tenryuji",
+        "changed": true,
+        "reason": "rebooked",
+        "replacement": {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "name": "Tenryū-ji",
+          "city": "Kyoto",
+          "date": "2026-11-15",
+          "time": "08:23",
+          "partySize": 1,
+          "status": "booked",
+          "confirmationCode": "SANDBOX-RB-BCB86FBE58D4",
+          "price": null,
+          "error": null
+        },
+        "notes": [
+          "kept the original start"
+        ]
+      },
+      "wallet": {
+        "tripId": "kyoto-demo",
+        "lines": [
+          "SANDBOX-DB251B18C747",
+          "SANDBOX-7078E4C530A6",
+          "SANDBOX-41668D591EC8",
+          "SANDBOX-8D9E3E7965D9",
+          "SANDBOX-57157036DEEC",
+          "SANDBOX-EA983A01861F",
+          "SANDBOX-RIDE-2105BD1B335F",
+          "SANDBOX-RB-BCB86FBE58D4"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "tick": 2,
+      "clock": {
+        "tick": 2,
+        "now": "2026-11-15T02:30:00Z"
+      },
+      "phase": "in_progress",
+      "onTrack": false,
+      "updates": [
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+          "action": "rebook"
+        },
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "booked segment has emailVerified false",
+          "action": "verify_email"
+        },
+        {
+          "segmentId": "nishiki",
+          "kind": "attraction",
+          "issue": "segment ended late",
+          "action": "replan",
+          "event": "ended_late",
+          "deltaMinutes": 45,
+          "replan": "unchanged",
+          "hours": {
+            "segmentId": "nishiki",
+            "ok": false,
+            "reason": "starts before opening"
+          }
+        }
+      ],
+      "watch": {
+        "ok": false,
+        "warnings": [
+          {
+            "segmentId": "nishiki",
+            "issue": "signal event ended_late needs a replan",
+            "severity": "act",
+            "action": "replan"
+          }
+        ]
+      },
+      "warnings": [
+        {
+          "segmentId": "nishiki",
+          "issue": "signal event ended_late needs a replan",
+          "severity": "act",
+          "action": "replan",
+          "replan": "unchanged"
+        }
+      ],
+      "flightStatus": {
+        "segmentId": "out-jl",
+        "event": "on_time",
+        "delayMinutes": 0,
+        "action": "none",
+        "departAt": "2026-11-13"
+      },
+      "checkIn": {
+        "segmentId": "out-jl",
+        "status": "missed",
+        "boardingPass": null,
+        "opensAt": "2026-11-12T09:00:00Z",
+        "error": null
+      },
+      "dcc": {
+        "payAmount": 1000,
+        "payCurrency": "JPY",
+        "refused": true,
+        "reason": "dcc_refused"
+      },
+      "card": {
+        "cardId": "mc-japan",
+        "fxFeePercent": 0,
+        "feeAmount": 0,
+        "payAmount": 1000,
+        "currency": "JPY",
+        "reason": "no_fx_fee"
+      },
+      "cash": {
+        "merchant": "Cash market",
+        "action": "withdraw_cash",
+        "cashAmount": 1000,
+        "cashCurrency": "JPY",
+        "tripAmount": 6.7,
+        "tripCurrency": "USD",
+        "reason": "quoted"
+      },
+      "holiday": [
+        {
+          "segmentId": "kinkakuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "nishiki",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "pontocho",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        }
+      ],
+      "layover": {
+        "ok": false,
+        "gapMinutes": 60,
+        "minimumMinutes": 90,
+        "shortfallMinutes": 30,
+        "action": "replan",
+        "reason": "short"
+      },
+      "etiquette": {
+        "country": "Japan",
+        "kind": "shrine",
+        "rules": [
+          "shoes off before the hall",
+          "bow once at the gate",
+          "photography of the inner hall is restricted"
+        ],
+        "phrase": "写真は大丈夫ですか",
+        "phraseLanguage": "ja",
+        "phraseMeaning": "May I take a photo?",
+        "reason": "none"
+      },
+      "taxRefund": {
+        "status": "missed",
+        "refundAmount": 1000,
+        "refundCurrency": "JPY",
+        "eligibleSpend": 10000,
+        "claimBefore": "2026-11-06T09:00:00Z",
+        "reason": "departed"
+      },
+      "hold": {
+        "authorizedHold": 200,
+        "capturedAmount": 40,
+        "releaseAmount": 160,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 40,
+        "reason": "held"
+      },
+      "holdOver": {
+        "authorizedHold": 200,
+        "capturedAmount": 250,
+        "releaseAmount": 0,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 200,
+        "reason": "over_capture"
+      },
+      "notice": {
+        "tripId": "kyoto-demo",
+        "subject": "Trip kyoto-demo: ended_late (nishiki)",
+        "body": "Traveler notice for trip kyoto-demo.\nEvent: ended_late.\nA segment on this trip ended late.\nSegment: nishiki.\nNo further notes."
+      },
+      "segmentRebook": {
+        "segmentId": "tenryuji",
+        "changed": true,
+        "reason": "rebooked",
+        "replacement": {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "name": "Tenryū-ji",
+          "city": "Kyoto",
+          "date": "2026-11-15",
+          "time": "08:23",
+          "partySize": 1,
+          "status": "booked",
+          "confirmationCode": "SANDBOX-RB-BCB86FBE58D4",
+          "price": null,
+          "error": null
+        },
+        "notes": [
+          "kept the original start"
+        ]
+      },
+      "wallet": {
+        "tripId": "kyoto-demo",
+        "lines": [
+          "SANDBOX-DB251B18C747",
+          "SANDBOX-7078E4C530A6",
+          "SANDBOX-41668D591EC8",
+          "SANDBOX-8D9E3E7965D9",
+          "SANDBOX-57157036DEEC",
+          "SANDBOX-EA983A01861F",
+          "SANDBOX-RIDE-2105BD1B335F",
+          "SANDBOX-RB-BCB86FBE58D4"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "tick": 3,
+      "clock": {
+        "tick": 3,
+        "now": "2026-11-15T03:30:00Z"
+      },
+      "phase": "in_progress",
+      "onTrack": false,
+      "updates": [
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+          "action": "rebook"
+        }
+      ],
+      "watch": {
+        "ok": true,
+        "warnings": []
+      },
+      "warnings": [],
+      "flightStatus": {
+        "segmentId": "out-jl",
+        "event": "on_time",
+        "delayMinutes": 0,
+        "action": "none",
+        "departAt": "2026-11-13"
+      },
+      "checkIn": {
+        "segmentId": "out-jl",
+        "status": "missed",
+        "boardingPass": null,
+        "opensAt": "2026-11-12T09:00:00Z",
+        "error": null
+      },
+      "dcc": {
+        "payAmount": 1000,
+        "payCurrency": "JPY",
+        "refused": true,
+        "reason": "dcc_refused"
+      },
+      "card": {
+        "cardId": "mc-japan",
+        "fxFeePercent": 0,
+        "feeAmount": 0,
+        "payAmount": 1000,
+        "currency": "JPY",
+        "reason": "no_fx_fee"
+      },
+      "cash": {
+        "merchant": "Cash market",
+        "action": "withdraw_cash",
+        "cashAmount": 1000,
+        "cashCurrency": "JPY",
+        "tripAmount": 6.7,
+        "tripCurrency": "USD",
+        "reason": "quoted"
+      },
+      "holiday": [
+        {
+          "segmentId": "kinkakuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "nishiki",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "pontocho",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        }
+      ],
+      "layover": {
+        "ok": false,
+        "gapMinutes": 60,
+        "minimumMinutes": 90,
+        "shortfallMinutes": 30,
+        "action": "replan",
+        "reason": "short"
+      },
+      "etiquette": {
+        "country": "Japan",
+        "kind": "shrine",
+        "rules": [
+          "shoes off before the hall",
+          "bow once at the gate",
+          "photography of the inner hall is restricted"
+        ],
+        "phrase": "写真は大丈夫ですか",
+        "phraseLanguage": "ja",
+        "phraseMeaning": "May I take a photo?",
+        "reason": "none"
+      },
+      "taxRefund": {
+        "status": "missed",
+        "refundAmount": 1000,
+        "refundCurrency": "JPY",
+        "eligibleSpend": 10000,
+        "claimBefore": "2026-11-06T09:00:00Z",
+        "reason": "departed"
+      },
+      "hold": {
+        "authorizedHold": 200,
+        "capturedAmount": 40,
+        "releaseAmount": 160,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 40,
+        "reason": "held"
+      },
+      "holdOver": {
+        "authorizedHold": 200,
+        "capturedAmount": 250,
+        "releaseAmount": 0,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 200,
+        "reason": "over_capture"
+      },
+      "segmentRebook": {
+        "segmentId": "tenryuji",
+        "changed": true,
+        "reason": "rebooked",
+        "replacement": {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "name": "Tenryū-ji",
+          "city": "Kyoto",
+          "date": "2026-11-15",
+          "time": "08:23",
+          "partySize": 1,
+          "status": "booked",
+          "confirmationCode": "SANDBOX-RB-BCB86FBE58D4",
+          "price": null,
+          "error": null
+        },
+        "notes": [
+          "kept the original start"
+        ]
+      },
+      "wallet": {
+        "tripId": "kyoto-demo",
+        "lines": [
+          "SANDBOX-DB251B18C747",
+          "SANDBOX-7078E4C530A6",
+          "SANDBOX-41668D591EC8",
+          "SANDBOX-8D9E3E7965D9",
+          "SANDBOX-57157036DEEC",
+          "SANDBOX-EA983A01861F",
+          "SANDBOX-RIDE-2105BD1B335F",
+          "SANDBOX-RB-BCB86FBE58D4"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "tick": 4,
+      "clock": {
+        "tick": 4,
+        "now": "2026-11-15T05:00:00Z"
+      },
+      "phase": "in_progress",
+      "onTrack": false,
+      "updates": [
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+          "action": "rebook"
+        },
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "booked segment has emailVerified false",
+          "action": "verify_email"
+        }
+      ],
+      "watch": {
+        "ok": true,
+        "warnings": []
+      },
+      "warnings": [],
+      "flightStatus": {
+        "segmentId": "out-jl",
+        "event": "on_time",
+        "delayMinutes": 0,
+        "action": "none",
+        "departAt": "2026-11-13"
+      },
+      "checkIn": {
+        "segmentId": "out-jl",
+        "status": "missed",
+        "boardingPass": null,
+        "opensAt": "2026-11-12T09:00:00Z",
+        "error": null
+      },
+      "dcc": {
+        "payAmount": 1000,
+        "payCurrency": "JPY",
+        "refused": true,
+        "reason": "dcc_refused"
+      },
+      "card": {
+        "cardId": "mc-japan",
+        "fxFeePercent": 0,
+        "feeAmount": 0,
+        "payAmount": 1000,
+        "currency": "JPY",
+        "reason": "no_fx_fee"
+      },
+      "cash": {
+        "merchant": "Cash market",
+        "action": "withdraw_cash",
+        "cashAmount": 1000,
+        "cashCurrency": "JPY",
+        "tripAmount": 6.7,
+        "tripCurrency": "USD",
+        "reason": "quoted"
+      },
+      "holiday": [
+        {
+          "segmentId": "kinkakuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "nishiki",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "pontocho",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        }
+      ],
+      "layover": {
+        "ok": false,
+        "gapMinutes": 60,
+        "minimumMinutes": 90,
+        "shortfallMinutes": 30,
+        "action": "replan",
+        "reason": "short"
+      },
+      "etiquette": {
+        "country": "Japan",
+        "kind": "shrine",
+        "rules": [
+          "shoes off before the hall",
+          "bow once at the gate",
+          "photography of the inner hall is restricted"
+        ],
+        "phrase": "写真は大丈夫ですか",
+        "phraseLanguage": "ja",
+        "phraseMeaning": "May I take a photo?",
+        "reason": "none"
+      },
+      "taxRefund": {
+        "status": "missed",
+        "refundAmount": 1000,
+        "refundCurrency": "JPY",
+        "eligibleSpend": 10000,
+        "claimBefore": "2026-11-06T09:00:00Z",
+        "reason": "departed"
+      },
+      "hold": {
+        "authorizedHold": 200,
+        "capturedAmount": 40,
+        "releaseAmount": 160,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 40,
+        "reason": "held"
+      },
+      "holdOver": {
+        "authorizedHold": 200,
+        "capturedAmount": 250,
+        "releaseAmount": 0,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 200,
+        "reason": "over_capture"
+      },
+      "segmentRebook": {
+        "segmentId": "tenryuji",
+        "changed": true,
+        "reason": "rebooked",
+        "replacement": {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "name": "Tenryū-ji",
+          "city": "Kyoto",
+          "date": "2026-11-15",
+          "time": "08:23",
+          "partySize": 1,
+          "status": "booked",
+          "confirmationCode": "SANDBOX-RB-BCB86FBE58D4",
+          "price": null,
+          "error": null
+        },
+        "notes": [
+          "kept the original start"
+        ]
+      },
+      "wallet": {
+        "tripId": "kyoto-demo",
+        "lines": [
+          "SANDBOX-DB251B18C747",
+          "SANDBOX-7078E4C530A6",
+          "SANDBOX-41668D591EC8",
+          "SANDBOX-8D9E3E7965D9",
+          "SANDBOX-57157036DEEC",
+          "SANDBOX-EA983A01861F",
+          "SANDBOX-RIDE-2105BD1B335F",
+          "SANDBOX-RB-BCB86FBE58D4"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "tick": 5,
+      "clock": {
+        "tick": 5,
+        "now": "2026-11-15T06:30:00Z"
+      },
+      "phase": "in_progress",
+      "onTrack": false,
+      "updates": [
+        {
+          "segmentId": "kinkakuji",
+          "kind": "attraction",
+          "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+          "action": "rebook"
+        }
+      ],
+      "watch": {
+        "ok": true,
+        "warnings": []
+      },
+      "warnings": [],
+      "flightStatus": {
+        "segmentId": "out-jl",
+        "event": "on_time",
+        "delayMinutes": 0,
+        "action": "none",
+        "departAt": "2026-11-13"
+      },
+      "checkIn": {
+        "segmentId": "out-jl",
+        "status": "missed",
+        "boardingPass": null,
+        "opensAt": "2026-11-12T09:00:00Z",
+        "error": null
+      },
+      "dcc": {
+        "payAmount": 1000,
+        "payCurrency": "JPY",
+        "refused": true,
+        "reason": "dcc_refused"
+      },
+      "card": {
+        "cardId": "mc-japan",
+        "fxFeePercent": 0,
+        "feeAmount": 0,
+        "payAmount": 1000,
+        "currency": "JPY",
+        "reason": "no_fx_fee"
+      },
+      "cash": {
+        "merchant": "Cash market",
+        "action": "withdraw_cash",
+        "cashAmount": 1000,
+        "cashCurrency": "JPY",
+        "tripAmount": 6.7,
+        "tripCurrency": "USD",
+        "reason": "quoted"
+      },
+      "holiday": [
+        {
+          "segmentId": "kinkakuji",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "nishiki",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        },
+        {
+          "segmentId": "pontocho",
+          "closed": false,
+          "holiday": null,
+          "action": "none"
+        }
+      ],
+      "layover": {
+        "ok": false,
+        "gapMinutes": 60,
+        "minimumMinutes": 90,
+        "shortfallMinutes": 30,
+        "action": "replan",
+        "reason": "short"
+      },
+      "etiquette": {
+        "country": "Japan",
+        "kind": "shrine",
+        "rules": [
+          "shoes off before the hall",
+          "bow once at the gate",
+          "photography of the inner hall is restricted"
+        ],
+        "phrase": "写真は大丈夫ですか",
+        "phraseLanguage": "ja",
+        "phraseMeaning": "May I take a photo?",
+        "reason": "none"
+      },
+      "taxRefund": {
+        "status": "missed",
+        "refundAmount": 1000,
+        "refundCurrency": "JPY",
+        "eligibleSpend": 10000,
+        "claimBefore": "2026-11-06T09:00:00Z",
+        "reason": "departed"
+      },
+      "hold": {
+        "authorizedHold": 200,
+        "capturedAmount": 40,
+        "releaseAmount": 160,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 40,
+        "reason": "held"
+      },
+      "holdOver": {
+        "authorizedHold": 200,
+        "capturedAmount": 250,
+        "releaseAmount": 0,
+        "currency": "USD",
+        "releaseBy": "2026-11-13T11:00:00Z",
+        "payAmount": 200,
+        "reason": "over_capture"
+      },
+      "segmentRebook": {
+        "segmentId": "tenryuji",
+        "changed": true,
+        "reason": "rebooked",
+        "replacement": {
+          "segmentId": "tenryuji",
+          "kind": "attraction",
+          "name": "Tenryū-ji",
+          "city": "Kyoto",
+          "date": "2026-11-15",
+          "time": "08:23",
+          "partySize": 1,
+          "status": "booked",
+          "confirmationCode": "SANDBOX-RB-BCB86FBE58D4",
+          "price": null,
+          "error": null
+        },
+        "notes": [
+          "kept the original start"
+        ]
+      },
+      "wallet": {
+        "tripId": "kyoto-demo",
+        "lines": [
+          "SANDBOX-DB251B18C747",
+          "SANDBOX-7078E4C530A6",
+          "SANDBOX-41668D591EC8",
+          "SANDBOX-8D9E3E7965D9",
+          "SANDBOX-57157036DEEC",
+          "SANDBOX-EA983A01861F",
+          "SANDBOX-RIDE-2105BD1B335F",
+          "SANDBOX-RB-BCB86FBE58D4"
+        ],
+        "count": 8
+      }
+    }
+  ],
+  "maxTicks": 5,
+  "loopStopped": "max_ticks",
+  "error": null,
+  "spend": {
+    "authorizedAmount": 12,
+    "requestedAmount": 12,
+    "currency": "USD",
+    "segmentId": "",
+    "decision": "pay",
+    "payAmount": 12,
+    "reason": ""
+  },
+  "entry": {
+    "ok": false,
+    "issues": [
+      "passportExpiry is less than 180 days after tripEnd",
+      "visaOnFile is false"
+    ]
+  },
+  "emergency": {
+    "country": "Japan",
+    "emergencyNumber": "110",
+    "embassyPhone": "+81-3-3224-5000",
+    "note": "Emergency and embassy phone numbers for Maya Chen. Phone numbers only."
+  },
+  "fx": {
+    "amount": 6.7,
+    "currency": "USD",
+    "rate": 0.0067,
+    "source": "sandbox",
+    "reason": "quoted",
+    "fromAmount": 1000,
+    "fromCurrency": "JPY",
+    "toCurrency": "USD"
+  },
+  "tip": {
+    "maxTipPercent": 0,
+    "tipAmount": 0,
+    "authorizedAmount": 12,
+    "currency": "USD",
+    "reason": "country_rule"
+  },
+  "transfer": {
+    "ok": true,
+    "leaveBy": "2026-11-13T12:00:00Z",
+    "shortfallMinutes": 0,
+    "reason": "enough_time"
+  },
+  "luggage": {
+    "hotelSegmentId": "hotel-hyatt-place-arashiyama",
+    "status": "drop_requested",
+    "deskNote": "Desk: please hold bags for Maya Chen until 2026-11-14T15:00:00Z.",
+    "reason": null
+  },
+  "checkout": {
+    "hotelSegmentId": "hotel-hyatt-place-arashiyama",
+    "status": "not_needed",
+    "until": null,
+    "reason": "Maya Chen's flight is within 2 hours after checkout or before it, so late checkout is not needed."
+  },
+  "rides": [
+    {
+      "segmentId": "kinkakuji",
+      "toSegmentId": "tenryuji",
+      "pickupAt": "2026-11-14T18:06:00Z",
+      "dropoffName": "Tenryū-ji",
+      "rideCode": "SANDBOX-RIDE-2105BD1B335F",
+      "result": {
+        "status": "requested",
+        "rideCode": "SANDBOX-RIDE-2105BD1B335F",
+        "pickupAt": "2026-11-14T18:06:00Z",
+        "dropoffName": "Tenryū-ji",
+        "partySize": null,
+        "reason": null
+      }
+    }
+  ]
+}

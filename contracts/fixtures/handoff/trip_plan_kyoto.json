@@ -1,0 +1,37 @@
+{
+  "tripId": "kyoto-demo",
+  "travelers": [
+    {"id": "t1", "name": "Maya Chen"}
+  ],
+  "destination": {"city": "Kyoto", "country": "JP"},
+  "dates": {"start": "2026-11-13", "end": "2026-11-16"},
+  "flights": [
+    {
+      "segmentId": "out-jl",
+      "kind": "flight",
+      "from": "SFO",
+      "to": "KIX",
+      "departDate": "2026-11-13",
+      "returnDate": "2026-11-16",
+      "cabin": "economy",
+      "travelerIds": ["t1"]
+    }
+  ],
+  "hotels": [
+    {
+      "segmentId": "hotel-hyatt-place-arashiyama",
+      "kind": "hotel",
+      "city": "Kyoto",
+      "checkIn": "2026-11-14",
+      "checkOut": "2026-11-16",
+      "rooms": 1,
+      "guests": 1
+    }
+  ],
+  "attractions": [
+    {"segmentId": "kinkakuji", "kind": "attraction", "name": "Kinkaku-ji", "city": "Kyoto", "date": "2026-11-14", "partySize": 1, "time": "16:06"},
+    {"segmentId": "tenryuji", "kind": "attraction", "name": "Tenryū-ji", "city": "Kyoto", "date": "2026-11-15", "partySize": 1, "time": "08:23"},
+    {"segmentId": "nishiki", "kind": "attraction", "name": "Nishiki Market", "city": "Kyoto", "date": "2026-11-15", "partySize": 1, "time": "10:17"},
+    {"segmentId": "pontocho", "kind": "attraction", "name": "Pontocho", "city": "Kyoto", "date": "2026-11-15", "partySize": 1, "time": "11:22"}
+  ]
+}

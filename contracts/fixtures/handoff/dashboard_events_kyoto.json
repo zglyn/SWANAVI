@@ -1,0 +1,407 @@
+[
+  {
+    "id": "kyoto-demo-001",
+    "ts": "2026-11-13T07:59:58Z",
+    "source": "agent",
+    "level": "info",
+    "type": "agent.planning",
+    "message": "Booking 6 items for your Kyoto trip",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "plan_id": "kyoto-demo",
+      "segments": 6
+    }
+  },
+  {
+    "id": "kyoto-demo-002",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "SFO → KIX flight booked · SANDBOX-DB251B18C747",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "out-jl",
+        "merchant_id": "flight",
+        "sku": "out-jl",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-DB251B18C747"
+      },
+      "segment": {
+        "segmentId": "out-jl",
+        "kind": "flight",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-DB251B18C747",
+        "emailVerified": true,
+        "reason": "confirmation code, route, depart date, and traveler names are in the email",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-003",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "Hyatt Place Arashiyama booked · SANDBOX-7078E4C530A6",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "hotel-hyatt-place-arashiyama",
+        "merchant_id": "hotel",
+        "sku": "hotel-hyatt-place-arashiyama",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-7078E4C530A6"
+      },
+      "segment": {
+        "segmentId": "hotel-hyatt-place-arashiyama",
+        "kind": "hotel",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-7078E4C530A6",
+        "emailVerified": true,
+        "reason": "confirmation code, city, check-in, check-out, and guest names are in the email",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-004",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "Kinkaku-ji booked · SANDBOX-41668D591EC8",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "kinkakuji",
+        "merchant_id": "attraction",
+        "sku": "kinkakuji",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-41668D591EC8"
+      },
+      "segment": {
+        "segmentId": "kinkakuji",
+        "kind": "attraction",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-41668D591EC8",
+        "emailVerified": true,
+        "reason": "confirmation code, attraction name, date, and party size match",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-005",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "Tenryū-ji booked · SANDBOX-8D9E3E7965D9",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "tenryuji",
+        "merchant_id": "attraction",
+        "sku": "tenryuji",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-8D9E3E7965D9"
+      },
+      "segment": {
+        "segmentId": "tenryuji",
+        "kind": "attraction",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-8D9E3E7965D9",
+        "emailVerified": true,
+        "reason": "confirmation code, attraction name, date, and party size match",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-006",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "Nishiki Market booked · SANDBOX-57157036DEEC",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "nishiki",
+        "merchant_id": "attraction",
+        "sku": "nishiki",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-57157036DEEC"
+      },
+      "segment": {
+        "segmentId": "nishiki",
+        "kind": "attraction",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-57157036DEEC",
+        "emailVerified": true,
+        "reason": "confirmation code, attraction name, date, and party size match",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-007",
+    "ts": "2026-11-13T08:00:00Z",
+    "source": "merchant",
+    "level": "success",
+    "type": "booking.confirmed",
+    "message": "Pontocho booked · SANDBOX-EA983A01861F",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "booking": {
+        "invoice_id": "pontocho",
+        "merchant_id": "attraction",
+        "sku": "pontocho",
+        "status": "confirmed",
+        "confirmation_code": "SANDBOX-EA983A01861F"
+      },
+      "segment": {
+        "segmentId": "pontocho",
+        "kind": "attraction",
+        "status": "booked",
+        "confirmationCode": "SANDBOX-EA983A01861F",
+        "emailVerified": true,
+        "reason": "confirmation code, attraction name, date, and party size match",
+        "budget": {
+          "allowed": true,
+          "remaining": "0.00",
+          "currency": "USD",
+          "reason": "spentAmount + proposedAmount is within budgetAmount"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-008",
+    "ts": "2026-11-15T00:00:00Z",
+    "source": "agent",
+    "level": "warning",
+    "type": "trip.alert",
+    "message": "Kinkaku-ji may need rebooking: segment end is more than 45 minutes before now and the segment is not finished",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "tick": 1,
+      "update": {
+        "segmentId": "kinkakuji",
+        "kind": "attraction",
+        "issue": "segment end is more than 45 minutes before now and the segment is not finished",
+        "action": "rebook"
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-009",
+    "ts": "2026-11-15T00:00:00Z",
+    "source": "system",
+    "level": "warning",
+    "type": "trip.alert",
+    "message": "Tenryū-ji was cancelled",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "tick": 1,
+      "update": {
+        "segmentId": "tenryuji",
+        "kind": "attraction",
+        "issue": "segment cancelled",
+        "action": "replan",
+        "event": "cancelled",
+        "deltaMinutes": null,
+        "replan": "changed",
+        "notes": [
+          "marked tenryuji removed",
+          "shifted nishiki earlier by 120 minutes",
+          "shifted pontocho earlier by 120 minutes"
+        ],
+        "conflicts": {
+          "conflicts": [
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "kinkakuji",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "nishiki",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "pontocho",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "nishiki",
+              "segmentB": "pontocho",
+              "overlapMinutes": 55
+            }
+          ]
+        },
+        "refund": {
+          "segmentId": "tenryuji",
+          "status": "refunded",
+          "refundCode": "SANDBOX-REF-554F62F66696",
+          "amount": "39.00",
+          "currency": "USD",
+          "reason": null
+        },
+        "hours": {
+          "segmentId": "kinkakuji",
+          "ok": false,
+          "reason": "ends after closing"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-010",
+    "ts": "2026-11-15T00:00:00Z",
+    "source": "agent",
+    "level": "info",
+    "type": "plan.change_applied",
+    "message": "Plan updated: marked tenryuji removed; shifted nishiki earlier by 120 minutes; shifted pontocho earlier by 120 minutes",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "tick": 1,
+      "update": {
+        "segmentId": "tenryuji",
+        "kind": "attraction",
+        "issue": "segment cancelled",
+        "action": "replan",
+        "event": "cancelled",
+        "deltaMinutes": null,
+        "replan": "changed",
+        "notes": [
+          "marked tenryuji removed",
+          "shifted nishiki earlier by 120 minutes",
+          "shifted pontocho earlier by 120 minutes"
+        ],
+        "conflicts": {
+          "conflicts": [
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "kinkakuji",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "nishiki",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "hotel-hyatt-place-arashiyama",
+              "segmentB": "pontocho",
+              "overlapMinutes": 120
+            },
+            {
+              "segmentA": "nishiki",
+              "segmentB": "pontocho",
+              "overlapMinutes": 55
+            }
+          ]
+        },
+        "refund": {
+          "segmentId": "tenryuji",
+          "status": "refunded",
+          "refundCode": "SANDBOX-REF-554F62F66696",
+          "amount": "39.00",
+          "currency": "USD",
+          "reason": null
+        },
+        "hours": {
+          "segmentId": "kinkakuji",
+          "ok": false,
+          "reason": "ends after closing"
+        }
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-011",
+    "ts": "2026-11-15T02:30:00Z",
+    "source": "agent",
+    "level": "info",
+    "type": "trip.alert",
+    "message": "Re-checking the confirmation email for Kinkaku-ji",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "tick": 2,
+      "update": {
+        "segmentId": "kinkakuji",
+        "kind": "attraction",
+        "issue": "booked segment has emailVerified false",
+        "action": "verify_email"
+      }
+    }
+  },
+  {
+    "id": "kyoto-demo-012",
+    "ts": "2026-11-15T02:30:00Z",
+    "source": "system",
+    "level": "warning",
+    "type": "trip.alert",
+    "message": "Nishiki Market ended late by 45 min · starts before opening",
+    "tx_hash": null,
+    "explorer_url": null,
+    "data": {
+      "tick": 2,
+      "update": {
+        "segmentId": "nishiki",
+        "kind": "attraction",
+        "issue": "segment ended late",
+        "action": "replan",
+        "event": "ended_late",
+        "deltaMinutes": 45,
+        "replan": "unchanged",
+        "hours": {
+          "segmentId": "nishiki",
+          "ok": false,
+          "reason": "starts before opening"
+        }
+      }
+    }
+  }
+]
