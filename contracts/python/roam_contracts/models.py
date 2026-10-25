@@ -899,6 +899,16 @@ class SuggestionAction(BaseModel):
     text: str | None = None
 
 
+class TripView(BaseModel):
+    conversation: TripConversation
+    proposal: Proposal | None = None
+
+
+class SuggestionResult(BaseModel):
+    proposal: Proposal
+    alternatives: list[Suggestion] = Field(default_factory=list)
+
+
 class ScriptedChange(BaseModel):
     action: SuggestionAction
     proposal: Proposal

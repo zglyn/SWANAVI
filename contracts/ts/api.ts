@@ -494,15 +494,18 @@ export interface TripConversation {
   brief: TripFacts;
   missing: string[];
 }
-export interface Suggestion {
+interface SuggestionBase {
   id: string;
-  kind: SuggestionKind;
   status: SuggestionStatus;
-  item: FlightOffer | HotelStay | Stop;
   why: string[];
   alternatives_available: boolean;
   required: boolean;
 }
+export type Suggestion = SuggestionBase & (
+  | { kind: "flight"; item: FlightOffer }
+  | { kind: "hotel"; item: HotelStay }
+  | { kind: "attraction" | "transfer"; item: Stop }
+);
 export interface Proposal {
   trip_id: string;
   package: TravelPackage;
@@ -516,4 +519,12 @@ export interface SuggestionAction {
   alternative_id?: string | null;
   constraints?: Record<string, unknown> | null;
   text?: string | null;
+}
+export interface TripView {
+  conversation: TripConversation;
+  proposal?: Proposal | null;
+}
+export interface SuggestionResult {
+  proposal: Proposal;
+  alternatives: Suggestion[];
 }
