@@ -15,6 +15,7 @@ from roam_contracts.geo import haversine_km
 from roam_contracts.models import (
     CREDENTIAL_TYPE,
     INVOICE_MEMO_TYPE,
+    Category,
     PolicyConfig,
     PolicyDecision,
     Quote,
@@ -26,6 +27,10 @@ from roam_contracts.signing import quote_signing_bytes
 DROPS_PER_XRP = Decimal(1_000_000)
 CENTS = Decimal("0.01")
 INVOICE_MEMO_TYPE_HEX = INVOICE_MEMO_TYPE.encode().hex().upper()
+EXCLUDED_ACTIVITY_SPEND = {
+    Category.TRANSPORT: "flight",
+    Category.LODGING: "hotel",
+}
 
 
 @dataclass
@@ -154,8 +159,12 @@ def check_credential(quote: Quote, policy: PolicyConfig, verified: dict[str, boo
 def check_category(quote: Quote, policy: PolicyConfig) -> list[Violation]:
     if quote.category in policy.allowed_categories:
         return []
-    return [_v(ViolationRule.CATEGORY, quote, "Category not allowed",
-               expected=",".join(c.value for c in policy.allowed_categories), actual=quote.category.value)]
+    allowed = ",".join(c.value for c in policy.allowed_categories)
+    excluded = EXCLUDED_ACTIVITY_SPEND.get(quote.category)
+    if excluded is not None:
+        return [_v(ViolationRule.CATEGORY, quote, "Activity policy excludes flights and hotels",
+                   expected=allowed, actual=excluded)]
+    return [_v(ViolationRule.CATEGORY, quote, "Category not allowed", expected=allowed, actual=quote.category.value)]
 
 
 def check_date_window(quote: Quote, policy: PolicyConfig) -> list[Violation]:

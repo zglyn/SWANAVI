@@ -11,6 +11,7 @@ from roam_guardrail.sources import (
     MerchantKeys,
     OfflineCredentials,
     XrplCredentials,
+    activity_policy,
     load_env_file,
     load_wallet,
     signer_blob,
@@ -31,6 +32,7 @@ cosigner = Cosigner(
     trip_account=os.environ.get("TRIP_ADDRESS"),
     policy_file=policy_file_from_env(),
     xrp_as_rlusd=os.environ.get("GUARDRAIL_XRP_AS_RLUSD", "1") == "1",
+    baseline=activity_policy(),
 )
 
 http = FastAPI(title="Swanavi guardrail")

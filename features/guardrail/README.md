@@ -26,14 +26,13 @@ uv run pytest features/guardrail
 - `rules.py` — the 9 rules as pure functions. Every violation is returned, not just the first.
 - `cosigner.py` — stored policy, today's spend, signs with Key 2 only when approved.
 - `sources.py` — merchant keys (`GET {MERCHANTS_URL}/merchants`), credentials (XRPL `ledger_entry` or offline allowlist), Key 2 signing.
-- `client.py` — `HttpGuardrail` (talks to `:8002`) and `FakeGuardrail` (same rules in-process, dummy signer blob).
+- `client.py` — `HttpGuardrail` (talks to `:8002`) and `FakeGuardrail` (same rules in-process, dummy signer blob). The fake starts from the contract default policy. The server starts from the New York activity policy.
 
 ## What it never trusts
 
 - **The request's `policy`:** ignored. The stored policy (`PUT /policy`) is the only one that counts, so the
   gateway must forward dashboard policy edits here.
-- **The request's `spent_today`:** treated as a floor. The guardrail also counts what it has co-signed today and uses
-  the larger number.
+- **The request's `spent_today`:** ignored. The daily total is the spend book. `record_spend` posts a booking or ledger amount, and each co-sign posts its own. Concurrent budget decisions take that book one at a time.
 - **The agent's summary of the tx:** every inner `EscrowCreate` is decoded from the raw tx and matched 1:1 to a signed quote.
 
 ## Config
