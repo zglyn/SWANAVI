@@ -1,41 +1,46 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { SwanLogo } from "./Logo";
 
 export function SwanShell({
   children,
   step,
   steps,
   aside,
-  wide = false,
+  map,
 }: {
   children: React.ReactNode;
   step?: number;
   steps?: number;
   aside?: React.ReactNode;
   wide?: boolean;
+  map?: React.ReactNode;
 }) {
+  // Plan screens may still pass a map. The shell stays a black column and does not paint it.
+  void map;
+
   const progress = step && steps ? (
-    <div>
-      <div className="swan-progress" aria-hidden="true"><span style={{ width: `${(step / steps) * 100}%` }} /></div>
-      <p className="swan-step mt-2" aria-live="polite">Step {step} of {steps}</p>
+    <div aria-hidden>
+      <div className="swan-progress">
+        <div style={{ width: `${(step / steps) * 100}%` }} />
+      </div>
+      <p className="swan-muted mt-2 text-xs">Step {step} of {steps}</p>
     </div>
   ) : null;
-  const width = wide ? "max-w-6xl" : aside ? "max-w-5xl" : "max-w-3xl";
 
   return (
-    <main className="swan-app min-h-screen">
-      <header className={`mx-auto flex ${width} items-center justify-between px-4 py-4 sm:px-6`}>
-        <Link href="/" aria-label="Swanavi home"><Logo /></Link>
-        <Link href="/profile" className="swan-muted text-sm underline-offset-4 hover:underline">Profile</Link>
-      </header>
-      <div className={`mx-auto ${width} px-4 pb-10 sm:px-6 ${aside ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10" : ""}`}>
-        <div>
-          {progress}
-          <div className="py-6">{children}</div>
-        </div>
-        {aside ? <aside className="swan-card mt-4 h-fit p-5 lg:sticky lg:top-6 lg:mt-14">{aside}</aside> : null}
-      </div>
-    </main>
+    <div className="swan-stage">
+      <main className="swan-app swan-column">
+        <header className="flex items-center justify-between px-6 pt-6">
+          <Link href="/" aria-label="Swanavi home">
+            <SwanLogo />
+          </Link>
+          <Link href="/profile" className="swan-muted text-sm">Profile</Link>
+        </header>
+        {progress ? <div className="px-6 pt-4">{progress}</div> : null}
+        <div className="px-6 py-6">{children}</div>
+        {aside ? <div className="px-6 pb-10">{aside}</div> : null}
+      </main>
+    </div>
   );
 }
 

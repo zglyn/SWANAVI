@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* One monochrome system. The old Kyoto token names stay so every page shares the same greys. */
+/* One monochrome system for the ledger. The planner is the black column below. */
 @theme {
   --color-paper: #ffffff;
   --color-paper-2: #f4f4f4;
@@ -26,14 +26,18 @@
   --color-night-text: #ececec;
   --color-night-dim: #9a9a9a;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
   --font-serif: var(--font-sans);
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
-html { background: var(--color-paper); color: var(--color-ink); }
-body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { font-weight: 700; letter-spacing: -0.03em; }
+html { background: #000000; color: #ffffff; }
+body {
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #000000;
+  color: #ffffff;
+}
 
 @keyframes slide-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes shake { 0%,100% { transform: none } 20%,60% { transform: translateX(-4px) } 40%,80% { transform: translateX(4px) } }
@@ -41,87 +45,243 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.03em; }
 .animate-slide-in { animation: slide-in .35s ease-out both; }
 .animate-shake { animation: shake .4s ease-in-out; }
 
-input[type="range"] { accent-color: var(--color-ink); }
+input[type="range"] { accent-color: #ffffff; }
+
+.swan-stage {
+  min-height: 100vh;
+  background: #000000;
+}
+
+.swan-column {
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  min-height: 100vh;
+}
 
 .swan-app {
-  --swan-bg: #ffffff;
-  --swan-fg: #111111;
-  --swan-muted: #5c5c5c;
-  --swan-line: #e4e4e4;
-  --swan-surface: #f6f6f6;
+  --swan-bg: #000000;
+  --swan-fg: #ffffff;
+  --swan-muted: rgba(255, 255, 255, 0.62);
+  --swan-line: rgba(255, 255, 255, 0.14);
+  --swan-surface: #0c0c0c;
+  --swan-ease: cubic-bezier(0.22, 1, 0.36, 1);
   background: var(--swan-bg);
   color: var(--swan-fg);
-  font-family: var(--font-sans);
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
 }
-.swan-app h1, .swan-app h2, .swan-app h3 { font-weight: 700; letter-spacing: -0.03em; }
-.swan-muted { color: var(--swan-muted); }
-.swan-surface { background: var(--swan-surface); }
-.swan-line { border-color: var(--swan-line); }
-.swan-eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--swan-muted); }
-.swan-step { font-size: 0.875rem; font-weight: 600; color: var(--swan-muted); }
+
+.swan-app h1,
+.swan-title {
+  margin: 0;
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: #ffffff;
+}
+
+.swan-app h2,
+.swan-app h3 {
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.swan-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.swan-word {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.swan-muted { color: rgba(255, 255, 255, 0.62); }
+.swan-surface { background: #0c0c0c; }
+.swan-line { border-color: rgba(255, 255, 255, 0.14); }
+.swan-eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); }
+.swan-step { font-size: 0.875rem; font-weight: 600; color: rgba(255, 255, 255, 0.62); }
+
+.swan-app a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .swan-btn {
-  background: var(--swan-fg);
-  color: var(--swan-bg);
-  min-height: 52px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 0 24px;
+  border: 0;
   border-radius: 999px;
-  padding: 0 1.25rem;
-  font-weight: 600;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.swan-btn:disabled { opacity: 0.4; }
+
+.swan-app a.swan-btn,
+.swan-btn {
+  color: #000000;
+  text-decoration: none;
+}
+
+.swan-btn:hover { opacity: 0.92; }
+.swan-btn:disabled { opacity: 0.4; cursor: default; }
+
 .swan-btn-ghost {
-  background: transparent;
-  color: var(--swan-fg);
-  border: 1px solid var(--swan-fg);
-  min-height: 52px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 0 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  padding: 0 1.25rem;
-  font-weight: 600;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+.swan-btn-ghost:hover { background: rgba(255, 255, 255, 0.06); }
+.swan-btn-ghost:disabled { opacity: 0.4; cursor: default; }
+
 .swan-btn-quiet {
   background: transparent;
-  color: var(--swan-fg);
+  color: #ffffff;
   min-height: 52px;
   border-radius: 999px;
   padding: 0 1.25rem;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.swan-invert { background: var(--swan-fg); color: var(--swan-bg); }
 
-/* Chips: three jobs, three shapes. */
-/* Filter: toggles a facet of a list. Outline pill, filled when on. */
-.swan-chip, .swan-filter { border: 1px solid var(--swan-line); border-radius: 999px; padding: 0.4rem 0.8rem; font-size: 0.875rem; font-weight: 500; }
-.swan-chip[aria-pressed="true"], .swan-filter[aria-pressed="true"], .swan-filter[aria-checked="true"] { background: var(--swan-fg); color: var(--swan-bg); border-color: var(--swan-fg); }
-/* Segmented control: one choice among a few. A grey track with a sliding black thumb. */
-.swan-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--swan-surface); }
-.swan-seg > [role="radio"], .swan-seg > button {
-  border-radius: 999px; padding: 0.45rem 0.9rem; font-size: 0.875rem; font-weight: 600; color: var(--swan-muted); min-height: 40px;
+.swan-chip,
+.swan-filter {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 500;
+  transition: background-color 280ms cubic-bezier(0.22, 1, 0.36, 1), color 280ms cubic-bezier(0.22, 1, 0.36, 1), border-color 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.swan-seg > [aria-checked="true"], .swan-seg > [aria-pressed="true"] { background: var(--swan-fg); color: var(--swan-bg); }
-/* Status badge: not interactive. Small caps, square-ish corners. */
+
+.swan-chip[aria-pressed="true"],
+.swan-filter[aria-pressed="true"],
+.swan-filter[aria-checked="true"] {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.swan-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: #0c0c0c; }
+.swan-seg > [role="radio"], .swan-seg > button {
+  border-radius: 999px; padding: 0.45rem 0.9rem; font-size: 0.875rem; font-weight: 600; color: rgba(255, 255, 255, 0.62); min-height: 40px;
+}
+.swan-seg > [aria-checked="true"], .swan-seg > [aria-pressed="true"] { background: #ffffff; color: #000000; }
+
+.swan-app button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.swan-app button[aria-pressed="true"] .swan-muted {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.swan-app button[aria-pressed="true"] .swan-chip {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
 .swan-badge {
   display: inline-flex; align-items: center; gap: 0.3rem; border-radius: 6px; padding: 0.15rem 0.5rem;
-  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; background: var(--swan-surface); color: var(--swan-fg);
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; background: #0c0c0c; color: #ffffff;
 }
-.swan-badge-solid { background: var(--swan-fg); color: var(--swan-bg); }
-.swan-badge-outline { background: transparent; border: 1px solid var(--swan-line); }
+.swan-badge-solid { background: #ffffff; color: #000000; }
+.swan-badge-outline { background: transparent; border: 1px solid rgba(255, 255, 255, 0.14); }
 
-.swan-card { border: 1px solid var(--swan-line); border-radius: 20px; background: var(--swan-bg); }
-.swan-card[aria-pressed="true"], .swan-card[data-selected="true"] { border-color: var(--swan-fg); box-shadow: 0 0 0 1px var(--swan-fg) inset; }
-.swan-card-featured { border-color: var(--swan-fg); box-shadow: 0 0 0 1px var(--swan-fg) inset; }
-.swan-reason { border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.75rem; background: var(--swan-surface); color: var(--swan-fg); }
+.swan-card { border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; background: #000000; color: #ffffff; }
+.swan-card[aria-pressed="true"], .swan-card[data-selected="true"] { border-color: #ffffff; background: #ffffff; color: #000000; }
+.swan-card[aria-pressed="true"] .swan-muted,
+.swan-card[data-selected="true"] .swan-muted { color: rgba(0, 0, 0, 0.62); }
+.swan-card-featured { border-color: #ffffff; }
+.swan-reason { border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.75rem; background: #0c0c0c; color: #ffffff; }
 
-.swan-progress { height: 6px; border-radius: 999px; background: var(--swan-line); overflow: hidden; }
-.swan-progress > span { display: block; height: 100%; background: var(--swan-fg); transition: width .4s ease; }
-.swan-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--swan-fg); animation: pulse-dot 1.2s ease-in-out infinite; }
+.swan-app input,
+.swan-app textarea,
+.swan-app select {
+  background: #0c0c0c;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+}
 
-.swan-app :focus-visible { outline: 2px solid var(--swan-fg); outline-offset: 2px; }
-.swan-map { filter: grayscale(1) contrast(1.08); }
-.swan-sheet { background: var(--swan-bg); border-top: 1px solid var(--swan-line); }
-.swan-sticky { position: sticky; bottom: 0; background: var(--swan-bg); border-top: 1px solid var(--swan-line); }
+.swan-app input::placeholder,
+.swan-app textarea::placeholder {
+  color: rgba(255, 255, 255, 0.62);
+}
 
-/* Map markers carry a visible label, not just a number. */
+.swan-app input[type="range"] { accent-color: #ffffff; }
+
+.swan-app :focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.swan-app ::selection {
+  background: #ffffff;
+  color: #000000;
+}
+
+.swan-progress {
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.swan-progress > div,
+.swan-progress > span {
+  display: block;
+  height: 100%;
+  background: #ffffff;
+  transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swan-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #ffffff; animation: pulse-dot 1.2s ease-in-out infinite; }
+
+.swan-sheet {
+  background: #0c0c0c;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.swan-sticky { position: sticky; bottom: 0; background: #000000; }
+
 .swan-marker { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 0; cursor: pointer; }
 .swan-marker-badge {
   display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px;
@@ -133,16 +293,8 @@ input[type="range"] { accent-color: var(--color-ink); }
 .swan-marker-active .swan-marker-label { background: #111111; color: #ffffff; }
 .maplibregl-marker.swan-marker, .maplibregl-marker > .swan-marker { z-index: 1; }
 
-@media (prefers-color-scheme: dark) {
-  .swan-app {
-    --swan-bg: #0e0e0e;
-    --swan-fg: #f5f5f5;
-    --swan-muted: #b5b5b5;
-    --swan-line: #2a2a2a;
-    --swan-surface: #171717;
-  }
-  .swan-map { filter: grayscale(1) invert(1) contrast(1.08); }
-}
+.swan-map { filter: grayscale(1) contrast(1.05); }
+
 @media (prefers-reduced-motion: reduce) {
   .swan-app *, .swan-map * { animation: none !important; transition: none !important; }
 }
