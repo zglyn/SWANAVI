@@ -35,7 +35,7 @@ export function ChoiceLayout({
           <h1 className="mt-2 text-4xl sm:text-5xl">{title}</h1>
           <div className="mt-6 pb-28">{children}</div>
         </div>
-        <div className={`${showMap ? "block" : "hidden"} h-[60vh] overflow-hidden rounded-3xl lg:sticky lg:top-4 lg:block lg:h-[calc(100vh-2rem)]`}>
+        <div className={`${showMap ? "block" : "hidden"} h-[60vh] overflow-hidden rounded-3xl lg:sticky lg:top-4 lg:block lg:h-[calc(100vh-10rem)]`}>
           {map}
         </div>
       </div>

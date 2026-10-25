@@ -43,16 +43,22 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.03em; }
 
 input[type="range"] { accent-color: var(--color-ink); }
 
-.swan-app {
+.swan-app, .swan-light {
   --swan-bg: #ffffff;
   --swan-fg: #111111;
   --swan-muted: #5c5c5c;
   --swan-line: #e4e4e4;
   --swan-surface: #f6f6f6;
+  --swan-overview-sheet: 62vh;
+  --swan-overview-panel: 440px;
+}
+.swan-app {
   background: var(--swan-bg);
   color: var(--swan-fg);
   font-family: var(--font-sans);
 }
+/* The map keeps the light palette, so route ink stays dark on light tiles when the page is dark. */
+.swan-light { color: var(--swan-fg); }
 .swan-app h1, .swan-app h2, .swan-app h3 { font-weight: 700; letter-spacing: -0.03em; }
 .swan-muted { color: var(--swan-muted); }
 .swan-surface { background: var(--swan-surface); }
@@ -117,21 +123,75 @@ input[type="range"] { accent-color: var(--color-ink); }
 .swan-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--swan-fg); animation: pulse-dot 1.2s ease-in-out infinite; }
 
 .swan-app :focus-visible { outline: 2px solid var(--swan-fg); outline-offset: 2px; }
-.swan-map { filter: grayscale(1) contrast(1.08); }
 .swan-sheet { background: var(--swan-bg); border-top: 1px solid var(--swan-line); }
 .swan-sticky { position: sticky; bottom: 0; background: var(--swan-bg); border-top: 1px solid var(--swan-line); }
 
-/* Map markers carry a visible label, not just a number. */
-.swan-marker { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 0; cursor: pointer; }
-.swan-marker-badge {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px;
-  background: #111111; color: #ffffff; font-size: 0.8rem; font-weight: 700; border: 2px solid #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+.swan-overview-map {
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh - var(--swan-overview-sheet));
+  overflow: hidden;
 }
-.swan-marker-hotel .swan-marker-badge { background: #ffffff; color: #111111; border-color: #111111; }
-.swan-marker-label { background: #ffffff; color: #111111; border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
-.swan-marker-active .swan-marker-badge { transform: scale(1.25); }
-.swan-marker-active .swan-marker-label { background: #111111; color: #ffffff; }
-.maplibregl-marker.swan-marker, .maplibregl-marker > .swan-marker { z-index: 1; }
+.swan-overview-sheet {
+  margin-top: calc(100vh - var(--swan-overview-sheet));
+  height: var(--swan-overview-sheet);
+}
+@media (min-width: 1024px) {
+  .swan-overview-map { height: auto; bottom: 0; right: var(--swan-overview-panel); }
+  .swan-overview-sheet { margin-top: 0; height: 100vh; width: var(--swan-overview-panel); }
+}
+.swan-overview-map .swan-map { min-height: 0; }
+
+.swan-map { position: relative; height: 100%; min-height: 18rem; isolation: isolate; background: var(--swan-surface); }
+/* The engine sets position:relative on this same node, which collapses it to content height 0 and clips the canvas. */
+.swan-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.swan-map .swan-map-canvas { position: absolute; width: 100%; height: 100%; }
+.swan-map[data-ready="true"] .swan-map-canvas { opacity: 1; pointer-events: auto; }
+.swan-map-bar {
+  position: absolute; z-index: 2; top: var(--swan-map-inset-top); left: var(--swan-map-inset-left); right: var(--swan-map-inset-right);
+  display: flex; align-items: flex-start; gap: 8px; pointer-events: none;
+}
+.swan-map-slot { display: flex; gap: 8px; align-items: flex-start; pointer-events: none; }
+.swan-map-slot > * { pointer-events: auto; }
+.swan-map-slot[data-slot="top-left"] { min-width: 0; flex: 1 1 auto; }
+.swan-map-slot[data-slot="top-right"] { flex: none; margin-left: auto; }
+.swan-map-float {
+  background: rgb(255 255 255 / .94);
+  backdrop-filter: blur(8px);
+  color: var(--swan-fg);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .10);
+}
+.swan-map-caption { width: max-content; max-width: 100%; min-width: 0; border-radius: 18px; padding: 10px 12px; }
+.swan-map-caption .swan-eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swan-map-caption-stop { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; max-width: 100%; }
+.swan-map-caption-label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.swan-map-clear { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 999px; background: transparent; color: var(--swan-fg); font-weight: 600; }
+.swan-map-btn { width: 40px; height: 40px; border: 0; border-radius: 999px; display: inline-grid; place-items: center; font-weight: 600; }
+.swan-map-zoom { display: flex; gap: 8px; }
+@media (pointer: coarse) { .swan-map-zoom { display: none; } .swan-map-btn { width: 44px; height: 44px; } }
+
+.swan-map :is(.mapboxgl-ctrl-bottom-left, .maplibregl-ctrl-bottom-left) { bottom: var(--swan-map-inset-bottom); left: var(--swan-map-inset-left); }
+.swan-map :is(.mapboxgl-ctrl-bottom-right, .maplibregl-ctrl-bottom-right) { bottom: var(--swan-map-inset-bottom); right: var(--swan-map-inset-right); }
+
+.swan-marker { z-index: 1; display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; text-align: left; }
+.swan-marker-active { z-index: 2; }
+.swan-marker-badge {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; flex: none;
+  background: var(--swan-fg); color: var(--swan-bg); font-size: 0.8rem; font-weight: 700; border: 2px solid var(--swan-bg);
+  box-shadow: 0 1px 4px rgb(0 0 0 / .25); transition: transform .15s ease;
+}
+.swan-marker[data-tone="outline"] .swan-marker-badge, .swan-marker-badge[data-tone="outline"] {
+  background: var(--swan-bg); color: var(--swan-fg); border-color: var(--swan-fg);
+}
+.swan-marker-label {
+  max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--swan-bg); color: var(--swan-fg); border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 4px rgb(0 0 0 / .18);
+}
+.swan-marker-active .swan-marker-badge { transform: scale(1.15); }
 
 @media (prefers-color-scheme: dark) {
   .swan-app {
@@ -141,7 +201,6 @@ input[type="range"] { accent-color: var(--color-ink); }
     --swan-line: #2a2a2a;
     --swan-surface: #171717;
   }
-  .swan-map { filter: grayscale(1) invert(1) contrast(1.08); }
 }
 @media (prefers-reduced-motion: reduce) {
   .swan-app *, .swan-map * { animation: none !important; transition: none !important; }

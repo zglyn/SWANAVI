@@ -26,17 +26,6 @@ export default function OverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [booked, setBookedState] = useState<string[]>([]);
   const [highlight, setHighlight] = useState<string | null>(null);
-  const [padding, setPadding] = useState({ top: 72, bottom: 72, left: 40, right: 40 });
-
-  useEffect(() => {
-    const measure = () => {
-      const phone = window.innerWidth < 1024;
-      setPadding({ top: 72, bottom: phone ? Math.round(window.innerHeight * 0.62) + 32 : 72, left: 40, right: 40 });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
 
   useEffect(() => {
     client.getPackage(params.id).then(setPack).catch((err: Error) => setError(err.message));
@@ -132,17 +121,16 @@ export default function OverviewPage() {
 
   return (
     <main className="swan-app relative h-screen overflow-hidden">
-      <div className="fixed inset-0 lg:right-[440px]">
+      <div className="swan-overview-map">
         <TripMap
           stops={mapStops}
           arcs={arcs}
           focus={hotelStops.length}
           dayLabel={current ? formatDay(current.date) : "Trip"}
           highlight={highlight}
-          padding={padding}
         />
       </div>
-      <section className="swan-sheet relative z-10 mt-[38vh] h-[62vh] overflow-y-auto rounded-t-3xl px-4 py-5 lg:fixed lg:inset-y-0 lg:right-0 lg:mt-0 lg:h-screen lg:w-[440px] lg:rounded-none lg:px-6">
+      <section className="swan-sheet swan-overview-sheet relative z-10 overflow-y-auto rounded-t-3xl px-4 py-5 lg:fixed lg:inset-y-0 lg:right-0 lg:rounded-none lg:px-6">
         <Link href="/" aria-label="Swanavi home"><Logo /></Link>
         <p className="swan-eyebrow mt-5">Your trip</p>
         <h1 className="mt-1 text-4xl">{pack.itinerary.brief.destination}</h1>

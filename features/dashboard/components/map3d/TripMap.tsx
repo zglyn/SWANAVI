@@ -1,26 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createTripMapController, type MapFailure, type TripMapController } from "./controller";
+import { chromeInsets, deriveScene, type Dimension, type Insets, type MapStop, type SceneStop, type TripScene } from "./scene";
 
-export interface MapStop {
-  id: string;
-  lat: number;
-  lng: number;
-  label: string;
-  kind: "stop" | "hotel" | "merchant";
-  badge?: string;
-}
+export type { MapStop };
 
 interface Arc {
   from: [number, number];
   to: [number, number];
 }
 
-type MapHandle = {
-  flyTo: (opts: object) => void;
-  jumpTo: (opts: object) => void;
-  remove: () => void;
-  setPitch: (n: number) => void;
+const FAILURE_COPY: Record<MapFailure, string> = {
+  "no-webgl": "This browser can't draw maps.",
+  style: "The map didn't load.",
+  "context-lost": "The browser dropped the map's graphics.",
+  engine: "The map could not start.",
 };
 
 export function TripMap({
@@ -45,228 +40,183 @@ export function TripMap({
   onSelect?: (id: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapHandle | null>(null);
-  const markers = useRef(new Map<string, HTMLElement>());
-  const [fallback, setFallback] = useState<string | null>(null);
-  const [flat, setFlat] = useState(false);
-  const [active, setActive] = useState<string | null>(null);
-  const signature = `${flat}:${focus}:${route}:${JSON.stringify(padding)}:${stops.map((stop) => `${stop.id}:${stop.lat}:${stop.lng}`).join("|")}:${JSON.stringify(arcs)}`;
+  const reducedMotion = usePrefersReducedMotion();
+  const [chosen, setChosen] = useState<Dimension | null>(null);
+  const dimension = chosen ?? (reducedMotion ? "2d" : "3d");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | MapFailure>("loading");
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const scene = deriveScene({
+    stops,
+    arcs,
+    focus,
+    route,
+    highlight,
+    padding,
+    selectedId,
+    dimension,
+    reducedMotion,
+  });
+  const map = useTripMapController(host, scene, {
+    stopPressed(id) {
+      setSelectedId(id);
+      onSelectRef.current?.(id);
+    },
+    status: setStatus,
+  });
 
-  useEffect(() => {
-    const node = host.current;
-    if (!node || fallback) return;
-    if (!hasWebGL()) {
-      setFallback("This browser can't draw 3D maps.");
-      return;
-    }
-    let cancelled = false;
-    let disconnectObserver: (() => void) | undefined;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const drawnStops = stops;
-    const drawnArcs = arcs;
-    const inset = padding ?? { top: 72, bottom: 72, left: 72, right: 72 };
-    (async () => {
-      try {
-        const maplibre = await import("maplibre-gl");
-        await import("maplibre-gl/dist/maplibre-gl.css");
-        if (cancelled || !node) return;
-        const ink = getComputedStyle(node).getPropertyValue("--swan-fg").trim() || "black";
-        const map = new maplibre.Map({
-          container: node,
-          style: "https://tiles.openfreemap.org/styles/positron",
-          center: drawnStops[0] ? [drawnStops[0].lng, drawnStops[0].lat] : [135.77, 35.01],
-          zoom: drawnStops.length ? 11 : 2,
-          pitch: reduced || flat ? 0 : 48,
-          attributionControl: { compact: true },
-        });
-        map.on("error", (event) => {
-          const detail = event as { sourceId?: string; tile?: unknown; error?: Error };
-          if (detail.sourceId || detail.tile) return;
-          if (map.loaded()) return;
-          setFallback(detail.error?.message || "The map style did not load.");
-        });
-        map.on("webglcontextlost", () => setFallback("The browser dropped the map's graphics context."));
-        const fit = () => map.resize();
-        const observer = new ResizeObserver(fit);
-        observer.observe(node);
-        map.on("load", () => {
-          fit();
-          addBuildings(map);
-          const line = (id: string, coordinates: [number, number][], dashed: boolean) => {
-            map.addSource(id, { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } } });
-            map.addLayer({
-              id,
-              type: "line",
-              source: id,
-              paint: { "line-color": ink, "line-width": 3, "line-dasharray": dashed ? [1.5, 1.5] : [1, 0] },
-            });
-          };
-          drawnArcs.forEach((arc, index) => line(`arc-${index}`, greatCircle(arc.from, arc.to), false));
-          const path = drawnStops.filter((stop) => stop.kind === "stop");
-          if (route && path.length > 1) line("day", path.map((stop) => [stop.lng, stop.lat]), true);
-          let number = 0;
-          markers.current.clear();
-          drawnStops.forEach((stop) => {
-            const marker = document.createElement("button");
-            marker.type = "button";
-            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}`;
-            const badge = document.createElement("span");
-            badge.className = "swan-marker-badge";
-            badge.textContent = stop.badge ?? (stop.kind === "stop" ? String((number += 1)) : "H");
-            const text = document.createElement("span");
-            text.className = "swan-marker-label";
-            text.textContent = stop.label;
-            marker.append(badge, text);
-            marker.setAttribute("aria-label", stop.label);
-            marker.onclick = () => {
-              setActive(stop.id);
-              onSelect?.(stop.id);
-            };
-            markers.current.set(stop.id, marker);
-            new maplibre.Marker({ element: marker, anchor: "left", offset: [-14, 0] }).setLngLat([stop.lng, stop.lat]).addTo(map);
-          });
-          const pitch = reduced || flat ? 0 : 48;
-          const frame = (points: [number, number][], options: { pitch: number; maxZoom: number }) => {
-            const unwrapped = unwrap(points);
-            const bounds = unwrapped.reduce((box, point) => box.extend(point), new maplibre.LngLatBounds(unwrapped[0], unwrapped[0]));
-            map.fitBounds(bounds, { padding: inset, duration: reduced ? 0 : 1200, essential: true, ...options });
-          };
-          if (drawnStops.length > 1) {
-            frame(drawnStops.map((stop) => [stop.lng, stop.lat]), { pitch, maxZoom: 14 });
-          } else if (drawnStops.length === 1) {
-            const target = drawnStops[0];
-            const camera = { center: [target.lng, target.lat] as [number, number], zoom: 13, pitch, padding: inset };
-            if (reduced) map.jumpTo(camera);
-            else map.flyTo({ ...camera, essential: true });
-          } else if (drawnArcs.length) {
-            frame(drawnArcs.flatMap((arc) => [arc.from, arc.to]), { pitch: 0, maxZoom: 6 });
-          }
-        });
-        mapRef.current = map;
-        disconnectObserver = () => observer.disconnect();
-        if (cancelled) disconnectObserver();
-      } catch (err) {
-        if (!cancelled) setFallback(err instanceof Error ? err.message : "The map could not start.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-      disconnectObserver?.();
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, [signature, fallback]);
-
-  useEffect(() => {
-    markers.current.forEach((element, id) => {
-      element.classList.toggle("swan-marker-active", id === highlight);
-    });
-  }, [highlight, signature]);
-
-  const selected = stops.find((stop) => stop.id === active);
-
-  if (fallback) {
-    let number = 0;
-    return (
-      <div className="swan-surface flex h-full min-h-72 flex-col overflow-auto p-5" role="region" aria-label="Route list">
-        <p className="swan-eyebrow">Map view is off</p>
-        <p className="mt-1 text-xl font-semibold tracking-tight">{dayLabel}</p>
-        <p className="swan-muted mt-1 text-sm">{fallback} Here is the route as a list.</p>
-        <ol className="mt-4 space-y-2">
-          {stops.map((stop) => (
-            <li key={stop.id} className="flex items-center gap-3">
-              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.kind === "stop" ? (number += 1) : "H")}</span>
-              <button type="button" className="text-left" onClick={() => { setActive(stop.id); onSelect?.(stop.id); }}>
-                {stop.label}
-              </button>
-            </li>
-          ))}
-        </ol>
-        {selected ? <p className="mt-3 text-sm">{selected.label}</p> : null}
-      </div>
-    );
+  if (isFailure(status)) {
+    return <RouteList dayLabel={dayLabel} failure={status} stops={scene.stops} onPick={(id) => { setSelectedId(id); onSelectRef.current?.(id); }} />;
   }
 
   return (
-    <div className="relative h-full min-h-72">
-      <div ref={host} className="swan-map h-full min-h-72 w-full" aria-label={`Map of ${dayLabel}`} />
-      {showToggle ? (
-        <button type="button" className="swan-chip absolute top-3 right-3 bg-white" aria-pressed={flat} onClick={() => setFlat((value) => !value)}>
-          {flat ? "3D view" : "2D view"}
-        </button>
-      ) : null}
-      {selected ? <p className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1 text-sm text-black shadow">{selected.label}</p> : null}
+    <div className="swan-map swan-light" data-ready={status === "ready" ? "true" : "false"} style={insetVars(chromeInsets(scene.padding))}>
+      <div ref={host} className="swan-map-canvas" role="region" aria-label={`Map of ${dayLabel}`} />
+      <div className="swan-map-bar">
+        <MapCaption dayLabel={dayLabel} selected={scene.selected} onClear={() => setSelectedId(null)} />
+        <MapControls showToggle={showToggle} dimension={dimension} onDimension={setChosen} onZoom={map.zoomBy} onFit={map.refit} />
+      </div>
     </div>
   );
 }
 
-function hasWebGL(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
-  } catch {
-    return false;
-  }
+function useTripMapController(
+  host: React.RefObject<HTMLDivElement | null>,
+  scene: TripScene,
+  handlers: { stopPressed(id: string): void; status(next: "ready" | MapFailure): void },
+): Pick<TripMapController, "refit" | "zoomBy"> {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+  const controllerRef = useRef<TripMapController | null>(null);
+  const api = useRef<Pick<TripMapController, "refit" | "zoomBy">>({
+    refit: () => controllerRef.current?.refit(),
+    zoomBy: (step) => controllerRef.current?.zoomBy(step),
+  });
+
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    const controller = createTripMapController(node, sceneRef.current, {
+      ready() { handlersRef.current.status("ready"); },
+      stopPressed(id) { handlersRef.current.stopPressed(id); },
+      failed(failure) { handlersRef.current.status(failure); },
+    });
+    controllerRef.current = controller;
+    controller.apply(sceneRef.current);
+    return () => {
+      controller.destroy();
+      controllerRef.current = null;
+    };
+  }, [host]);
+
+  useEffect(() => {
+    controllerRef.current?.apply(scene);
+  });
+
+  return api.current;
 }
 
-function addBuildings(map: import("maplibre-gl").Map) {
-  const style = map.getStyle();
-  const source = Object.entries(style.sources).find(([, value]) => value.type === "vector")?.[0];
-  if (!source) return;
-  const firstSymbol = style.layers.find((layer) => layer.type === "symbol")?.id;
-  map.addLayer(
-    {
-      id: "swan-buildings",
-      type: "fill-extrusion",
-      source,
-      "source-layer": "building",
-      minzoom: 13,
-      paint: {
-        "fill-extrusion-color": "#cfcfcf",
-        "fill-extrusion-height": ["coalesce", ["get", "render_height"], 12],
-        "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-        "fill-extrusion-opacity": 0.8,
-      },
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+      query.addEventListener("change", notify);
+      return () => query.removeEventListener("change", notify);
     },
-    firstSymbol,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
   );
 }
 
-function unwrap(points: [number, number][]): [number, number][] {
-  if (!points.length) return points;
-  let previous = points[0][0];
-  return points.map(([lng, lat]) => {
-    let value = lng;
-    while (value - previous > 180) value -= 360;
-    while (previous - value > 180) value += 360;
-    previous = value;
-    return [value, lat];
-  });
+function MapCaption({ dayLabel, selected, onClear }: { dayLabel: string; selected: SceneStop | null; onClear(): void }) {
+  return (
+    <div className="swan-map-slot" data-slot="top-left">
+      <div className="swan-map-float swan-map-caption" aria-live="polite">
+        <p className="swan-eyebrow">{dayLabel}</p>
+        {selected ? (
+          <div className="swan-map-caption-stop">
+            <span className="swan-marker-badge" data-tone={selected.tone} aria-hidden="true">{selected.glyph}</span>
+            <span className="swan-map-caption-label">{selected.label}</span>
+            <button type="button" className="swan-map-clear" aria-label={`Clear ${selected.label}`} onClick={onClear}>✕</button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
-export function greatCircle(from: [number, number], to: [number, number], steps = 64): [number, number][] {
-  const rad = (deg: number) => (deg * Math.PI) / 180;
-  const deg = (value: number) => (value * 180) / Math.PI;
-  const lon1 = rad(from[0]);
-  const lat1 = rad(from[1]);
-  const lon2 = rad(to[0]);
-  const lat2 = rad(to[1]);
-  const d = 2 * Math.asin(Math.sqrt(Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2));
-  if (d < 1e-9) return [from, to];
-  const points: [number, number][] = [];
-  let previous = from[0];
-  for (let step = 0; step <= steps; step += 1) {
-    const t = step / steps;
-    const a = Math.sin((1 - t) * d) / Math.sin(d);
-    const b = Math.sin(t * d) / Math.sin(d);
-    const x = a * Math.cos(lat1) * Math.cos(lon1) + b * Math.cos(lat2) * Math.cos(lon2);
-    const y = a * Math.cos(lat1) * Math.sin(lon1) + b * Math.cos(lat2) * Math.sin(lon2);
-    const z = a * Math.sin(lat1) + b * Math.sin(lat2);
-    let lon = deg(Math.atan2(y, x));
-    while (lon - previous > 180) lon -= 360;
-    while (previous - lon > 180) lon += 360;
-    previous = lon;
-    points.push([lon, deg(Math.atan2(z, Math.sqrt(x * x + y * y)))]);
-  }
-  return points;
+function MapControls({
+  showToggle,
+  dimension,
+  onDimension,
+  onZoom,
+  onFit,
+}: {
+  showToggle: boolean;
+  dimension: Dimension;
+  onDimension(next: Dimension): void;
+  onZoom(step: 1 | -1): void;
+  onFit(): void;
+}) {
+  return (
+    <div className="swan-map-slot" data-slot="top-right">
+      {showToggle ? (
+        <div className="swan-seg swan-map-float" role="radiogroup" aria-label="Map dimension">
+          <button type="button" role="radio" aria-checked={dimension === "2d"} onClick={() => onDimension("2d")}>2D</button>
+          <button type="button" role="radio" aria-checked={dimension === "3d"} onClick={() => onDimension("3d")}>3D</button>
+        </div>
+      ) : null}
+      <div className="swan-map-zoom" role="group" aria-label="Zoom">
+        <button type="button" className="swan-map-btn swan-map-float" aria-label="Zoom out" onClick={() => onZoom(-1)}>−</button>
+        <button type="button" className="swan-map-btn swan-map-float" aria-label="Zoom in" onClick={() => onZoom(1)}>+</button>
+      </div>
+      <button type="button" className="swan-map-btn swan-map-float" aria-label="Fit the trip" onClick={onFit}>
+        <span aria-hidden="true">⤢</span>
+      </button>
+    </div>
+  );
+}
+
+function RouteList({
+  dayLabel,
+  failure,
+  stops,
+  onPick,
+}: {
+  dayLabel: string;
+  failure: MapFailure;
+  stops: readonly SceneStop[];
+  onPick(id: string): void;
+}) {
+  return (
+    <div className="swan-surface flex h-full min-h-72 flex-col overflow-auto p-5" role="region" aria-label="Route list">
+      <p className="swan-eyebrow">Map view is off</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight">{dayLabel}</p>
+      <p className="swan-muted mt-1 text-sm">{FAILURE_COPY[failure]} Here is the route as a list.</p>
+      <ol className="mt-4 space-y-2">
+        {stops.map((stop) => (
+          <li key={stop.id} className="flex items-center gap-3">
+            <span className="swan-marker-badge" data-tone={stop.tone} aria-hidden="true">{stop.glyph}</span>
+            <button type="button" className="text-left" onClick={() => onPick(stop.id)}>{stop.label}</button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function isFailure(status: "loading" | "ready" | MapFailure): status is MapFailure {
+  return status !== "loading" && status !== "ready";
+}
+
+function insetVars(insets: Insets): React.CSSProperties {
+  return {
+    "--swan-map-inset-top": `${insets.top}px`,
+    "--swan-map-inset-right": `${insets.right}px`,
+    "--swan-map-inset-bottom": `${insets.bottom}px`,
+    "--swan-map-inset-left": `${insets.left}px`,
+  } as React.CSSProperties;
 }
