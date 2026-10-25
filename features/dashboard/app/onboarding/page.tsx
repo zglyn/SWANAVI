@@ -99,7 +99,7 @@ export default function OnboardingPage() {
     setBusy(true);
     try {
       await client.putProfile(profile);
-      router.push("/plan/new");
+      router.push("/");
     } finally {
       setBusy(false);
     }
