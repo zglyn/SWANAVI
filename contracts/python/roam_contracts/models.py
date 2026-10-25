@@ -884,6 +884,31 @@ class Proposal(BaseModel):
     suggestions: list[Suggestion]
     totals: PackageTotals
 
+    @classmethod
+    def from_package(cls, trip_id: str, package: TravelPackage) -> Proposal:
+        rows: list[Suggestion] = []
+        for sid, flight in (("sug-out", package.outbound), ("sug-ret", package.return_flight)):
+            if flight is not None:
+                rows.append(Suggestion(
+                    id=sid, kind=SuggestionKind.FLIGHT, item=flight, why=list(flight.why),
+                    alternatives_available=True, required=True,
+                ))
+        for stay in package.hotels:
+            rows.append(Suggestion(
+                id=f"sug-hotel-{stay.offer.id}", kind=SuggestionKind.HOTEL, item=stay, why=list(stay.offer.why),
+                alternatives_available=True, required=True,
+            ))
+        for day in package.itinerary.days:
+            for stop in day.stops:
+                if stop.kind != StopKind.ATTRACTION:
+                    continue
+                rows.append(Suggestion(
+                    id=f"sug-stop-{stop.id}", kind=SuggestionKind.ATTRACTION, item=stop,
+                    why=[stop.attraction.category] if stop.attraction is not None else [],
+                    alternatives_available=True,
+                ))
+        return cls(trip_id=trip_id, package=package, suggestions=rows, totals=package.totals)
+
 
 class SuggestionActionName(str, Enum):
     ACCEPT = "accept"

@@ -39,51 +39,6 @@ def _at(minutes: int) -> datetime:
     return WHEN + timedelta(minutes=minutes)
 
 
-def _suggestions(package: TravelPackage) -> list[Suggestion]:
-    rows: list[Suggestion] = []
-    if package.outbound is not None:
-        rows.append(Suggestion(
-            id="sug-out",
-            kind=SuggestionKind.FLIGHT,
-            item=package.outbound,
-            why=list(package.outbound.why),
-            alternatives_available=True,
-            required=True,
-        ))
-    if package.return_flight is not None:
-        rows.append(Suggestion(
-            id="sug-ret",
-            kind=SuggestionKind.FLIGHT,
-            item=package.return_flight,
-            why=list(package.return_flight.why),
-            alternatives_available=True,
-            required=True,
-        ))
-    for stay in package.hotels:
-        rows.append(Suggestion(
-            id=f"sug-hotel-{stay.offer.id}",
-            kind=SuggestionKind.HOTEL,
-            item=stay,
-            why=list(stay.offer.why),
-            alternatives_available=True,
-            required=True,
-        ))
-    for day in package.itinerary.days:
-        for stop in day.stops:
-            if stop.kind != StopKind.ATTRACTION:
-                continue
-            why = [stop.attraction.category] if stop.attraction is not None else []
-            rows.append(Suggestion(
-                id=f"sug-stop-{stop.id}",
-                kind=SuggestionKind.ATTRACTION,
-                item=stop,
-                why=why,
-                alternatives_available=True,
-                required=False,
-            ))
-    return rows
-
-
 def _proposal(package: TravelPackage, suggestions: list[Suggestion], totals: PackageTotals | None = None) -> Proposal:
     return Proposal(
         trip_id=TRIP_ID,
@@ -206,8 +161,8 @@ def _conversation() -> TripConversation:
 
 def build(out: Path) -> ConversationFixture:
     package = TravelPackage.model_validate(json.loads((out / "package_kyoto.json").read_text()))
-    suggestions = _suggestions(package)
-    base = _proposal(package, suggestions)
+    base = Proposal.from_package(TRIP_ID, package)
+    suggestions = base.suggestions
     accepted = _proposal(package, _replace(suggestions, "sug-out", status=SuggestionStatus.ACCEPTED))
 
     stay = _gion(out)
