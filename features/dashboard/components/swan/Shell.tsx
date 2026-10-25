@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { SwanLogo } from "./Logo";
 
 export function SwanShell({
   children,
@@ -12,42 +12,31 @@ export function SwanShell({
   steps?: number;
   map?: React.ReactNode;
 }) {
+  // Plan screens may still pass a map. The shell stays a black column and does not paint it.
+  void map;
+
   const progress = step && steps ? (
     <div aria-hidden>
-      <div className="h-1 overflow-hidden rounded-full" style={{ background: "var(--swan-line)" }}>
-        <div className="h-full" style={{ width: `${(step / steps) * 100}%`, background: "var(--swan-fg)" }} />
+      <div className="swan-progress">
+        <div style={{ width: `${(step / steps) * 100}%` }} />
       </div>
       <p className="swan-muted mt-2 text-xs">Step {step} of {steps}</p>
     </div>
   ) : null;
 
-  if (map) {
-    return (
-      <main className="swan-app relative min-h-screen" style={{ background: "transparent" }}>
-        <div className="fixed inset-0">{map}</div>
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-3xl flex-col px-4 pb-4">
-          <header className="flex items-center justify-between py-4">
-            <Link href="/" className="swan-sheet rounded-full px-3 py-2"><Logo /></Link>
-            <Link href="/profile" className="swan-sheet swan-muted rounded-full px-3 py-2 text-sm">Profile</Link>
-          </header>
-          <section className="swan-sheet mt-auto rounded-3xl px-4 py-5">
-            {progress}
-            {children}
-          </section>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="swan-app min-h-screen">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-        <Link href="/"><Logo /></Link>
-        <Link href="/profile" className="swan-muted text-sm">Profile</Link>
-      </header>
-      {progress ? <div className="mx-auto max-w-3xl px-4">{progress}</div> : null}
-      <div className="mx-auto max-w-3xl px-4 py-6">{children}</div>
-    </main>
+    <div className="swan-stage">
+      <main className="swan-app swan-column">
+        <header className="flex items-center justify-between px-6 pt-6">
+          <Link href="/">
+            <SwanLogo />
+          </Link>
+          <Link href="/profile" className="swan-muted text-sm">Profile</Link>
+        </header>
+        {progress ? <div className="px-6 pt-4">{progress}</div> : null}
+        <div className="px-6 py-6">{children}</div>
+      </main>
+    </div>
   );
 }
 

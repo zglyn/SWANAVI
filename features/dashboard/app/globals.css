@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Kyoto palette: washi paper, sumi ink, torii vermilion, matcha green, indigo for the agent. */
+/* Kyoto palette stays for the ledger demo. The planner uses the black swan tokens below. */
 @theme {
   --color-paper: #f7f4ee;
   --color-paper-2: #efe9df;
@@ -26,13 +26,16 @@
   --color-night-text: #e6e9ee;
   --color-night-dim: #8b95a3;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
 html { background: var(--color-paper); color: var(--color-ink); }
-body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+body {
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 
 @keyframes slide-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes shake { 0%,100% { transform: none } 20%,60% { transform: translateX(-4px) } 40%,80% { transform: translateX(4px) } }
@@ -41,57 +44,204 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 
 input[type="range"] { accent-color: var(--color-ink); }
 
+.swan-stage {
+  min-height: 100vh;
+  background: #000000;
+}
+
+.swan-column {
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  min-height: 100vh;
+}
+
 .swan-app {
-  --swan-bg: #ffffff;
-  --swan-fg: #111111;
-  --swan-muted: #5c5c5c;
-  --swan-line: #e4e4e4;
-  --swan-surface: #f6f6f6;
+  --swan-bg: #000000;
+  --swan-fg: #ffffff;
+  --swan-muted: rgba(255, 255, 255, 0.62);
+  --swan-line: rgba(255, 255, 255, 0.14);
+  --swan-surface: #0c0c0c;
+  --swan-ease: cubic-bezier(0.22, 1, 0.36, 1);
   background: var(--swan-bg);
   color: var(--swan-fg);
-  font-family: var(--font-sans);
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
 }
-.swan-app h1, .swan-app h2 { font-family: var(--font-serif); letter-spacing: -0.03em; }
-.swan-muted { color: var(--swan-muted); }
-.swan-surface { background: var(--swan-surface); }
-.swan-line { border-color: var(--swan-line); }
+
+.swan-app h1,
+.swan-title {
+  margin: 0;
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: #ffffff;
+}
+
+.swan-app h2 {
+  font-family: system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.swan-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.swan-word {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.swan-muted { color: rgba(255, 255, 255, 0.62); }
+.swan-surface { background: #0c0c0c; }
+.swan-line { border-color: rgba(255, 255, 255, 0.14); }
+
+.swan-app a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .swan-btn {
-  background: var(--swan-fg);
-  color: var(--swan-bg);
-  min-height: 52px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 0 24px;
+  border: 0;
   border-radius: 999px;
-  padding: 0 1.25rem;
-  font-weight: 600;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.swan-btn:disabled { opacity: 0.4; }
+
+.swan-app a.swan-btn,
+.swan-btn {
+  color: #000000;
+  text-decoration: none;
+}
+
+.swan-btn:hover { opacity: 0.92; }
+.swan-btn:disabled { opacity: 0.4; cursor: default; }
+
 .swan-btn-ghost {
-  background: transparent;
-  color: var(--swan-fg);
-  border: 1px solid var(--swan-fg);
-  min-height: 52px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 0 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  padding: 0 1.25rem;
-  font-weight: 600;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.swan-invert { background: var(--swan-fg); color: var(--swan-bg); }
-.swan-chip { border: 1px solid var(--swan-line); border-radius: 999px; padding: 0.4rem 0.8rem; }
-.swan-chip[aria-pressed="true"] { background: var(--swan-fg); color: var(--swan-bg); border-color: var(--swan-fg); }
-.swan-app :focus-visible { outline: 2px solid var(--swan-fg); outline-offset: 2px; }
-.swan-map { filter: grayscale(1) contrast(1.08); }
+
+.swan-btn-ghost:hover { background: rgba(255, 255, 255, 0.06); }
+.swan-btn-ghost:disabled { opacity: 0.4; cursor: default; }
+
+.swan-chip {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 500;
+  transition: background-color 280ms cubic-bezier(0.22, 1, 0.36, 1), color 280ms cubic-bezier(0.22, 1, 0.36, 1), border-color 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swan-chip[aria-pressed="true"] {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.swan-app button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.swan-app button[aria-pressed="true"] .swan-muted {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.swan-app button[aria-pressed="true"] .swan-chip {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.swan-app button.swan-line,
+.swan-app li.swan-line {
+  background: #0c0c0c;
+}
+
+.swan-app input,
+.swan-app textarea,
+.swan-app select {
+  background: #0c0c0c;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+}
+
+.swan-app input::placeholder,
+.swan-app textarea::placeholder {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.swan-app input[type="range"] { accent-color: #ffffff; }
+
+.swan-app :focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.swan-app ::selection {
+  background: #ffffff;
+  color: #000000;
+}
+
+.swan-progress {
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.swan-progress > div {
+  height: 100%;
+  background: #ffffff;
+  transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .swan-sheet {
-  background: var(--swan-bg);
-  border-top: 1px solid var(--swan-line);
+  background: #0c0c0c;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
-@media (prefers-color-scheme: dark) {
-  .swan-app {
-    --swan-bg: #0e0e0e;
-    --swan-fg: #f5f5f5;
-    --swan-muted: #b5b5b5;
-    --swan-line: #2a2a2a;
-    --swan-surface: #171717;
-  }
-  .swan-map { filter: grayscale(1) invert(1) contrast(1.08); }
-}
+
+.swan-map { filter: grayscale(1) contrast(1.05); }
+
 @media (prefers-reduced-motion: reduce) {
   .swan-app *, .swan-map * { animation: none !important; transition: none !important; }
 }
