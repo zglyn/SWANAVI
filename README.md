@@ -1,4 +1,4 @@
-# Roam402
+# Swanavi
 
 AI travel agent that books local merchants directly over MCP + `x402`, with XRPL multi-sig guardrails, credentials, atomic `Batch` checkout and escrows.
 
