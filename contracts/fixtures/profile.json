@@ -1,0 +1,79 @@
+{
+  "user_id": "demo",
+  "name": "Maya Chen",
+  "home": {
+    "address": "1 Market Street, San Francisco, CA",
+    "location": {
+      "lat": 37.7936,
+      "lng": -122.3946
+    },
+    "airport_codes": [
+      "SFO",
+      "OAK",
+      "SJC"
+    ]
+  },
+  "currency": "USD",
+  "travel": {
+    "interests": [
+      "temples",
+      "food"
+    ],
+    "pace": "balanced",
+    "budget_level": "mid",
+    "preferred_modes": [
+      "walk",
+      "transit"
+    ],
+    "dietary": [],
+    "accessibility": [],
+    "avoid": [
+      "crowds"
+    ]
+  },
+  "sleep": {
+    "wake_time": "07:30",
+    "sleep_time": "23:00",
+    "jet_lag_buffer": true
+  },
+  "hotels": {
+    "favourite_brands": [
+      "Hyatt"
+    ],
+    "min_stars": 3.0,
+    "must_have": [
+      "wifi",
+      "breakfast"
+    ],
+    "room_type": null,
+    "loyalty": [
+      {
+        "program": "World of Hyatt",
+        "number": "HH123456"
+      }
+    ]
+  },
+  "flights": {
+    "favourite_airlines": [
+      "JL"
+    ],
+    "alliances": [
+      "oneworld"
+    ],
+    "cabin": "economy",
+    "max_stops": 1,
+    "seat": "window",
+    "loyalty": [
+      {
+        "program": "JAL Mileage Bank",
+        "number": "JL998877"
+      }
+    ],
+    "avoid_red_eye": true
+  },
+  "autonomy": {
+    "attractions": "swan_decides",
+    "hotels": "swan_decides",
+    "flights": "swan_decides"
+  }
+}

@@ -10,6 +10,7 @@ from roam_contracts.models import (
     Candidate,
     CandidateKind,
     CandidateSet,
+    GeoPoint,
     Itinerary,
     ItineraryDay,
     Leg,
@@ -17,6 +18,7 @@ from roam_contracts.models import (
     PlanRevision,
     PlanSelection,
     RevisionAction,
+    SegmentStatus,
     Stop,
     StopKind,
     StopStatus,
@@ -24,12 +26,26 @@ from roam_contracts.models import (
     TripBrief,
 )
 from roam_agent.validate import validate_itinerary
+from roam_contracts.geo import haversine_km
 from roam_tools.attractions import search_attractions
-from roam_tools.routing import optimize_route
+from roam_tools.routing import get_travel_matrix, optimize_route
 from roam_tools.transport import arrival_transfer_minutes, get_transport_profile
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "contracts" / "fixtures"
+DEPLANE_MIN = 20
+
+
+def flight_warnings(brief: TripBrief) -> list[str]:
+    notes: list[str] = []
+    for label, segment in (("Arrival", brief.arrival), ("Departure", brief.departure)):
+        if segment is None:
+            continue
+        if segment.status == SegmentStatus.UNVERIFIED:
+            notes.append(f"Unverified flight times for {segment.number or label}.")
+        if segment.status == SegmentStatus.DELAYED and label == "Arrival":
+            notes.append(f"Arrival {segment.number or ''} is delayed. Day 1 uses the revised time.".strip())
+    return notes
 
 
 def _emit(emit, plan_id: str, tool: str, summary: str) -> None:
@@ -79,11 +95,75 @@ def _stop_from(candidate: Candidate, start: datetime, required: bool) -> Stop:
     )
 
 
+def arrival_lodging(brief: TripBrief, at_hotel: datetime) -> Stop:
+    lodging = brief.lodging[0]
+    check_in = lodging.check_in
+    if at_hotel + timedelta(hours=2) < check_in:
+        title = f"Drop bags at {lodging.name}"
+        start = at_hotel
+    else:
+        title = f"Check in at {lodging.name}"
+        start = max(check_in, at_hotel)
+    return Stop(
+        id="check-in", kind=StopKind.LODGING, start=start, end=start + timedelta(minutes=20),
+        location=lodging.location, title=title,
+    )
+
+
+def travel_between(origin: GeoPoint, dest: GeoPoint, modes: list[TravelMode]) -> Leg:
+    names = [item.value for item in modes] or [TravelMode.WALK.value]
+    matrix = get_travel_matrix(
+        [{"id": "a", "lat": origin.lat, "lng": origin.lng}, {"id": "b", "lat": dest.lat, "lng": dest.lng}],
+        names,
+    )
+    cells = {mode: matrix[mode]["a"]["b"] for mode in names}
+    walk = cells.get(TravelMode.WALK.value)
+    if walk is not None and walk["minutes"] <= 25:
+        chosen = TravelMode.WALK.value
+    else:
+        chosen = min(cells, key=lambda mode: cells[mode]["minutes"])
+    cell = cells[chosen]
+    return Leg(
+        from_stop_id="a", to_stop_id="b", mode=TravelMode(chosen),
+        minutes=max(1, int(cell["minutes"])), distance_km=float(cell["distance_km"]), source=LegSource(cell["source"]),
+    )
+
+
+def build_legs(stops: list[Stop], modes: list[TravelMode], transfer: int) -> list[Leg]:
+    legs: list[Leg] = []
+    for left, right in zip(stops, stops[1:]):
+        if left.kind == StopKind.ARRIVAL or right.kind == StopKind.DEPARTURE:
+            distance = round(haversine_km(left.location.lat, left.location.lng, right.location.lat, right.location.lng), 1)
+            legs.append(Leg(
+                from_stop_id=left.id, to_stop_id=right.id, mode=TravelMode.TRANSIT,
+                minutes=transfer, distance_km=distance, source=LegSource.ESTIMATE,
+            ))
+            continue
+        leg = travel_between(left.location, right.location, modes)
+        legs.append(leg.model_copy(update={"from_stop_id": left.id, "to_stop_id": right.id}))
+    return legs
+
+
+def schedule_stops(stops: list[Stop], origin: GeoPoint | None, clock: datetime, modes: list[TravelMode]) -> list[Stop]:
+    placed: list[Stop] = []
+    previous = origin
+    for stop in stops:
+        if previous is not None:
+            clock = clock + timedelta(minutes=travel_between(previous, stop.location, modes).minutes)
+        duration = stop.end - stop.start
+        moved = stop.model_copy(update={"start": clock, "end": clock + duration})
+        placed.append(moved)
+        clock = moved.end + timedelta(minutes=10)
+        previous = moved.location
+    return placed
+
+
 def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, emit=None, plan_id: str = "plan") -> Itinerary:
     if os.environ.get("ROAM_SCRIPTED_AGENT") == "1":
         payload = json.loads((FIXTURES / "itinerary_kyoto.json").read_text())
         built = Itinerary.model_validate(payload)
         built.selection = selection
+        built.warnings = [*built.warnings, *flight_warnings(brief)]
         return built
     by_id = _candidate_map(candidates)
     profile = get_transport_profile(brief.destination)
@@ -95,6 +175,7 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
         if item in by_id and item not in chosen_ids:
             chosen_ids.append(item)
     warnings: list[str] = []
+    warnings.extend(flight_warnings(brief))
     if profile.source == "llm":
         warnings.append(f"Getting around {brief.destination} is unverified.")
     missing = [item for item in selection.must_visit if item not in by_id]
@@ -110,8 +191,12 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
     cursor_date = start_day.date()
     pool = list(chosen_ids)
     while cursor_date <= end_day.date():
+        hotel_stop: Stop | None = None
         if cursor_date == start_day.date() and brief.arrival is not None:
             window_start = brief.arrival.arrive_at + timedelta(minutes=transfer + 30)
+            if hotel is not None:
+                hotel_stop = arrival_lodging(brief, brief.arrival.arrive_at + timedelta(minutes=DEPLANE_MIN + transfer))
+                window_start = hotel_stop.end + timedelta(minutes=15)
         else:
             window_start = datetime.fromisoformat(f"{cursor_date.isoformat()}T{brief.daily_start}:00").replace(tzinfo=start_day.tzinfo)
         if cursor_date == end_day.date() and brief.departure is not None:
@@ -142,22 +227,20 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
             hub = brief.arrival.to_place.location
             stops.append(Stop(
                 id="arrival", kind=StopKind.ARRIVAL, start=brief.arrival.arrive_at,
-                end=brief.arrival.arrive_at + timedelta(minutes=20),
+                end=brief.arrival.arrive_at + timedelta(minutes=DEPLANE_MIN),
                 location=hub or hotel, title=f"Arrive {brief.arrival.number or ''} at {brief.arrival.to_place.name}".strip(),
             ))
-        if hotel is not None and cursor_date == start_day.date():
-            check = brief.lodging[0].check_in
-            stops.append(Stop(
-                id="check-in", kind=StopKind.LODGING, start=check, end=check + timedelta(minutes=20),
-                location=hotel, title=f"Check in at {brief.lodging[0].name}",
-            ))
-        clock = window_start
-        for cid in order:
-            stop = _stop_from(by_id[cid], clock, cid in selection.must_visit)
-            if stop.end > window_end and cid in selection.must_visit:
-                warnings.append(f"{cid} doesn't fit; add a day")
+        if hotel_stop is not None:
+            stops.append(hotel_stop)
+        day_start = hotel_stop.location if hotel_stop is not None else hotel
+        visits = schedule_stops(
+            [_stop_from(by_id[cid], window_start, cid in selection.must_visit) for cid in order],
+            day_start, window_start, brief.preferred_modes,
+        )
+        for stop in visits:
+            if stop.end > window_end and stop.id in selection.must_visit:
+                warnings.append(f"{stop.id} doesn't fit; add a day")
             stops.append(stop)
-            clock = stop.end + timedelta(minutes=15)
         if cursor_date == end_day.date() and brief.departure is not None and hotel is not None:
             checkout = brief.lodging[0].check_out
             hub = brief.departure.from_place.location or hotel
@@ -170,14 +253,8 @@ def plan(brief: TripBrief, selection: PlanSelection, candidates: CandidateSet, e
                 end=brief.departure.depart_at + timedelta(minutes=20),
                 location=hub, title=f"Depart {brief.departure.number or ''} from {brief.departure.from_place.name}".strip(),
             ))
-        legs = []
-        for left, right in zip(stops, stops[1:]):
-            legs.append(Leg(
-                from_stop_id=left.id, to_stop_id=right.id, mode=mode,
-                minutes=max(1, int((right.start - left.end).total_seconds() // 60) or 10),
-                distance_km=1.0, source=LegSource.ESTIMATE,
-            ))
-        days.append(ItineraryDay(date=cursor_date.isoformat(), stops=stops, legs=legs))
+        stops.sort(key=lambda item: item.start)
+        days.append(ItineraryDay(date=cursor_date.isoformat(), stops=stops, legs=build_legs(stops, brief.preferred_modes, transfer)))
         cursor_date = cursor_date + timedelta(days=1)
     bookable = Decimal("0")
     for day in days:

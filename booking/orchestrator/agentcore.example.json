@@ -1,0 +1,25 @@
+{
+  "name": "TripBooking",
+  "version": 1,
+  "runtimes": [
+    {
+      "name": "agent",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/agent/",
+      "runtimeVersion": "PYTHON_3_12",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    }
+  ],
+  "memories": [
+    {
+      "name": "BookingMemory",
+      "eventExpiryDuration": 30,
+      "strategies": []
+    }
+  ],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": []
+}

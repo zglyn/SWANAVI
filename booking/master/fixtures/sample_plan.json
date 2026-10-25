@@ -1,0 +1,42 @@
+{
+  "tripId": "sample-kyoto",
+  "travelers": [
+    {"id": "t1", "name": "Sample Traveler"}
+  ],
+  "destination": {"city": "Kyoto", "country": "JP"},
+  "dates": {"start": "2026-11-02", "end": "2026-11-06"},
+  "flights": [
+    {
+      "segmentId": "flight-1",
+      "kind": "flight",
+      "from": "SFO",
+      "to": "KIX",
+      "departDate": "2026-11-02",
+      "returnDate": "2026-11-06",
+      "cabin": "economy",
+      "travelerIds": ["t1"]
+    }
+  ],
+  "hotels": [
+    {
+      "segmentId": "hotel-1",
+      "kind": "hotel",
+      "city": "Kyoto",
+      "checkIn": "2026-11-02",
+      "checkOut": "2026-11-06",
+      "rooms": 1,
+      "guests": 1
+    }
+  ],
+  "attractions": [
+    {
+      "segmentId": "attraction-1",
+      "kind": "attraction",
+      "name": "Sample temple visit",
+      "city": "Kyoto",
+      "date": "2026-11-03",
+      "partySize": 1,
+      "time": "09:00"
+    }
+  ]
+}

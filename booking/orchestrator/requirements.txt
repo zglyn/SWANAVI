@@ -1,0 +1,2 @@
+bedrock-agentcore>=1.23.1
+pydantic>=2

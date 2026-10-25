@@ -23,7 +23,8 @@
       "depart_at": "2026-11-14T09:20:00+09:00",
       "arrive_at": "2026-11-14T10:35:00+09:00",
       "status": "scheduled",
-      "source": "fixture"
+      "source": "fixture",
+      "terminal": null
     },
     "departure": {
       "mode": "flight",
@@ -45,7 +46,8 @@
       "depart_at": "2026-11-16T18:20:00+09:00",
       "arrive_at": "2026-11-16T19:35:00+09:00",
       "status": "scheduled",
-      "source": "fixture"
+      "source": "fixture",
+      "terminal": null
     },
     "lodging": [
       {

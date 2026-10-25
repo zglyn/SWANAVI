@@ -6,10 +6,10 @@ import type { SignerState } from "@/lib/useDemo";
 
 const LEVEL: Record<string, { dot: string; text: string }> = {
   info: { dot: "bg-night-dim", text: "text-night-text" },
-  success: { dot: "bg-[#6fcf6a]", text: "text-night-text" },
-  warning: { dot: "bg-[#f0b44c]", text: "text-[#f6d394]" },
-  blocked: { dot: "bg-torii", text: "text-[#ff8a73]" },
-  error: { dot: "bg-torii", text: "text-[#ff8a73]" },
+  success: { dot: "bg-night-text", text: "text-night-text" },
+  warning: { dot: "bg-night-dim", text: "text-night-text" },
+  blocked: { dot: "bg-white", text: "text-white font-semibold" },
+  error: { dot: "bg-white", text: "text-white font-semibold" },
 };
 
 const SOURCE_ICON: Record<string, string> = { agent: "🤖", merchant: "🏮", guardrail: "🛡", ledger: "⛓", system: "☁" };
@@ -50,9 +50,9 @@ function SignerStatus({ signers }: { signers: { agent: SignerState; guardrail: S
   ];
   const glyph: Record<SignerState, { g: string; cls: string }> = {
     idle: { g: "○", cls: "text-night-dim border-night-line" },
-    pending: { g: "…", cls: "text-[#f6d394] border-[#f0b44c]/40" },
-    signed: { g: "✓", cls: "text-[#9be696] border-[#6fcf6a]/40 bg-[#6fcf6a]/10" },
-    refused: { g: "✕", cls: "text-[#ff8a73] border-torii/60 bg-torii/15" },
+    pending: { g: "…", cls: "text-night-dim border-night-line" },
+    signed: { g: "✓", cls: "text-night-text border-night-text/40 bg-white/10" },
+    refused: { g: "✕", cls: "text-white border-white/60 bg-white/10" },
   };
   return (
     <div className="grid grid-cols-3 gap-2 border-b border-night-line px-4 py-3">
@@ -85,7 +85,7 @@ function EventRow({ event: e }: { event: InspectorEvent }) {
             href={e.explorer_url ?? "#"}
             target="_blank"
             rel="noreferrer"
-            className="mt-1 inline-block font-mono text-xs text-[#8fb0ff] hover:underline"
+            className="mt-1 inline-block font-mono text-xs text-night-text underline"
           >
             tx {short(e.tx_hash)} ↗
           </a>
@@ -98,8 +98,8 @@ function EventRow({ event: e }: { event: InspectorEvent }) {
 function BlockedEvent({ event: e }: { event: InspectorEvent }) {
   const decision = (e.data as { decision?: PolicyDecision }).decision;
   return (
-    <li className="animate-slide-in rounded-xl border-2 border-torii bg-torii/15 p-4">
-      <div className="flex items-baseline justify-between font-mono text-[11px] text-[#ff8a73]">
+    <li className="animate-slide-in rounded-xl border-2 border-white bg-white/10 p-4">
+      <div className="flex items-baseline justify-between font-mono text-[11px] text-white">
         <span>🛡 {e.type}</span>
         <span>{clock(e.ts)}</span>
       </div>
@@ -108,7 +108,7 @@ function BlockedEvent({ event: e }: { event: InspectorEvent }) {
         <ul className="mt-3 space-y-1.5">
           {decision.violations.map((v, i) => (
             <li key={i} className="rounded-lg bg-night/60 px-3 py-2 text-sm">
-              <span className="font-mono text-xs text-[#ff8a73]">{v.rule}</span>
+              <span className="font-mono text-xs text-white">{v.rule}</span>
               <div className="text-night-text">{v.detail}</div>
               {(v.expected || v.actual) && (
                 <div className="font-mono text-xs text-night-dim">

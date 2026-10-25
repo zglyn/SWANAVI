@@ -1,4 +1,9 @@
-"""Book one attraction segment from a finished trip plan."""
+"""Book one attraction segment from a finished trip plan.
+
+The AgentCore runtime invokes ``book_attraction``, which calls ``book``.
+Sandbox is the default. ``ROAM_ATTRACTION_PROVIDER=live`` selects Amadeus
+Tours and Activities on the test host.
+"""
 
 from __future__ import annotations
 
@@ -41,9 +46,9 @@ def _select_provider():
 
         return SandboxAttractionProvider()
     if mode == "live":
-        from .live import LiveAttractionAdapter
+        from .live import AmadeusToursActivitiesClient
 
-        return LiveAttractionAdapter()
+        return AmadeusToursActivitiesClient()
     raise AttractionProviderError(f"unknown attraction provider: {mode}")
 
 
