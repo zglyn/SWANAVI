@@ -539,6 +539,7 @@ input[type="range"] { accent-color: var(--swan-lake); }
 }
 
 .home-chip:focus-visible { outline: 2px solid var(--swan-lake); outline-offset: 2px; }
+.home-chip[aria-pressed="true"] { background: var(--swan-lake); color: var(--swan-surface); }
 
 .trip-land {
   min-height: 100vh;
@@ -562,4 +563,90 @@ input[type="range"] { accent-color: var(--swan-lake); }
 
 @media (prefers-reduced-motion: reduce) {
   .home-prompt.is-leaving { transform: none; }
+}
+
+.convo {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--swan-feather);
+  color: var(--swan-lake);
+}
+
+.convo-brief {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 16px 12px;
+}
+
+.convo-fact {
+  flex: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--swan-surface);
+  border: 1px solid var(--swan-line);
+  color: var(--swan-lake-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.convo-fact.is-known { color: var(--swan-lake); background: var(--swan-mist); }
+
+.convo-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.convo-column {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 8px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+}
+
+.convo-msg {
+  margin: 0;
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--swan-surface);
+  border: 1px solid var(--swan-line);
+}
+
+.convo-msg.is-user { align-self: flex-end; background: var(--swan-mist); }
+.convo-msg p { margin: 0; }
+.convo-status { color: var(--swan-lake-2); }
+.convo-controls { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.convo-slider { display: flex; flex-direction: column; gap: 8px; color: var(--swan-lake); }
+.convo-plan { align-self: flex-end; }
+.convo-progress { display: flex; flex-direction: column; gap: 6px; }
+.convo-progress .is-current { color: var(--swan-beak); font-weight: 600; }
+
+.convo-map {
+  height: 30vh;
+  min-height: 180px;
+  margin: 0 16px 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--swan-line);
+}
+
+.convo-map .swan-map,
+.convo-map > div { height: 100%; }
+
+@media (min-width: 900px) {
+  .convo-stage.is-planning { flex-direction: row-reverse; }
+  .convo-map { width: 42%; height: auto; margin: 0 16px 0 0; }
+  .convo-column { flex: 1; }
 }
