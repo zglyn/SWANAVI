@@ -6,7 +6,7 @@ from nacl.signing import VerifyKey
 
 from roam_contracts.models import GeoPoint
 from roam_contracts.signing import quote_signing_bytes
-from roam_merchants.directory import PUBLIC_KEY, Directory
+from roam_merchants.directory import Directory
 
 JST = timezone(timedelta(hours=9))
 ROOT = Path(__file__).resolve().parents[3]
@@ -33,7 +33,10 @@ def test_get_quote_signature_verifies():
     directory = Directory()
     quote = directory.quotes[0]
     signed = directory.get_quote(quote.merchant_id, quote.sku, quote.slot_start)
-    VerifyKey(bytes.fromhex(PUBLIC_KEY)).verify(quote_signing_bytes(signed), bytes.fromhex(signed.merchant_signature))
+    merchant = next(row for row in directory.merchants if row.merchant_id == quote.merchant_id)
+    VerifyKey(bytes.fromhex(merchant.pubkey_ed25519)).verify(
+        quote_signing_bytes(signed), bytes.fromhex(signed.merchant_signature)
+    )
 
 
 def test_search_catalog_includes_the_trap_copy():

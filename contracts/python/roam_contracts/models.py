@@ -95,6 +95,7 @@ class Booking(BaseModel):
     sku: str
     status: Literal["confirmed", "cancelled"]
     confirmation_code: str
+    settlement: Literal["sandbox"] | None = None
 
 
 # --- guardrail -------------------------------------------------------------

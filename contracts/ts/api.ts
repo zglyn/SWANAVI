@@ -90,6 +90,7 @@ export interface Booking {
   sku: string;
   status: "confirmed" | "cancelled";
   confirmation_code: string;
+  settlement?: "sandbox";
 }
 
 export interface CheckoutResult {
