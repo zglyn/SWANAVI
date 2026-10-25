@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Swan",
-  description: "Swan plans the trip. A cryptographic leash settles the local bookings on the XRP Ledger.",
+  title: "Swanavi",
+  description: "Swanavi plans the trip. A cryptographic leash settles the local bookings on the XRP Ledger.",
   manifest: "/manifest.webmanifest",
   icons: { icon: ["/icon.svg", "/favicon.ico"], apple: "/icon-192.png" },
 };

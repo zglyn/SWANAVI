@@ -61,7 +61,7 @@ export default function Landing() {
             An AI travel agent on a <em className="text-torii not-italic">cryptographic leash</em>.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">
-            Swan books small local businesses directly over MCP and x402, and settles on the XRP Ledger. Shops skip the
+            Swanavi books small local businesses directly over MCP and x402, and settles on the XRP Ledger. Shops skip the
             25% aggregator cut and pass up to 15% back to you. The AI can't spend outside your rules.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -138,7 +138,7 @@ export default function Landing() {
               <tr>
                 <th className="px-5 py-3 font-medium">Booking</th>
                 <th className="px-5 py-3 font-medium">Via aggregator</th>
-                <th className="px-5 py-3 font-medium">Via Swan</th>
+                <th className="px-5 py-3 font-medium">Via Swanavi</th>
               </tr>
             </thead>
             <tbody>

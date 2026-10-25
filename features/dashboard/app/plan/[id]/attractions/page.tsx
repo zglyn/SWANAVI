@@ -32,7 +32,7 @@ export default function AttractionsPage() {
     return (
       <SwanShell>
         <h1 className="text-5xl">Attractions</h1>
-        <button type="button" className="swan-btn mt-6 w-full" onClick={() => send({ mode: "swan_decides", picks: [], amounts: [], daily_density: density, must_visit: [], maybe: [], excluded: [] })}>Let Swan decide</button>
+        <button type="button" className="swan-btn mt-6 w-full" onClick={() => send({ mode: "swan_decides", picks: [], amounts: [], daily_density: density, must_visit: [], maybe: [], excluded: [] })}>Let Swanavi decide</button>
         <button type="button" className="swan-btn-ghost mt-3 w-full" onClick={() => setMode("choose")}>I&apos;ll choose</button>
       </SwanShell>
     );
@@ -41,7 +41,7 @@ export default function AttractionsPage() {
   return (
     <SwanShell>
       <h1 className="text-4xl">What do you want?</h1>
-      <p className="mt-3" aria-live="polite">{musts} must-sees picked · Swan will fill the rest, heavy on food.</p>
+      <p className="mt-3" aria-live="polite">{musts} must-sees picked · Swanavi will fill the rest, heavy on food.</p>
       <div className="mt-4 space-y-3">
         {categories.map((category) => (
           <label key={category} className="block">

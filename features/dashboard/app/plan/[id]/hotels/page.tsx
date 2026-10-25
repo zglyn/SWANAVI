@@ -44,7 +44,7 @@ export default function HotelsPage() {
       <div className={`mb-4 h-72 ${showMap ? "block" : "hidden"} lg:block`}>
         <TripMap stops={stops} arcs={[]} focus={Math.max(0, hotels.findIndex((item) => item.id === picked))} dayLabel="Hotels" />
       </div>
-      <button type="button" className="swan-btn-ghost mb-4" onClick={() => save(true)}>Let Swan handle it</button>
+      <button type="button" className="swan-btn-ghost mb-4" onClick={() => save(true)}>Let Swanavi handle it</button>
       <ul className="space-y-3">
         {hotels.map((hotel, index) => (
           <li key={hotel.id}>
@@ -54,7 +54,7 @@ export default function HotelsPage() {
               <p className="swan-muted text-sm">{hotel.brand || "Independent"} · {hotel.stars ?? "–"} stars · {hotel.avg_travel_min_to_attractions} min average · {hotel.total} {hotel.currency}</p>
               <p className="mt-1 text-sm">{hotel.why.join(" · ")}</p>
               {hotel.source === "merchant_mcp" && hotel.quote?.viator_price && (
-                <p className="mt-2 text-sm font-medium">Swan merchant: pay with wallet, save {Number(hotel.quote.viator_price) - Number(hotel.quote.amount)} {hotel.quote.currency}</p>
+                <p className="mt-2 text-sm font-medium">Swanavi merchant: pay with wallet, save {Number(hotel.quote.viator_price) - Number(hotel.quote.amount)} {hotel.quote.currency}</p>
               )}
               {hotel.refundable && <p className="text-sm">Refundable</p>}
             </button>

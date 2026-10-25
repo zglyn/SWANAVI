@@ -182,14 +182,14 @@ export default function OnboardingPage() {
       )}
       {step === 7 && (
         <section>
-          <h1 className="text-4xl">How much should Swan handle?</h1>
+          <h1 className="text-4xl">How much should Swanavi handle?</h1>
           {(["attractions", "hotels", "flights"] as const).map((key) => (
             <div key={key} className="mt-4">
               <p className="capitalize">{key}</p>
               <div className="mt-2 flex gap-2">
                 {(["swan_decides", "i_choose"] as Autonomy[]).map((item) => (
                   <button key={item} type="button" className="swan-chip" aria-pressed={profile.autonomy[key] === item} onClick={() => setProfile({ ...profile, autonomy: { ...profile.autonomy, [key]: item } })}>
-                    {item === "swan_decides" ? "Swan decides" : "I choose"}
+                    {item === "swan_decides" ? "Swanavi decides" : "I choose"}
                   </button>
                 ))}
               </div>

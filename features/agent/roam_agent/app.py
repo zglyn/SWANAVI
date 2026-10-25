@@ -24,7 +24,7 @@ from roam_agent.store import MemoryPlanStore, PlanRecord
 from roam_agent.swan_http import router as swan_router
 from roam_tools.flights import lookup_flight
 
-app = FastAPI(title="Roam402 gateway")
+app = FastAPI(title="Swanavi gateway")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

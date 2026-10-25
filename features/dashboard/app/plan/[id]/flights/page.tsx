@@ -63,7 +63,7 @@ export default function FlightsPage() {
       <div className={`${showMap ? "block" : "hidden"} mb-4 h-64 lg:hidden`}>
         <TripMap stops={[]} arcs={arc} focus={0} dayLabel="Flight" />
       </div>
-      <button type="button" className="swan-btn-ghost mb-4" onClick={() => save(true)}>Let Swan handle it</button>
+      <button type="button" className="swan-btn-ghost mb-4" onClick={() => save(true)}>Let Swanavi handle it</button>
       <div className="mb-3 flex gap-2">
         <button type="button" className="swan-chip" aria-pressed={stops === "any"} onClick={() => setStops("any")}>Any stops</button>
         <button type="button" className="swan-chip" aria-pressed={stops === "0"} onClick={() => setStops("0")}>Nonstop</button>

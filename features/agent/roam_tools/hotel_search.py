@@ -131,7 +131,7 @@ def rank_hotels(
             why.append("refundable")
         if hotel.source == HotelSource.MERCHANT:
             score += 6
-            why.append("Swan merchant: pay with your wallet")
+            why.append("Swanavi merchant: pay with your wallet")
             if hotel.quote and hotel.quote.viator_price:
                 saved = float(hotel.quote.viator_price - hotel.quote.amount)
                 why.append(f"save {saved:.0f} {hotel.quote.currency} vs the aggregator")

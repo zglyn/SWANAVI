@@ -30,7 +30,7 @@ export default function ProfilePage() {
     return (
       <SwanShell>
         <h1 className="text-4xl">No profile yet</h1>
-        <Link href="/onboarding" className="swan-btn mt-6 inline-flex items-center">Set up Swan</Link>
+        <Link href="/onboarding" className="swan-btn mt-6 inline-flex items-center">Set up Swanavi</Link>
       </SwanShell>
     );
   }

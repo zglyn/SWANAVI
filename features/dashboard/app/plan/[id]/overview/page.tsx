@@ -68,7 +68,7 @@ export default function OverviewPage() {
         <h1 className="mt-4 text-4xl">{pack.itinerary.brief.destination}</h1>
         <p className="swan-muted mt-1">{pack.itinerary.brief.start_date?.slice(0, 10)} – {pack.itinerary.brief.end_date?.slice(0, 10)}</p>
         <p className="mt-3 font-mono text-3xl">{pack.totals.total} {pack.totals.currency}</p>
-        {Number(pack.totals.savings) > 0 && <p className="text-sm">Save {pack.totals.savings} on Swan merchants versus the aggregator price.</p>}
+        {Number(pack.totals.savings) > 0 && <p className="text-sm">Save {pack.totals.savings} on Swanavi merchants versus the aggregator price.</p>}
         <article className="mt-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl">Flights</h2>
@@ -104,11 +104,11 @@ export default function OverviewPage() {
           ))}
         </ol>
         <details className="mt-4">
-          <summary>Why Swan chose this</summary>
+          <summary>Why Swanavi chose this</summary>
           <ul className="mt-2 space-y-1 text-sm">{pack.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
         </details>
-        <button type="button" className="swan-btn mt-6 w-full" onClick={book}>Book Swan merchants</button>
-        <p className="swan-muted mt-2 text-sm">Flights and chain hotels open the provider. Wallet checkout only includes Swan merchants.</p>
+        <button type="button" className="swan-btn mt-6 w-full" onClick={book}>Book Swanavi merchants</button>
+        <p className="swan-muted mt-2 text-sm">Flights and chain hotels open the provider. Wallet checkout only includes Swanavi merchants.</p>
       </section>
     </main>
   );

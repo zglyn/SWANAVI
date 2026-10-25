@@ -169,7 +169,7 @@ export const swanMock = {
   },
   async getPackage(id: string) {
     const trip = readTrips()[id];
-    if (!trip?.package) throw new Error("Swan is still planning this trip.");
+    if (!trip?.package) throw new Error("Swanavi is still planning this trip.");
     return trip.package;
   },
 };
