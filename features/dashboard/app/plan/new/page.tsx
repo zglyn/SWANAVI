@@ -3,10 +3,22 @@
 import type { Autonomy, TimeOfDayWindow, TripRequest, UserProfile } from "@contracts/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { SwanShell, planningPath } from "@/components/swan/Shell";
+import {
+  ChoiceField,
+  ChoiceFlow,
+  ChoiceNote,
+  ChoicePill,
+  ChoicePills,
+  ChoiceRow,
+  ChoiceSection,
+  ChoiceStack,
+  ChoiceSub,
+  ChoiceSummary,
+} from "@/components/choice/ChoiceFlow";
+import { planningPath } from "@/components/swan/Shell";
 import { getClient } from "@/lib/client";
 import { formatDateRange, formatMoney, nightsBetween } from "@/lib/format";
-import { DESTINATIONS, lookupPlace, matchCity } from "@/lib/places";
+import { DESTINATIONS, lookupPlace } from "@/lib/places";
 
 const WINDOWS: TimeOfDayWindow[] = ["early_morning", "morning", "afternoon", "evening", "red_eye", "any"];
 const WINDOW_LABEL: Record<TimeOfDayWindow, string> = {
@@ -75,74 +87,84 @@ function Planner() {
     }
   }
 
-  if (!draft) return <SwanShell><p>Loading your profile…</p></SwanShell>;
+  if (!draft) {
+    return (
+      <ChoiceFlow title="Where to?">
+        <ChoiceNote>Loading your profile…</ChoiceNote>
+      </ChoiceFlow>
+    );
+  }
+
   const windows = WINDOWS.filter((item) => item !== "red_eye" || !profile?.flights.avoid_red_eye);
   const matches = DESTINATIONS.filter((city) => city.label.toLowerCase().includes(query.toLowerCase()));
   const originLabel = draft.origin.from_home
     ? `Home · ${(profile?.home.airport_codes ?? draft.origin.airport_codes).join(" · ")}`
     : `${draft.origin.place ?? ""} · ${draft.origin.airport_codes.join(" · ")}`;
   const nights = nightsBetween(draft.start_date, draft.end_date);
-
-  const summary = (
-    <div>
-      <p className="swan-eyebrow">Your trip so far</p>
-      <dl className="mt-3 space-y-3 text-sm">
-        <Row label="Where" value={draft.destination} />
-        <Row label="From" value={originLabel} />
-        <Row label="When" value={`${formatDateRange(draft.start_date, draft.end_date)} · ${nights} night${nights === 1 ? "" : "s"}`} />
-        <Row label="Who" value={`${draft.travellers} traveller${draft.travellers === 1 ? "" : "s"}`} />
-        <Row label="Fly" value={`${WINDOW_LABEL[draft.outbound_window]} out · ${WINDOW_LABEL[draft.return_window]} back`} />
-        <Row label="Budget" value={draft.budget ? formatMoney(draft.budget, "USD") : "Open"} />
-      </dl>
-      <p className="swan-muted mt-4 text-sm">The map appears once Swanavi has a plan to show.</p>
-    </div>
-  );
+  const title = step === 1 ? "Where to?"
+    : step === 2 ? "From where?"
+      : step === 3 ? "When?"
+        : step === 4 ? "What time do you want to fly?"
+          : step === 5 ? "How much should Swanavi handle?"
+            : "Confirm";
 
   return (
-    <SwanShell step={step} steps={STEPS} aside={summary}>
+    <ChoiceFlow
+      title={title}
+      step={step}
+      steps={STEPS}
+      action={step === STEPS ? (busy ? "Starting…" : "Confirm") : "Continue"}
+      onAction={step === STEPS ? confirm : () => go(step + 1)}
+      actionDisabled={step === STEPS && busy}
+      onBack={step > 1 ? () => go(step - 1) : undefined}
+    >
       {step === 1 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">Where to?</h1>
-          <input
-            className="swan-line mt-6 w-full rounded-2xl border px-4 py-3 text-lg"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+        <ChoiceSection>
+          <ChoiceField
             aria-label="Destination"
             placeholder="City"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
           />
-          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Suggestions">
+          <ChoiceStack as="ul" >
             {matches.map((city) => {
               const value = ["London", "Paris", "New York", "Los Angeles"].includes(city.label) ? city.label : `${city.label}, Japan`;
               return (
                 <li key={city.label}>
-                  <button type="button" className="swan-filter" aria-pressed={draft.destination === value} onClick={() => { setDraft({ ...draft, destination: value }); setQuery(city.label); }}>
+                  <ChoiceRow
+                    pressed={draft.destination === value}
+                    onClick={() => { setDraft({ ...draft, destination: value }); setQuery(city.label); }}
+                  >
                     {city.label}
-                  </button>
+                  </ChoiceRow>
                 </li>
               );
             })}
-          </ul>
-          <p className="swan-muted mt-4">Going to {draft.destination}</p>
-        </section>
+          </ChoiceStack>
+          <ChoiceNote>Going to {draft.destination}</ChoiceNote>
+        </ChoiceSection>
       )}
       {step === 2 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">From where?</h1>
-          <div className="swan-seg mt-6" role="radiogroup" aria-label="Origin">
-            <button type="button" role="radio" aria-checked={draft.origin.from_home} onClick={() => setDraft({ ...draft, origin: { from_home: true, place: null, airport_codes: profile?.home.airport_codes ?? [] } })}>
+        <ChoiceSection>
+          <ChoiceStack>
+            <ChoiceRow
+              pressed={draft.origin.from_home}
+              onClick={() => setDraft({ ...draft, origin: { from_home: true, place: null, airport_codes: profile?.home.airport_codes ?? [] } })}
+            >
               From home
-            </button>
-            <button type="button" role="radio" aria-checked={!draft.origin.from_home} onClick={() => setDraft({ ...draft, origin: { from_home: false, place: draft.origin.place, airport_codes: draft.origin.from_home ? [] : draft.origin.airport_codes } })}>
+              <ChoiceSub>{(profile?.home.airport_codes ?? []).join(", ") || "your home airports"}</ChoiceSub>
+            </ChoiceRow>
+            <ChoiceRow
+              pressed={!draft.origin.from_home}
+              onClick={() => setDraft({ ...draft, origin: { from_home: false, place: draft.origin.place, airport_codes: draft.origin.from_home ? [] : draft.origin.airport_codes } })}
+            >
               Somewhere else
-            </button>
-          </div>
-          {draft.origin.from_home ? (
-            <p className="swan-muted mt-4">Flying from {(profile?.home.airport_codes ?? []).join(", ") || "your home airports"}.</p>
-          ) : (
-            <label className="mt-4 block">
-              <span className="font-medium">City or address</span>
-              <input
-                className="swan-line mt-2 w-full rounded-2xl border px-4 py-3"
+            </ChoiceRow>
+          </ChoiceStack>
+          {!draft.origin.from_home ? (
+            <div style={{ marginTop: 16 }}>
+              <ChoiceField
+                label="City or address"
                 aria-label="Other origin"
                 value={originQuery}
                 onChange={(event) => setOriginQuery(event.target.value)}
@@ -152,94 +174,98 @@ function Planner() {
                   setDraft({ ...draft, origin: { from_home: false, place: hit.label, airport_codes: hit.airports } });
                 }}
               />
-              {draft.origin.place ? <p className="swan-muted mt-2 text-sm">{draft.origin.place} · {draft.origin.airport_codes.join(" · ")}</p> : null}
-            </label>
-          )}
-        </section>
+              {draft.origin.place ? <ChoiceNote>{draft.origin.place} · {draft.origin.airport_codes.join(" · ")}</ChoiceNote> : null}
+            </div>
+          ) : null}
+        </ChoiceSection>
       )}
       {step === 3 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">When?</h1>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="font-medium">Arrive</span>
-              <input type="date" className="swan-line mt-2 w-full rounded-2xl border px-4 py-3" value={draft.start_date} onChange={(event) => setDraft({ ...draft, start_date: event.target.value })} />
-            </label>
-            <label className="block">
-              <span className="font-medium">Leave</span>
-              <input type="date" className="swan-line mt-2 w-full rounded-2xl border px-4 py-3" value={draft.end_date} onChange={(event) => setDraft({ ...draft, end_date: event.target.value })} />
-            </label>
+        <ChoiceSection>
+          <ChoiceField label="Arrive" type="date" value={draft.start_date} onChange={(event) => setDraft({ ...draft, start_date: event.target.value })} />
+          <div style={{ marginTop: 16 }}>
+            <ChoiceField label="Leave" type="date" value={draft.end_date} onChange={(event) => setDraft({ ...draft, end_date: event.target.value })} />
           </div>
-          <label className="mt-3 block sm:max-w-[50%]">
-            <span className="font-medium">Travellers</span>
-            <input type="number" min={1} className="swan-line mt-2 w-full rounded-2xl border px-4 py-3" value={draft.travellers} onChange={(event) => setDraft({ ...draft, travellers: Math.max(1, Number(event.target.value)) })} />
-          </label>
-        </section>
+          <div style={{ marginTop: 16 }}>
+            <ChoiceField
+              label="Travellers"
+              type="number"
+              min={1}
+              value={draft.travellers}
+              onChange={(event) => setDraft({ ...draft, travellers: Math.max(1, Number(event.target.value)) })}
+            />
+          </div>
+        </ChoiceSection>
       )}
       {step === 4 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">What time do you want to fly?</h1>
-          <p className="mt-6 font-medium">Outbound</p>
-          <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Outbound window">
-            {windows.map((item) => (
-              <button key={item} type="button" role="radio" className="swan-filter" aria-checked={draft.outbound_window === item} onClick={() => setDraft({ ...draft, outbound_window: item })}>{WINDOW_LABEL[item]}</button>
-            ))}
-          </div>
-          <p className="mt-5 font-medium">Return</p>
-          <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Return window">
-            {windows.map((item) => (
-              <button key={item} type="button" role="radio" className="swan-filter" aria-checked={draft.return_window === item} onClick={() => setDraft({ ...draft, return_window: item })}>{WINDOW_LABEL[item]}</button>
-            ))}
-          </div>
-        </section>
+        <>
+          <ChoiceSection title="Outbound">
+            <ChoicePills>
+              {windows.map((item) => (
+                <ChoicePill key={item} pressed={draft.outbound_window === item} onClick={() => setDraft({ ...draft, outbound_window: item })}>
+                  {WINDOW_LABEL[item]}
+                </ChoicePill>
+              ))}
+            </ChoicePills>
+          </ChoiceSection>
+          <ChoiceSection title="Return">
+            <ChoicePills>
+              {windows.map((item) => (
+                <ChoicePill key={item} pressed={draft.return_window === item} onClick={() => setDraft({ ...draft, return_window: item })}>
+                  {WINDOW_LABEL[item]}
+                </ChoicePill>
+              ))}
+            </ChoicePills>
+          </ChoiceSection>
+        </>
       )}
       {step === 5 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">How much should Swanavi handle?</h1>
+        <>
           {(["attractions", "hotels", "flights"] as const).map((key) => (
-            <div key={key} className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-medium capitalize">{key}</p>
-              <div className="swan-seg" role="radiogroup" aria-label={key}>
+            <ChoiceSection key={key} title={key.charAt(0).toUpperCase() + key.slice(1)}>
+              <ChoicePills>
                 {(["swan_decides", "i_choose"] as Autonomy[]).map((item) => (
-                  <button key={item} type="button" role="radio" aria-checked={draft.autonomy[key] === item} onClick={() => setDraft({ ...draft, autonomy: { ...draft.autonomy, [key]: item } })}>
+                  <ChoicePill
+                    key={item}
+                    pressed={draft.autonomy[key] === item}
+                    onClick={() => setDraft({ ...draft, autonomy: { ...draft.autonomy, [key]: item } })}
+                  >
                     {item === "swan_decides" ? "Swanavi decides" : "I choose"}
-                  </button>
+                  </ChoicePill>
                 ))}
-              </div>
-            </div>
+              </ChoicePills>
+            </ChoiceSection>
           ))}
-          <label className="mt-6 block sm:max-w-[50%]">
-            <span className="font-medium">Budget for the whole trip</span>
-            <input inputMode="decimal" className="swan-line mt-2 w-full rounded-2xl border px-4 py-3" value={draft.budget ?? ""} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} />
-          </label>
-        </section>
+          <ChoiceSection>
+            <ChoiceField
+              label="Budget for the whole trip"
+              inputMode="decimal"
+              value={draft.budget ?? ""}
+              onChange={(event) => setDraft({ ...draft, budget: event.target.value })}
+            />
+          </ChoiceSection>
+        </>
       )}
       {step === 6 && (
-        <section>
-          <h1 className="text-4xl sm:text-5xl">Ready to plan?</h1>
-          <p className="mt-4 text-xl font-semibold">{draft.destination}</p>
-          <p className="swan-muted">{formatDateRange(draft.start_date, draft.end_date)} · {draft.travellers} traveller{draft.travellers === 1 ? "" : "s"}</p>
-          <p className="swan-muted mt-2">Fly {WINDOW_LABEL[draft.outbound_window].toLowerCase()} out, {WINDOW_LABEL[draft.return_window].toLowerCase()} back. From {originLabel}.</p>
-          <button type="button" className="swan-btn mt-6" onClick={confirm} disabled={busy}>{busy ? "Starting…" : "Plan it"}</button>
-        </section>
+        <ChoiceSection>
+          <ChoiceSummary>{draft.destination}</ChoiceSummary>
+          <ChoiceNote>
+            {formatDateRange(draft.start_date, draft.end_date)} · {nights} night{nights === 1 ? "" : "s"} · {draft.travellers} traveller{draft.travellers === 1 ? "" : "s"}
+          </ChoiceNote>
+          <ChoiceNote>
+            Fly {WINDOW_LABEL[draft.outbound_window].toLowerCase()} out, {WINDOW_LABEL[draft.return_window].toLowerCase()} back.
+          </ChoiceNote>
+          <ChoiceNote>From {originLabel}.</ChoiceNote>
+          <ChoiceNote>Budget {draft.budget ? formatMoney(draft.budget, "USD") : "Open"}</ChoiceNote>
+        </ChoiceSection>
       )}
-      <div className="mt-8 flex gap-3">
-        {step > 1 && <button type="button" className="swan-btn-ghost" onClick={() => go(step - 1)}>Back</button>}
-        {step < STEPS && <button type="button" className="swan-btn" onClick={() => go(step + 1)}>Continue</button>}
-      </div>
-    </SwanShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="swan-muted shrink-0">{label}</dt>
-      <dd className="text-right font-medium">{value}</dd>
-    </div>
+    </ChoiceFlow>
   );
 }
 
 export default function PlanNewPage() {
-  return <Suspense fallback={<SwanShell><p>Loading…</p></SwanShell>}><Planner /></Suspense>;
+  return (
+    <Suspense fallback={<ChoiceFlow title="Where to?"><ChoiceNote>Loading…</ChoiceNote></ChoiceFlow>}>
+      <Planner />
+    </Suspense>
+  );
 }

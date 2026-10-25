@@ -3,9 +3,17 @@
 import type { FlightOffer, UserProfile } from "@contracts/api";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { TripMap } from "@/components/map3d/TripMap";
+import {
+  ChoiceFlow,
+  ChoiceNote,
+  ChoicePill,
+  ChoicePills,
+  ChoiceRow,
+  ChoiceSection,
+  ChoiceStack,
+  ChoiceSub,
+} from "@/components/choice/ChoiceFlow";
 import { BrandPrompt } from "@/components/swan/BrandPrompt";
-import { ChoiceLayout, WhyChips } from "@/components/swan/ChoiceLayout";
 import { planningPath } from "@/components/swan/Shell";
 import { getClient } from "@/lib/client";
 import { airlineName, formatMoney, summarizeFlight } from "@/lib/format";
@@ -37,18 +45,6 @@ export default function FlightsPage() {
   const chosenBack = flights.find((item) => item.id === inbound) ?? null;
   const total = [chosenOut, chosenBack].reduce((sum, offer) => sum + (offer ? Number(offer.price) : 0), 0);
   const currency = chosenOut?.currency ?? chosenBack?.currency ?? "USD";
-  const arcs = [chosenOut, chosenBack].flatMap((offer) => {
-    const first = offer?.segments[0];
-    const last = offer?.segments[offer.segments.length - 1];
-    if (!first?.from_place.location || !last?.to_place.location) return [];
-    return [{
-      from: [first.from_place.location.lng, first.from_place.location.lat] as [number, number],
-      to: [last.to_place.location.lng, last.to_place.location.lat] as [number, number],
-    }];
-  });
-  const airports = [chosenOut?.segments[0].from_place, chosenOut?.segments[chosenOut.segments.length - 1].to_place].flatMap((place) =>
-    place?.location ? [{ id: place.code ?? place.name, lat: place.location.lat, lng: place.location.lng, label: place.name, kind: "stop" as const, badge: place.code ?? "✈" }] : [],
-  );
   const carriers = [...new Set(flights.map((offer) => offer.carrier))];
   const favourites = profile?.flights.favourite_airlines ?? [];
 
@@ -83,70 +79,51 @@ export default function FlightsPage() {
   };
 
   return (
-    <ChoiceLayout
-      eyebrow="Choose flights"
+    <ChoiceFlow
       title="Flights"
-      map={<TripMap stops={airports} arcs={arcs} focus={0} dayLabel="Your flights" showToggle={false} route={false} />}
-      footer={
-        <>
-          <button type="button" className="swan-btn-quiet" onClick={() => save(true)} disabled={busy}>Let Swanavi handle it</button>
-          <button type="button" className="swan-btn" onClick={() => save(false)} disabled={busy || !outbound}>
-            Continue · {formatMoney(total, currency)}
-          </button>
-        </>
-      }
+      action={busy ? "Saving…" : `Continue · ${formatMoney(total, currency)}`}
+      onAction={() => save(false)}
+      actionDisabled={busy || !outbound}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="swan-seg" role="radiogroup" aria-label="Direction">
+      <ChoiceSection>
+        <ChoiceRow pressed={false} onClick={() => save(true)}>Let Swanavi handle it</ChoiceRow>
+      </ChoiceSection>
+      <ChoiceSection>
+        <ChoicePills>
           {(["outbound", "return"] as Direction[]).map((item) => {
             const picked = item === "outbound" ? chosenOut : chosenBack;
             return (
-              <button key={item} type="button" role="radio" aria-checked={direction === item} onClick={() => setDirection(item)}>
+              <ChoicePill key={item} pressed={direction === item} onClick={() => setDirection(item)}>
                 {item === "outbound" ? "Outbound" : "Return"}{picked ? ` · ${formatMoney(picked.price, picked.currency)}` : ""}
-              </button>
+              </ChoicePill>
             );
           })}
-        </div>
-        <button type="button" className="swan-filter" aria-pressed={nonstop} onClick={() => setNonstop((value) => !value)}>Nonstop only</button>
-      </div>
-
-      <ul className="mt-4 space-y-3">
-        {visible.map((offer, index) => {
-          const summary = summarizeFlight(offer);
-          const selected = selectedId === offer.id;
-          return (
-            <li key={offer.id}>
-              <button
-                type="button"
-                className={`swan-card w-full p-4 text-left ${index === 0 ? "swan-card-featured" : ""}`}
-                aria-pressed={selected}
-                onClick={() => select(offer.id)}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {index === 0 ? <span className="swan-badge swan-badge-solid">Recommended</span> : null}
-                      {selected ? <span className="swan-badge swan-badge-outline">Selected</span> : null}
-                    </div>
-                    <p className="mt-2 text-2xl font-bold tracking-tight">
-                      {summary.depart} → {summary.arrive}
-                      {summary.arrivalNote ? <span className="swan-badge ml-2 align-middle">{summary.arrivalNote}</span> : null}
-                    </p>
-                    <p className="swan-muted mt-1 text-sm">
-                      {summary.airline} · {summary.flightNumbers} · {summary.route} · {summary.departDay}
-                    </p>
-                    <p className="swan-muted text-sm">{summary.stops} · {summary.duration} · {offer.fare_conditions.refundable ? "Refundable" : "Non-refundable"} · local times</p>
-                  </div>
-                  <p className="shrink-0 text-2xl font-bold tracking-tight">{formatMoney(offer.price, offer.currency)}</p>
-                </div>
-                <WhyChips reasons={offer.why} />
-              </button>
-            </li>
-          );
-        })}
-        {!visible.length ? <li className="swan-muted">No {direction} flights match. Try allowing a stop.</li> : null}
-      </ul>
-
+          <ChoicePill pressed={nonstop} onClick={() => setNonstop((value) => !value)}>Nonstop only</ChoicePill>
+        </ChoicePills>
+      </ChoiceSection>
+      <ChoiceSection title={direction === "outbound" ? "Outbound" : "Return"}>
+        <ChoiceStack as="ul">
+          {visible.map((offer, index) => {
+            const summary = summarizeFlight(offer);
+            return (
+              <li key={offer.id}>
+                <ChoiceRow pressed={selectedId === offer.id} onClick={() => select(offer.id)}>
+                  {summary.depart} → {summary.arrive}{summary.arrivalNote ? ` ${summary.arrivalNote}` : ""}
+                  <ChoiceSub>
+                    {index === 0 ? "Recommended · " : ""}
+                    {summary.airline} · {summary.flightNumbers} · {summary.route} · {summary.departDay}
+                  </ChoiceSub>
+                  <ChoiceSub>
+                    {summary.stops} · {summary.duration} · {offer.fare_conditions.refundable ? "Refundable" : "Non-refundable"} · {formatMoney(offer.price, offer.currency)}
+                  </ChoiceSub>
+                  {offer.why.length ? <ChoiceSub>{offer.why.join(" · ")}</ChoiceSub> : null}
+                </ChoiceRow>
+              </li>
+            );
+          })}
+        </ChoiceStack>
+        {!visible.length ? <ChoiceNote>No {direction} flights match. Try allowing a stop.</ChoiceNote> : null}
+      </ChoiceSection>
       {profile && !favourites.length ? (
         <BrandPrompt
           question="Prefer an airline?"
@@ -158,6 +135,6 @@ export default function FlightsPage() {
           }}
         />
       ) : null}
-    </ChoiceLayout>
+    </ChoiceFlow>
   );
 }

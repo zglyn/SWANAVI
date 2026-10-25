@@ -3,8 +3,19 @@
 import type { AmountLevel, AttractionSelection, Candidate, TripRequest, UserProfile } from "@contracts/api";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { SwanShell, planningPath } from "@/components/swan/Shell";
-import { Photo } from "@/components/swan/Photo";
+import {
+  ChoiceCard,
+  ChoiceFlow,
+  ChoiceNote,
+  ChoicePill,
+  ChoicePills,
+  ChoiceRow,
+  ChoiceSection,
+  ChoiceSlider,
+  ChoiceStack,
+  ChoiceSub,
+} from "@/components/choice/ChoiceFlow";
+import { planningPath } from "@/components/swan/Shell";
 import candidatesFx from "@fixtures/candidates_kyoto.json";
 import { getClient } from "@/lib/client";
 import { formatDateRange, nightsBetween } from "@/lib/format";
@@ -99,87 +110,85 @@ export default function AttractionsPage() {
     excluded: swapped,
   });
 
-  const summary = request ? (
-    <div>
-      <p className="swan-eyebrow">Trip</p>
-      <p className="mt-2 text-xl font-bold tracking-tight">{request.destination}</p>
-      <p className="swan-muted text-sm">{formatDateRange(request.start_date, request.end_date)} · {days} night{days === 1 ? "" : "s"}</p>
-      <p className="mt-4 text-sm">{picks.length} places over {days + 1} days. Swanavi routes them, books the local ones from your wallet, and keeps the first day light after the flight.</p>
-    </div>
-  ) : null;
-
   return (
-    <SwanShell aside={summary}>
-      <p className="swan-eyebrow">{request?.destination ?? "Your trip"}{request ? ` · ${formatDateRange(request.start_date, request.end_date)}` : ""}</p>
-      <h1 className="mt-2 text-4xl sm:text-5xl">Swanavi&apos;s picks for you</h1>
-      <p className="swan-muted mt-3">
-        Based on {profile?.travel.interests.length ? profile.travel.interests.join(" and ") : "what Kyoto does best"}. Keep what you like, swap what you don&apos;t, or let Swanavi decide.
-      </p>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <div className="swan-seg" role="radiogroup" aria-label="Daily pace">
+    <ChoiceFlow
+      title="Swanavi's picks for you"
+      action={busy ? "Saving…" : `Use these ${picks.length} picks`}
+      onAction={useThese}
+      actionDisabled={busy || !picks.length}
+    >
+      <ChoiceNote>
+        {request?.destination ?? "Your trip"}
+        {request ? ` · ${formatDateRange(request.start_date, request.end_date)}` : ""}
+        {" · "}
+        Based on {profile?.travel.interests.length ? profile.travel.interests.join(" and ") : "what Kyoto does best"}.
+        {" "}
+        {picks.length} places over {days + 1} days.
+      </ChoiceNote>
+      <ChoiceSection>
+        <ChoiceRow pressed={false} onClick={letSwan}>
+          Let Swanavi decide
+        </ChoiceRow>
+      </ChoiceSection>
+      <ChoiceSection title="Pace">
+        <ChoicePills>
           {(["light", "balanced", "packed"] as const).map((item) => (
-            <button key={item} type="button" role="radio" aria-checked={density === item} onClick={() => { setDensity(item); setKept(null); setSwapped([]); }}>
+            <ChoicePill key={item} pressed={density === item} onClick={() => { setDensity(item); setKept(null); setSwapped([]); }}>
               {item[0].toUpperCase() + item.slice(1)}
-            </button>
+            </ChoicePill>
           ))}
+        </ChoicePills>
+        <ChoiceNote>{PER_DAY[density]} places a day</ChoiceNote>
+      </ChoiceSection>
+      <ChoiceSection title="Places">
+        <ChoiceStack as="ul">
+          {picks.map((id) => {
+            const item = byId.get(id);
+            if (!item) return null;
+            const title = titleOf(item);
+            return (
+              <li key={id}>
+                <ChoiceCard>
+                  <p className="font-medium">{title}</p>
+                  <ChoiceSub>
+                    {categoryOf(item)}
+                    {item.attraction?.area ? ` · ${item.attraction.area}` : ""}
+                    {item.attraction ? ` · ${item.attraction.typical_duration_min} min` : ""}
+                    {item.merchant ? " · Wallet" : ""}
+                  </ChoiceSub>
+                  <div style={{ marginTop: 12 }}>
+                    <ChoicePills>
+                      <ChoicePill pressed onClick={() => undefined}>Kept</ChoicePill>
+                      <ChoicePill pressed={false} onClick={() => swap(id)}>Swap</ChoicePill>
+                      <ChoicePill pressed={false} onClick={() => remove(id)}>Remove</ChoicePill>
+                    </ChoicePills>
+                  </div>
+                </ChoiceCard>
+              </li>
+            );
+          })}
+        </ChoiceStack>
+        <div style={{ marginTop: 12 }}>
+          <ChoiceRow pressed={false} onClick={addMore}>Add more</ChoiceRow>
         </div>
-        <span className="swan-muted text-sm">{PER_DAY[density]} places a day</span>
-      </div>
-
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-live="polite">
-        {picks.map((id) => {
-          const item = byId.get(id);
-          if (!item) return null;
-          const title = titleOf(item);
-          return (
-            <li key={id} className="swan-card overflow-hidden">
-              <Photo src={item.attraction?.image_url} alt={title} label={title} className="h-24 w-full sm:h-32" />
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold">{title}</p>
-                  {item.merchant ? <span className="swan-badge swan-badge-solid shrink-0">Wallet</span> : null}
-                </div>
-                <p className="swan-muted mt-1 text-sm capitalize">
-                  {categoryOf(item)}{item.attraction?.area ? ` · ${item.attraction.area}` : ""}{item.attraction ? ` · ${item.attraction.typical_duration_min} min` : ""}
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <span className="swan-badge">Kept</span>
-                  <button type="button" className="swan-filter" onClick={() => swap(id)} disabled={!bench.length} aria-label={`Swap ${title}`}>Swap</button>
-                  <button type="button" className="swan-filter" onClick={() => remove(id)} aria-label={`Remove ${title}`}>Remove</button>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <button type="button" className="swan-btn-ghost mt-4" onClick={addMore} disabled={!bench.length}>Add more</button>
-
-      <details className="mt-6">
-        <summary className="cursor-pointer font-medium">Fine-tune how much of each</summary>
-        <div className="mt-3 space-y-3">
+      </ChoiceSection>
+      <ChoiceSection title="How much of each">
+        <ChoiceStack>
           {categories.map((category) => (
-            <label key={category} className="block">
-              <span className="flex justify-between text-sm"><span className="capitalize">{category}</span><span>{LEVEL_LABEL[amounts[category] ?? 2]}</span></span>
-              <input
-                type="range"
-                min={0}
-                max={3}
-                step={1}
-                value={amounts[category] ?? 2}
-                aria-valuetext={LEVEL_LABEL[amounts[category] ?? 2]}
-                onChange={(event) => setAmounts({ ...amounts, [category]: Number(event.target.value) })}
-                className="mt-2 w-full"
-              />
-            </label>
+            <ChoiceSlider
+              key={category}
+              label={category}
+              valueLabel={LEVEL_LABEL[amounts[category] ?? 2]}
+              min={0}
+              max={3}
+              step={1}
+              value={amounts[category] ?? 2}
+              aria-valuetext={LEVEL_LABEL[amounts[category] ?? 2]}
+              onChange={(event) => setAmounts({ ...amounts, [category]: Number(event.target.value) })}
+            />
           ))}
-        </div>
-      </details>
-
-      <div className="swan-sticky mt-8 -mx-4 flex flex-wrap items-center gap-3 px-4 py-4 sm:-mx-6 sm:px-6">
-        <button type="button" className="swan-btn" onClick={letSwan} disabled={busy}>Let Swanavi decide</button>
-        <button type="button" className="swan-btn-ghost" onClick={useThese} disabled={busy || !picks.length}>Use these {picks.length} picks</button>
-      </div>
-    </SwanShell>
+        </ChoiceStack>
+      </ChoiceSection>
+    </ChoiceFlow>
   );
 }
