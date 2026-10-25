@@ -10,7 +10,6 @@ from roam_merchants.directory import Directory
 
 directory = Directory()
 mcp = FastMCP("merchant-directory")
-http = FastAPI(title="Swanavi merchants")
 
 
 @mcp.tool(description="Find registered shops in a city. near is {lat, lng}. radius_km is kilometres from that point. Results are closest first. city is a name such as Kyoto.")
@@ -33,15 +32,23 @@ def get_quote(merchant_id: str, sku: str, slot_start: str) -> dict:
     return quote.model_dump(mode="json")
 
 
+# The MCP app's lifespan starts its session manager; without it every MCP request fails with
+# "Task group is not initialized". Mounted at the root so the endpoint is /mcp (ROAM_MERCHANTS_MCP_URL).
+mcp_app = mcp.http_app()
+http = FastAPI(title="Swanavi merchants", lifespan=mcp_app.lifespan)
+
+
 @http.get("/registry")
 def registry(city: str):
     return [merchant.model_dump(mode="json") for merchant in directory.find_merchants(city)]
 
 
+http.mount("/", mcp_app)
+
+
 def main() -> None:
     import uvicorn
 
-    http.mount("/mcp", mcp.http_app())
     uvicorn.run(http, host="0.0.0.0", port=8001)
 
 
