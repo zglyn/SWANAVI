@@ -87,6 +87,7 @@ def test_conversation_core_does_not_import_fastapi():
 
 
 def test_scripted_kyoto_reaches_a_proposal_without_an_api_key(monkeypatch):
+    monkeypatch.setattr("roam_agent.trips.lookup_destination", lambda words: None)
     monkeypatch.setenv("ROAM_SCRIPTED_AGENT", "1")
     for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "ROAM_LLM_API_KEY"):
         monkeypatch.delenv(name, raising=False)
@@ -116,6 +117,7 @@ def test_scripted_kyoto_reaches_a_proposal_without_an_api_key(monkeypatch):
 
 
 def test_a_trip_with_no_budget_still_plans_and_says_the_assumption(monkeypatch):
+    monkeypatch.setattr("roam_agent.trips.lookup_destination", lambda words: None)
     monkeypatch.setenv("ROAM_SCRIPTED_AGENT", "1")
     store = MemoryTripStore()
     events, emit = _events()
@@ -135,6 +137,7 @@ def test_a_trip_with_no_budget_still_plans_and_says_the_assumption(monkeypatch):
 
 
 def test_trip_routes_stream_the_chat_and_refuse_a_bad_turn(monkeypatch):
+    monkeypatch.setattr("roam_agent.trips.lookup_destination", lambda words: None)
     monkeypatch.setenv("ROAM_SCRIPTED_AGENT", "1")
     monkeypatch.delenv("ROAM_PLAN_STORE", raising=False)
     from roam_agent import swan_http

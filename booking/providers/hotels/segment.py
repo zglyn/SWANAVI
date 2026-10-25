@@ -16,6 +16,8 @@ class HotelStay:
     guests: int
     city_code: str | None = None
     hotel_ids: tuple[str, ...] = ()
+    airports: tuple[str, ...] = ()
+    currency: str | None = None
     city_code_rejected: bool = False
     hotel_id_rejected: bool = False
 
@@ -89,6 +91,7 @@ def parse_hotel_request(
 
     city_code, city_code_rejected = _city_code(segment)
     hotel_ids, hotel_id_rejected = _hotel_ids(segment)
+    airports, currency = _destination_fields(segment)
     return (
         HotelStay(
             segment_id=clean_id,
@@ -99,6 +102,8 @@ def parse_hotel_request(
             guests=guests,
             city_code=city_code,
             hotel_ids=hotel_ids,
+            airports=airports,
+            currency=currency,
             city_code_rejected=city_code_rejected,
             hotel_id_rejected=hotel_id_rejected,
         ),
@@ -143,6 +148,22 @@ def _parse_date(value: object) -> date | None:
         return date.fromisoformat(candidate)
     except ValueError:
         return None
+
+
+def _destination_fields(segment: dict) -> tuple[tuple[str, ...], str | None]:
+    raw = segment.get("destination")
+    if not isinstance(raw, dict):
+        return (), None
+    codes: list[str] = []
+    for item in raw.get("airports") or []:
+        if isinstance(item, str) and len(item.strip()) == 3 and item.strip().isalpha():
+            code = item.strip().upper()
+            if code not in codes:
+                codes.append(code)
+    money = raw.get("currency")
+    if isinstance(money, str) and len(money.strip()) == 3 and money.strip().isalpha():
+        return tuple(codes), money.strip().upper()
+    return tuple(codes), None
 
 
 def _city_code(segment: dict) -> tuple[str | None, bool]:

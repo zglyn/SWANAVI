@@ -8,6 +8,8 @@ dependencies = [
     "uvicorn",
     "sse-starlette",
     "httpx",
+    "babel",
+    "timezonefinder",
     "fastmcp",
     "anthropic",
     "roam-ledger",

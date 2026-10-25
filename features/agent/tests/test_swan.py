@@ -18,6 +18,7 @@ from roam_contracts.models import (
     Autonomy,
     CandidateSet,
     CategoryAmount,
+    Destination,
     PackageChoices,
     Priority,
     StopKind,
@@ -39,7 +40,16 @@ def _profile() -> UserProfile:
 
 
 def _request() -> TripRequest:
-    return TripRequest.model_validate(json.loads((FIXTURES / "trip_request_kyoto.json").read_text()))
+    request = TripRequest.model_validate(json.loads((FIXTURES / "trip_request_kyoto.json").read_text()))
+    return request.model_copy(update={"place": Destination(
+        city="Kyoto",
+        country_code="JP",
+        lat=35.0116,
+        lng=135.7681,
+        timezone="Asia/Tokyo",
+        currency="JPY",
+        airports=["KIX", "ITM"],
+    )})
 
 
 def _pool() -> CandidateSet:

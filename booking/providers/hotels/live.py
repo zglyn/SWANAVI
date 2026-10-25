@@ -34,35 +34,6 @@ _TOKEN_PATH = "/v1/security/oauth2/token"
 # paymentType values that charge the guest at booking time.
 _CHARGE_POLICIES = {"deposit", "prepay", "prepaid"}
 
-_CITY_IATA = {
-    "kyoto": "UKY",
-    "tokyo": "TYO",
-    "osaka": "OSA",
-    "paris": "PAR",
-    "london": "LON",
-    "new york": "NYC",
-    "nyc": "NYC",
-    "new york city": "NYC",
-    "rome": "ROM",
-    "barcelona": "BCN",
-    "madrid": "MAD",
-    "berlin": "BER",
-    "amsterdam": "AMS",
-    "singapore": "SIN",
-    "hong kong": "HKG",
-    "seoul": "SEL",
-    "bangkok": "BKK",
-    "sydney": "SYD",
-    "san francisco": "SFO",
-    "los angeles": "LAX",
-    "chicago": "CHI",
-    "boston": "BOS",
-    "seattle": "SEA",
-    "miami": "MIA",
-    "dubai": "DXB",
-    "lisbon": "LIS",
-}
-
 
 class AmadeusHotelClient:
     """Hotel Search, then Hotel Booking, on the Amadeus test host only."""
@@ -370,9 +341,11 @@ def _data_list(payload: dict) -> list:
 def _city_code(stay: HotelStay) -> str | None:
     if stay.city_code:
         return stay.city_code
+    if stay.airports:
+        return stay.airports[0]
     if len(stay.city) == 3 and stay.city.isalpha():
         return stay.city.upper()
-    return _CITY_IATA.get(stay.city)
+    return None
 
 
 def _safe_token(value: object, max_len: int) -> str | None:
