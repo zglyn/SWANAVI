@@ -27,7 +27,7 @@ const PROGRESS = [
   "Building day 2…",
 ];
 
-export function Conversation({ tripId }: { tripId: string }) {
+export function Conversation({ tripId, onProposal }: { tripId: string; onProposal: () => void }) {
   const script = kyotoScript().messages;
   const [state, setState] = useState<PlayState | null>(null);
   const [draft, setDraft] = useState("");
@@ -165,6 +165,7 @@ export function Conversation({ tripId }: { tripId: string }) {
               {PROGRESS.map((line, index) => (
                 <p key={line} className={index === progress ? "is-current" : undefined}>{line}</p>
               ))}
+              <button type="button" className="swan-btn" onClick={onProposal}>See the proposal</button>
             </section>
           ) : null}
           {canPlan ? (

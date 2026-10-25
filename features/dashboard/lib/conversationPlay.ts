@@ -1,8 +1,12 @@
-import type { ChatMessage, Control, TripConversation, TripFacts } from "@contracts/api";
+import type { ChatMessage, Control, Proposal, TripConversation, TripFacts } from "@contracts/api";
 import fixture from "@fixtures/conversation_kyoto.json";
 
 export function kyotoScript(): TripConversation {
   return (fixture as { conversation: TripConversation }).conversation;
+}
+
+export function kyotoProposal(): Proposal {
+  return (fixture as { proposal: Proposal }).proposal;
 }
 
 export function missingFacts(brief: TripFacts): string[] {
