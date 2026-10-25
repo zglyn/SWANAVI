@@ -8,6 +8,7 @@ export interface MapStop {
   lng: number;
   label: string;
   kind: "stop" | "hotel" | "merchant";
+  badge?: string;
 }
 
 interface Arc {
@@ -29,6 +30,8 @@ export function TripMap({
   dayLabel,
   showToggle = true,
   highlight = null,
+  route = true,
+  padding,
   onSelect,
 }: {
   stops: MapStop[];
@@ -37,6 +40,8 @@ export function TripMap({
   dayLabel: string;
   showToggle?: boolean;
   highlight?: string | null;
+  route?: boolean;
+  padding?: { top: number; bottom: number; left: number; right: number };
   onSelect?: (id: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -45,7 +50,7 @@ export function TripMap({
   const [fallback, setFallback] = useState<string | null>(null);
   const [flat, setFlat] = useState(false);
   const [active, setActive] = useState<string | null>(null);
-  const signature = `${flat}:${focus}:${stops.map((stop) => `${stop.id}:${stop.lat}:${stop.lng}`).join("|")}:${JSON.stringify(arcs)}`;
+  const signature = `${flat}:${focus}:${route}:${JSON.stringify(padding)}:${stops.map((stop) => `${stop.id}:${stop.lat}:${stop.lng}`).join("|")}:${JSON.stringify(arcs)}`;
 
   useEffect(() => {
     const node = host.current;
@@ -59,6 +64,7 @@ export function TripMap({
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const drawnStops = stops;
     const drawnArcs = arcs;
+    const inset = padding ?? { top: 72, bottom: 72, left: 72, right: 72 };
     (async () => {
       try {
         const maplibre = await import("maplibre-gl");
@@ -96,17 +102,17 @@ export function TripMap({
             });
           };
           drawnArcs.forEach((arc, index) => line(`arc-${index}`, greatCircle(arc.from, arc.to), false));
-          const route = drawnStops.filter((stop) => stop.kind === "stop");
-          if (route.length > 1) line("day", route.map((stop) => [stop.lng, stop.lat]), true);
+          const path = drawnStops.filter((stop) => stop.kind === "stop");
+          if (route && path.length > 1) line("day", path.map((stop) => [stop.lng, stop.lat]), true);
           let number = 0;
           markers.current.clear();
           drawnStops.forEach((stop) => {
             const marker = document.createElement("button");
             marker.type = "button";
-            marker.className = `swan-marker${stop.kind === "stop" ? "" : " swan-marker-hotel"}`;
+            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}`;
             const badge = document.createElement("span");
             badge.className = "swan-marker-badge";
-            badge.textContent = stop.kind === "stop" ? String((number += 1)) : "H";
+            badge.textContent = stop.badge ?? (stop.kind === "stop" ? String((number += 1)) : "H");
             const text = document.createElement("span");
             text.className = "swan-marker-label";
             text.textContent = stop.label;
@@ -119,11 +125,21 @@ export function TripMap({
             markers.current.set(stop.id, marker);
             new maplibre.Marker({ element: marker, anchor: "left", offset: [-14, 0] }).setLngLat([stop.lng, stop.lat]).addTo(map);
           });
-          const target = drawnStops[Math.min(focus, Math.max(drawnStops.length - 1, 0))];
-          if (target) {
-            const camera = { center: [target.lng, target.lat] as [number, number], zoom: 13, pitch: reduced || flat ? 0 : 48 };
+          const pitch = reduced || flat ? 0 : 48;
+          const frame = (points: [number, number][], options: { pitch: number; maxZoom: number }) => {
+            const unwrapped = unwrap(points);
+            const bounds = unwrapped.reduce((box, point) => box.extend(point), new maplibre.LngLatBounds(unwrapped[0], unwrapped[0]));
+            map.fitBounds(bounds, { padding: inset, duration: reduced ? 0 : 1200, essential: true, ...options });
+          };
+          if (drawnStops.length > 1) {
+            frame(drawnStops.map((stop) => [stop.lng, stop.lat]), { pitch, maxZoom: 14 });
+          } else if (drawnStops.length === 1) {
+            const target = drawnStops[0];
+            const camera = { center: [target.lng, target.lat] as [number, number], zoom: 13, pitch, padding: inset };
             if (reduced) map.jumpTo(camera);
             else map.flyTo({ ...camera, essential: true });
+          } else if (drawnArcs.length) {
+            frame(drawnArcs.flatMap((arc) => [arc.from, arc.to]), { pitch: 0, maxZoom: 6 });
           }
         });
         mapRef.current = map;
@@ -159,7 +175,7 @@ export function TripMap({
         <ol className="mt-4 space-y-2">
           {stops.map((stop) => (
             <li key={stop.id} className="flex items-center gap-3">
-              <span className="swan-marker-badge" aria-hidden="true">{stop.kind === "stop" ? (number += 1) : "H"}</span>
+              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.kind === "stop" ? (number += 1) : "H")}</span>
               <button type="button" className="text-left" onClick={() => { setActive(stop.id); onSelect?.(stop.id); }}>
                 {stop.label}
               </button>
@@ -214,6 +230,18 @@ function addBuildings(map: import("maplibre-gl").Map) {
     },
     firstSymbol,
   );
+}
+
+function unwrap(points: [number, number][]): [number, number][] {
+  if (!points.length) return points;
+  let previous = points[0][0];
+  return points.map(([lng, lat]) => {
+    let value = lng;
+    while (value - previous > 180) value -= 360;
+    while (previous - value > 180) value += 360;
+    previous = value;
+    return [value, lat];
+  });
 }
 
 export function greatCircle(from: [number, number], to: [number, number], steps = 64): [number, number][] {

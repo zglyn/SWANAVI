@@ -12,6 +12,13 @@ from roam_tools.routing import get_travel_matrix
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "contracts" / "fixtures" / "hotel_offers.json"
 BUDGET_NIGHTLY = {"budget": 120, "mid": 220, "premium": 380, "luxury": 700}
+DOLLAR_LIKE = {"USD", "RLUSD", "USDC"}
+
+
+def _money(amount, currency: str) -> str:
+    value = float(amount)
+    text = f"{value:,.0f}" if value == int(value) else f"{value:,.2f}"
+    return f"${text}" if currency.upper() in DOLLAR_LIKE else f"{text} {currency}"
 
 
 @dataclass
@@ -133,8 +140,8 @@ def rank_hotels(
             score += 6
             why.append("Swanavi merchant: pay with your wallet")
             if hotel.quote and hotel.quote.viator_price:
-                saved = float(hotel.quote.viator_price - hotel.quote.amount)
-                why.append(f"save {saved:.0f} {hotel.quote.currency} vs the aggregator")
+                saved = hotel.quote.viator_price - hotel.quote.amount
+                why.append(f"save {_money(saved, hotel.quote.currency)} vs the aggregator")
         ranked.append(hotel.model_copy(update={
             "avg_travel_min_to_attractions": minutes,
             "score": round(score, 2),

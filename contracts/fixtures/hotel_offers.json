@@ -30,7 +30,7 @@
     "image_url": null,
     "source": "provider",
     "quote": null,
-    "deep_link": "https://example.com/swan/hotels/hyatt-arashiyama",
+    "deep_link": "https://www.hyatt.com/hyatt-place/kyoto-arashiyama",
     "check_in": "2026-11-14",
     "check_out": "2026-11-16"
   },
@@ -58,7 +58,7 @@
       "3 stars",
       "refundable",
       "Swanavi merchant: pay with your wallet",
-      "save 40 RLUSD vs the aggregator"
+      "save $40 vs the aggregator"
     ],
     "image_url": null,
     "source": "merchant_mcp",
@@ -94,8 +94,8 @@
     "brand": null,
     "stars": 4.0,
     "location": {
-      "lat": 35.0162,
-      "lng": 135.6784
+      "lat": 35.0131,
+      "lng": 135.6802
     },
     "area": "Arashiyama",
     "price_per_night": "180",
@@ -117,7 +117,7 @@
     "image_url": null,
     "source": "provider",
     "quote": null,
-    "deep_link": "https://example.com/swan/hotels/inn-arashiyama",
+    "deep_link": "https://www.booking.com/hotel/jp/arashiyama-riverside-inn",
     "check_in": "2026-11-14",
     "check_out": "2026-11-16"
   },
@@ -152,7 +152,7 @@
     "image_url": null,
     "source": "provider",
     "quote": null,
-    "deep_link": "https://example.com/swan/hotels/osaka-hyatt",
+    "deep_link": "https://www.hyatt.com/hyatt-regency/osaka",
     "check_in": "2026-11-14",
     "check_out": "2026-11-16"
   }

@@ -117,7 +117,7 @@ export default function HotelsPage() {
                       {hotelPrice(hotel, nights).split(" · ")[1]}
                       {hotel.refundable ? " · refundable" : ""}
                     </p>
-                    <WhyChips reasons={hotel.why.filter((line) => !line.endsWith("min average to your picks") && !line.startsWith("refundable"))} />
+                    <WhyChips reasons={hotel.why.filter((line) => !/min average to your picks$|^refundable|^Swanavi merchant|vs the aggregator$/.test(line))} />
                   </div>
                 </div>
               </button>

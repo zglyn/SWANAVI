@@ -184,7 +184,7 @@ def _quote(merchant_id: str, sku: str, title: str, amount: str, viator: str, loc
 
 def hotel_catalog() -> list[HotelOffer]:
     near = GeoPoint(lat=35.0162, lng=135.6784)
-    same = GeoPoint(lat=35.0162, lng=135.6784)
+    same = GeoPoint(lat=35.0131, lng=135.6802)
     gion = GeoPoint(lat=35.0037, lng=135.7758)
     osaka = GeoPoint(lat=34.6937, lng=135.5023)
     return [

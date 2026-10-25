@@ -46,7 +46,7 @@
       "your favourite airline",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/out-jl",
+    "deep_link": "https://www.jal.co.jp/book/out-jl",
     "direction": "outbound"
   },
   "return": {
@@ -95,7 +95,7 @@
       "your favourite airline",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/ret-jl",
+    "deep_link": "https://www.jal.co.jp/book/ret-jl",
     "direction": "return"
   },
   "hotels": [
@@ -131,7 +131,7 @@
         "image_url": null,
         "source": "provider",
         "quote": null,
-        "deep_link": "https://example.com/swan/hotels/hyatt-arashiyama",
+        "deep_link": "https://www.hyatt.com/hyatt-place/kyoto-arashiyama",
         "check_in": "2026-11-14",
         "check_out": "2026-11-16"
       },

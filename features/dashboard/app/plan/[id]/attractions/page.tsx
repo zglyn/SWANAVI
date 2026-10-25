@@ -27,7 +27,7 @@ function rankForProfile(candidates: Candidate[], profile: UserProfile | null): C
   const score = (item: Candidate) => {
     const text = `${titleOf(item)} ${item.attraction?.description ?? ""} ${categoryOf(item)}`.toLowerCase();
     if (avoid.some((tag) => text.includes(tag))) return -100;
-    return (interests.has(categoryOf(item)) ? 10 : 0) + (item.attraction?.popularity ?? 0) / 10 + (item.merchant ? 2 : 0);
+    return (interests.has(categoryOf(item)) ? 10 : 0) + (item.attraction?.popularity ?? 0) / 10;
   };
   return [...candidates].sort((a, b) => score(b) - score(a));
 }
@@ -117,14 +117,14 @@ export default function AttractionsPage() {
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium">Pace</span>
         <div className="swan-seg" role="radiogroup" aria-label="Daily pace">
           {(["light", "balanced", "packed"] as const).map((item) => (
             <button key={item} type="button" role="radio" aria-checked={density === item} onClick={() => { setDensity(item); setKept(null); setSwapped([]); }}>
-              {item[0].toUpperCase() + item.slice(1)} · {PER_DAY[item]} a day
+              {item[0].toUpperCase() + item.slice(1)}
             </button>
           ))}
         </div>
+        <span className="swan-muted text-sm">{PER_DAY[density]} places a day</span>
       </div>
 
       <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-live="polite">
@@ -134,7 +134,7 @@ export default function AttractionsPage() {
           const title = titleOf(item);
           return (
             <li key={id} className="swan-card overflow-hidden">
-              <Photo src={item.attraction?.image_url} alt={title} label={title} className="h-32 w-full" />
+              <Photo src={item.attraction?.image_url} alt={title} label={title} className="h-24 w-full sm:h-32" />
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold">{title}</p>

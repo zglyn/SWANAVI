@@ -47,7 +47,7 @@ export default function FlightsPage() {
     }];
   });
   const airports = [chosenOut?.segments[0].from_place, chosenOut?.segments[chosenOut.segments.length - 1].to_place].flatMap((place) =>
-    place?.location ? [{ id: place.code ?? place.name, lat: place.location.lat, lng: place.location.lng, label: place.name, kind: "stop" as const }] : [],
+    place?.location ? [{ id: place.code ?? place.name, lat: place.location.lat, lng: place.location.lng, label: place.name, kind: "stop" as const, badge: place.code ?? "✈" }] : [],
   );
   const carriers = [...new Set(flights.map((offer) => offer.carrier))];
   const favourites = profile?.flights.favourite_airlines ?? [];
@@ -86,7 +86,7 @@ export default function FlightsPage() {
     <ChoiceLayout
       eyebrow="Choose flights"
       title="Flights"
-      map={<TripMap stops={airports} arcs={arcs} focus={0} dayLabel="Your flights" showToggle={false} />}
+      map={<TripMap stops={airports} arcs={arcs} focus={0} dayLabel="Your flights" showToggle={false} route={false} />}
       footer={
         <>
           <button type="button" className="swan-btn-quiet" onClick={() => save(true)} disabled={busy}>Let Swanavi handle it</button>

@@ -45,7 +45,7 @@
       "your favourite airline",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/ret-jl",
+    "deep_link": "https://www.jal.co.jp/book/ret-jl",
     "direction": "return"
   },
   {
@@ -94,7 +94,7 @@
       "your favourite airline",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/out-jl",
+    "deep_link": "https://www.jal.co.jp/book/out-jl",
     "direction": "outbound"
   },
   {
@@ -142,7 +142,7 @@
       "leaves in your morning window",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/out-ua",
+    "deep_link": "https://www.united.com/book/out-ua",
     "direction": "outbound"
   },
   {
@@ -190,7 +190,7 @@
       "outside the morning window",
       "refundable fare"
     ],
-    "deep_link": "https://example.com/swan/flights/out-aa",
+    "deep_link": "https://www.aa.com/book/out-aa",
     "direction": "outbound"
   },
   {
@@ -238,7 +238,7 @@
       "outside the evening window",
       "lands while you would be asleep"
     ],
-    "deep_link": "https://example.com/swan/flights/ret-ua",
+    "deep_link": "https://www.united.com/book/ret-ua",
     "direction": "return"
   },
   {
@@ -287,7 +287,7 @@
       "red-eye, which you asked to avoid",
       "lands while you would be asleep"
     ],
-    "deep_link": "https://example.com/swan/flights/out-red",
+    "deep_link": "https://www.united.com/book/out-red",
     "direction": "outbound"
   }
 ]
