@@ -17,13 +17,17 @@ from roam_contracts.models import (
     GeoPoint,
     HomeBase,
     Proposal,
+    SuggestionAction,
+    SuggestionActionName,
+    SuggestionResult,
     TripConversation,
     TripFacts,
     UserProfile,
 )
 from roam_agent import conversation as talk
+from roam_agent import suggestions as cards
 from roam_agent.autopilot import begin
-from roam_agent.store import TripRecord, TripStore
+from roam_agent.store import TripRecord, TripSnapshot, TripStore
 from roam_agent.validate import validate_itinerary
 
 SCRIPT = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "conversation_kyoto.json"
@@ -116,6 +120,8 @@ def post_message(
     store: TripStore, emit: Emit, record: TripRecord, caller: Caller, today: date,
     script: ConversationFixture | None = None, *, text: str | None = None, answer: ChatAnswer | None = None,
 ) -> TripRecord:
+    if record.conversation.phase == ConversationPhase.PROPOSAL and text:
+        return apply_note(store, emit, record, text)
     if record.conversation.phase != ConversationPhase.CHATTING:
         raise TripConflict("This trip already has a plan. Change it from the proposal.")
     return _turn(store, emit, record, caller, today, script, text, answer)
@@ -195,3 +201,99 @@ def build_proposal(store: TripStore, emit: Emit, trip_id: str, caller: Caller) -
     }))
     _say(emit, trip_id, ready)
     emit("proposal.ready", ready.text, {"trip_id": trip_id, "proposal": proposal.model_dump(mode="json", by_alias=True)}, "success")
+
+
+def _proposal(record: TripRecord) -> Proposal:
+    if record.proposal is None:
+        raise TripConflict("This trip has no proposal yet")
+    return record.proposal
+
+
+def _snapshot(record: TripRecord) -> TripSnapshot:
+    proposal = _proposal(record)
+    return TripSnapshot(proposal=proposal.model_copy(deep=True), rejected_ids=list(record.rejected_ids))
+
+
+def _publish_change(emit: Emit, record: TripRecord, change: cards.Change) -> None:
+    if change.suggestion is not None:
+        emit("suggestion.updated", change.removed_title or "Suggestion updated", {
+            "trip_id": record.trip_id,
+            "suggestion": change.suggestion.model_dump(mode="json"),
+            "reason": change.reason,
+        })
+    if change.reflowed and record.proposal is not None:
+        emit("itinerary.reflowed", "The itinerary was updated", {
+            "trip_id": record.trip_id,
+            "problems": validate_itinerary(record.proposal.package.itinerary),
+        })
+
+
+def act_on_suggestion(store: TripStore, emit: Emit, record: TripRecord, action: SuggestionAction) -> tuple[SuggestionResult, str | None]:
+    proposal = _proposal(record)
+    if action.action == SuggestionActionName.UNDO:
+        if not record.history:
+            return SuggestionResult(proposal=proposal), None
+        prior = record.history[-1]
+        store.put(record.model_copy(update={
+            "proposal": prior.proposal,
+            "rejected_ids": list(prior.rejected_ids),
+            "history": record.history[:-1],
+        }))
+        emit("suggestion.updated", "Restored the previous suggestion", {"trip_id": record.trip_id})
+        return SuggestionResult(proposal=prior.proposal), None
+    if action.action == SuggestionActionName.MODIFY and not action.alternative_id:
+        constraints = dict(action.constraints or {})
+        if action.text:
+            constraints["text"] = action.text
+        rows = cards.alternatives(proposal, record.rejected_ids, action.suggestion_id, constraints)
+        return SuggestionResult(proposal=proposal, alternatives=rows), None
+    change = cards.apply_action(proposal, record.rejected_ids, action, cards.load_catalog())
+    if not change.changed:
+        return SuggestionResult(proposal=proposal), None
+    updated = record.model_copy(update={
+        "proposal": change.proposal,
+        "rejected_ids": change.rejected_ids,
+        "history": [*record.history, _snapshot(record)],
+    })
+    store.put(updated)
+    _publish_change(emit, updated, change)
+    return SuggestionResult(proposal=change.proposal), change.reason
+
+
+def accept_remaining(store: TripStore, emit: Emit, record: TripRecord) -> Proposal:
+    proposal = cards.accept_all(_proposal(record))
+    store.put(record.model_copy(update={"proposal": proposal, "history": [*record.history, _snapshot(record)]}))
+    emit("suggestion.updated", "Accepted the open items", {"trip_id": record.trip_id})
+    return proposal
+
+
+def apply_note(store: TripStore, emit: Emit, record: TripRecord, text: str) -> TripRecord:
+    proposal = _proposal(record)
+    messages = [*record.conversation.messages, _message(record.conversation.messages, ChatRole.USER, text)]
+    day = cards.relaxed_day_number(text)
+    change = cards.relax_day(proposal, record.rejected_ids, day) if day is not None else None
+    if change is not None and change.changed:
+        note = f"Day {day} is lighter. I removed {change.removed_title}. Accepted stops stayed."
+        said = _message(messages, ChatRole.ASSISTANT, note)
+        updated = record.model_copy(update={
+            "proposal": change.proposal,
+            "rejected_ids": change.rejected_ids,
+            "history": [*record.history, _snapshot(record)],
+            "conversation": record.conversation.model_copy(update={"messages": [*messages, said]}),
+        })
+        store.put(updated)
+        _say(emit, record.trip_id, said)
+        _publish_change(emit, updated, change)
+        return updated
+    note = (
+        f"Day {day} stays as it is. Those stops are already accepted."
+        if day is not None
+        else "Name the day to lighten, for example make day 2 more relaxed."
+    )
+    said = _message(messages, ChatRole.ASSISTANT, note)
+    updated = record.model_copy(update={
+        "conversation": record.conversation.model_copy(update={"messages": [*messages, said]}),
+    })
+    store.put(updated)
+    _say(emit, record.trip_id, said)
+    return updated

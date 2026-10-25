@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
-from roam_contracts.models import ChatAnswer, InspectorEvent, TripView
+from roam_contracts.models import ChatAnswer, InspectorEvent, Proposal, Suggestion, SuggestionAction, SuggestionResult, TripView
+from roam_agent import suggestions as cards
 from roam_agent import swan_http, trips
 from roam_agent.agentcore_app import get_trip_store
 from roam_agent.store import TripRecord
@@ -81,6 +83,56 @@ def post_message(trip_id: str, body: MessageBody, authorization: str | None = He
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     return {"ok": True}
+
+
+def _constraints(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        found = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(422, "constraints must be JSON") from exc
+    if not isinstance(found, dict):
+        raise HTTPException(422, "constraints must be a JSON object")
+    return found
+
+
+@router.get("/api/trips/{trip_id}/suggestions/{sid}/alternatives", response_model=list[Suggestion])
+def suggestion_alternatives(
+    trip_id: str, sid: str, constraints: str | None = Query(default=None), authorization: str | None = Header(default=None),
+) -> list[Suggestion]:
+    record = _record(trip_id, _caller(authorization))
+    if record.proposal is None or not any(row.id == sid for row in record.proposal.suggestions):
+        raise HTTPException(404, "No suggestion with that id")
+    return cards.alternatives(record.proposal, record.rejected_ids, sid, _constraints(constraints))
+
+
+@router.post("/api/trips/{trip_id}/suggestions/{sid}", response_model=SuggestionResult)
+def suggestion_action(
+    trip_id: str, sid: str, body: SuggestionAction, authorization: str | None = Header(default=None),
+) -> SuggestionResult:
+    if body.suggestion_id != sid:
+        raise HTTPException(422, "The suggestion id in the body does not match the path")
+    caller = _caller(authorization)
+    record = _record(trip_id, caller)
+    if record.proposal is None or not any(row.id == sid for row in record.proposal.suggestions):
+        raise HTTPException(404, "No suggestion with that id")
+    try:
+        result, reason = trips.act_on_suggestion(get_trip_store(), _emit, record, body)
+    except trips.TripConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if reason and caller.profile is not None and caller.user_id:
+        swan_http.profiles.put(cards.remember_reason(caller.profile, reason))
+    return result
+
+
+@router.post("/api/trips/{trip_id}/accept-all", response_model=Proposal)
+def accept_all(trip_id: str, authorization: str | None = Header(default=None)) -> Proposal:
+    caller = _caller(authorization)
+    try:
+        return trips.accept_remaining(get_trip_store(), _emit, _record(trip_id, caller))
+    except trips.TripConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.post("/api/trips/{trip_id}/plan")
