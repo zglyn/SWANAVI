@@ -68,6 +68,40 @@ function advance(trip: StoredTrip) {
   trip.phase = "ready";
 }
 
+function retargetHotel(pack: TravelPackage, offer: HotelOffer, previous?: string) {
+  const lodging = pack.itinerary.brief.lodging?.[0];
+  if (lodging) {
+    lodging.name = offer.name;
+    lodging.location = offer.location;
+  }
+  for (const day of pack.itinerary.days) {
+    for (const stop of day.stops) {
+      if (stop.kind !== "lodging") continue;
+      stop.location = offer.location;
+      stop.title = stop.title.replace(/(Check in at|Drop bags at|Check out of) .*/, `$1 ${offer.name}`);
+    }
+  }
+  pack.reasons = pack.reasons.map((line) => (previous && line.startsWith(`${previous}: `) ? `${offer.name}: ${offer.why.slice(0, 2).join("; ")}` : line));
+}
+
+function retotal(pack: TravelPackage): TravelPackage["totals"] {
+  const flights = [pack.outbound, pack.return].reduce((sum, offer) => sum + (offer ? Number(offer.price) : 0), 0);
+  const hotels = pack.hotels.reduce((sum, stay) => sum + Number(stay.offer.total), 0);
+  const activities = Number(pack.itinerary.bookable_total);
+  const savings = pack.hotels.reduce((sum, stay) => {
+    const quote = stay.offer.quote;
+    return sum + (quote?.viator_price ? Number(quote.viator_price) - Number(quote.amount) : 0);
+  }, 0);
+  return {
+    ...pack.totals,
+    flights: flights.toFixed(2),
+    hotels: hotels.toFixed(2),
+    activities: activities.toFixed(2),
+    total: (flights + hotels + activities).toFixed(2),
+    savings: savings.toFixed(2),
+  };
+}
+
 export const swanMock = {
   async demoSignIn() {
     const profile = profileFx as UserProfile;
@@ -150,13 +184,16 @@ export const swanMock = {
     if (choices.hotel_ids?.length) {
       const picked = trip.hotels.filter((item) => choices.hotel_ids?.includes(item.id));
       if (picked.length) {
+        const previous = base.hotels[0]?.offer.name;
         base.hotels = picked.map((offer) => ({
           offer,
           check_in: offer.check_in || trip.request.start_date,
           check_out: offer.check_out || trip.request.end_date,
         }));
+        retargetHotel(base, picked[0], previous);
       }
     }
+    base.totals = retotal(base);
     trip.package = base;
     if (trip.request.autonomy.hotels === "i_choose" && !choices.hotel_ids?.length) {
       trip.hotels = hotelsFx as HotelOffer[];
