@@ -5,16 +5,19 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 import httpx
 from xrpl.models.transactions import Transaction
 from xrpl.transaction import sign
 from xrpl.wallet import Wallet
 
-from roam_contracts.models import CREDENTIAL_TYPE, MerchantProfile
+from roam_contracts.geo import haversine_km
+from roam_contracts.models import CREDENTIAL_TYPE, Category, Geofence, GeoPoint, MerchantProfile, PolicyConfig
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "contracts" / "fixtures"
@@ -54,9 +57,10 @@ class OfflineCredentials:
         if addresses is None:
             listed = os.environ.get("GUARDRAIL_VERIFIED_MERCHANTS")
             ids = set(listed.split(",")) if listed else None
+            blocked = unverified_merchant_ids()
             addresses = {
                 merchant_address(m) for m in fixture_merchants()
-                if (m.merchant_id in ids if ids is not None else m.merchant_id not in UNVERIFIED_BY_DEFAULT)
+                if (m.merchant_id in ids if ids is not None else m.merchant_id not in blocked)
             }
         self.addresses = addresses
 
@@ -125,3 +129,40 @@ def signer_blob(tx_json: dict[str, Any], wallet: Wallet) -> dict[str, Any]:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def unverified_merchant_ids() -> set[str]:
+    ids = set(UNVERIFIED_BY_DEFAULT)
+    path = FIXTURES / "demo_city.json"
+    if not path.exists():
+        return ids
+    for row in json.loads(path.read_text())["merchants"]:
+        if not row["verified"]:
+            ids.add(row["id"])
+    return ids
+
+
+def activity_policy() -> PolicyConfig:
+    """New York activity policy. Per-item cap 50.00, daily cap 100.00, categories activity and food.
+    Dates and center come from demo_city.json. The geofence radius is the farthest demo merchant plus 1 km."""
+    city = json.loads((FIXTURES / "demo_city.json").read_text())
+    zone = ZoneInfo(city["timezone"])
+    start = datetime.fromisoformat(city["dates"]["start"]).replace(tzinfo=zone)
+    end = datetime.fromisoformat(city["dates"]["end"]).replace(tzinfo=zone) + timedelta(days=1)
+    center = city["center"]
+    farthest = max(
+        haversine_km(center["lat"], center["lng"], row["lat"], row["lng"])
+        for row in city["merchants"]
+    )
+    return PolicyConfig(
+        max_daily_budget=Decimal("100.00"),
+        max_per_item=Decimal("50.00"),
+        require_verified_credential=True,
+        allowed_categories=[Category.ACTIVITY, Category.FOOD],
+        date_window_start=start,
+        date_window_end=end,
+        geofence=Geofence(
+            center=GeoPoint(lat=center["lat"], lng=center["lng"]),
+            radius_km=farthest + 1,
+        ),
+    )

@@ -63,7 +63,7 @@ Evaluate **all** rules and return every violation, not just the first one. The d
 | 2 | `quote_expired` | `now < expires_at` | "Quote expired 3 min ago" |
 | 3 | `tx_quote_mismatch` | every inner tx of `tx_json` maps 1:1 to a quote by memo invoice_id, and Destination/Amount/currency match **exactly**; no extra inner txs; `Account` = trip account | "Inner tx #2 pays rXYZ… but quote says rABC…" |
 | 4 | `max_per_item` | each `quote.amount ≤ policy.max_per_item` | expected `<= 45`, actual `500.00` |
-| 5 | `max_daily_budget` | `spent_today + Σ amounts ≤ max_daily_budget` | expected `<= 55.00`, actual `500.00` |
+| 5 | `max_daily_budget` | booked or ledger spend for the day, plus the quote total, `≤ max_daily_budget`. The request's `spent_today` is ignored. | expected `<= 55.00`, actual `500.00` |
 | 6 | `verified_credential` | if required: a `Credential` ledger entry exists with subject = merchant address, issuer = our issuer, type = hex(`CREDENTIAL_TYPE`), flag `lsfAccepted`, not expired | "rTrap… holds no Local_Merchant_KYC credential" |
 | 7 | `category` | `quote.category in allowed_categories` | actual `shopping` |
 | 8 | `date_window` | slot within window, if set | |
@@ -76,7 +76,10 @@ Decode inner txs: a `Batch` has `RawTransactions: [{RawTransaction: {...}}]`. Ea
 normalises the amount to `Decimal` in display units.
 
 **Security notes for the pitch:** the guardrail recomputes everything from the signed quotes and the raw tx. It never
-trusts the agent's summary. Key 2 never leaves this process.
+trusts the agent's summary or the request's `spent_today`. Key 2 never leaves this process. The New York activity
+policy is per-item 50.00 and daily 100.00, allows activity and food, and uses the demo city's dates and center.
+A flight or hotel quote is a category violation that says the activity policy excludes flights and hotels. The other
+rules still run on that quote.
 
 ## 6. Tasks
 
