@@ -6,11 +6,16 @@ import {
   type PlanRevision,
   type PlanSelection,
   type PlanView,
+  type Proposal,
+  type Suggestion,
+  type SuggestionAction,
+  type SuggestionResult,
   type SwanView,
   type TravelPackage,
   type TravelSegment,
   type TripBrief,
   type TripRequest,
+  type TripView,
   type UserProfile,
 } from "@contracts/api";
 import type { RoamClient } from "./client";
@@ -109,4 +114,10 @@ export const realClient: RoamClient = {
     call(API.planChoices(id), { method: "POST", body: JSON.stringify(choices) }),
   getPackage: (id: string) => call<TravelPackage>(API.planPackage(id)),
   createTrip: (message: string) => call(API.trips, { method: "POST", body: JSON.stringify({ message }) }),
+  getTrip: (id: string) => call<TripView>(API.trip(id)),
+  suggestionAlternatives: (id: string, sid: string, constraints = {}) =>
+    call<Suggestion[]>(`${API.tripAlternatives(id, sid)}?constraints=${encodeURIComponent(JSON.stringify(constraints))}`),
+  actOnSuggestion: (id: string, action: SuggestionAction) =>
+    call<SuggestionResult>(API.tripSuggestion(id, action.suggestion_id), { method: "POST", body: JSON.stringify(action) }),
+  acceptAll: (id: string) => call<Proposal>(API.tripAcceptAll(id), { method: "POST" }),
 };

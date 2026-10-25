@@ -9,6 +9,7 @@ export interface MapStop {
   label: string;
   kind: "stop" | "hotel" | "merchant";
   badge?: string;
+  replaces?: string;
 }
 
 interface Arc {
@@ -92,27 +93,32 @@ export function TripMap({
         map.on("load", () => {
           fit();
           addBuildings(map);
-          const line = (id: string, coordinates: [number, number][], dashed: boolean) => {
+          const line = (id: string, coordinates: [number, number][], dashed: boolean, color = ink) => {
             map.addSource(id, { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } } });
             map.addLayer({
               id,
               type: "line",
               source: id,
-              paint: { "line-color": ink, "line-width": 3, "line-dasharray": dashed ? [1.5, 1.5] : [1, 0] },
+              paint: { "line-color": color, "line-width": 3, "line-dasharray": dashed ? [1.5, 1.5] : [1, 0] },
             });
           };
           drawnArcs.forEach((arc, index) => line(`arc-${index}`, greatCircle(arc.from, arc.to), false));
-          const path = drawnStops.filter((stop) => stop.kind === "stop");
+          const path = drawnStops.filter((stop) => stop.kind === "stop" && !stop.replaces);
           if (route && path.length > 1) line("day", path.map((stop) => [stop.lng, stop.lat]), true);
+          const accent = getComputedStyle(node).getPropertyValue("--swan-beak").trim() || ink;
+          drawnStops.forEach((stop) => {
+            const replaced = stop.replaces && drawnStops.find((item) => item.id === stop.replaces);
+            if (replaced) line(`preview-${stop.id}`, [[replaced.lng, replaced.lat], [stop.lng, stop.lat]], true, accent);
+          });
           let number = 0;
           markers.current.clear();
           drawnStops.forEach((stop) => {
             const marker = document.createElement("button");
             marker.type = "button";
-            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}`;
+            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}${stop.replaces ? " swan-marker-ghost" : ""}`;
             const badge = document.createElement("span");
             badge.className = "swan-marker-badge";
-            badge.textContent = stop.badge ?? (stop.kind === "stop" ? String((number += 1)) : "H");
+            badge.textContent = stop.badge ?? (stop.replaces ? "?" : stop.kind === "stop" ? String((number += 1)) : "H");
             const text = document.createElement("span");
             text.className = "swan-marker-label";
             text.textContent = stop.label;
@@ -175,7 +181,7 @@ export function TripMap({
         <ol className="mt-4 space-y-2">
           {stops.map((stop) => (
             <li key={stop.id} className="flex items-center gap-3">
-              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.kind === "stop" ? (number += 1) : "H")}</span>
+              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.replaces ? "?" : stop.kind === "stop" ? (number += 1) : "H")}</span>
               <button type="button" className="text-left" onClick={() => { setActive(stop.id); onSelect?.(stop.id); }}>
                 {stop.label}
               </button>
