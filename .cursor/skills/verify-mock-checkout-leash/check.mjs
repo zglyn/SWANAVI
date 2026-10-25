@@ -54,6 +54,25 @@ function ensureTypescript() {
   }
 }
 
+function importStubs(source) {
+  const lines = [];
+  for (const [, clause, from] of source.matchAll(/^\s*import\s+(?!type\b)([\s\S]*?)\s+from\s+"([^"]+)";\s*$/gm)) {
+    if (from.startsWith("@fixtures/")) {
+      const fixture = readFileSync(join(repoRoot, "contracts/fixtures", from.slice("@fixtures/".length)), "utf8");
+      lines.push(`const ${clause.trim()} = ${fixture};`);
+      continue;
+    }
+    const names = clause
+      .replace(/[{}]/g, "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name && !name.startsWith("type "))
+      .map((name) => name.split(/\s+as\s+/).pop());
+    for (const name of names) lines.push(`const ${name} = () => ({});`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 function buildHarness(ts, source) {
   let body = source.replace(/^\s*import\s[\s\S]*?;\s*$/gm, "");
   body = mustReplace(
@@ -65,9 +84,7 @@ function buildHarness(ts, source) {
   if (!body.includes("function evaluate(") || !body.includes("async function checkout(")) {
     throw new Error("harness no longer matches mock.ts (evaluate or checkout)");
   }
-  const policyFx = readFileSync(policyPath, "utf8");
-  const quotesFx = readFileSync(quotesPath, "utf8");
-  const header = `const policyFx = ${policyFx};\nconst quotesFx = ${quotesFx};\n`;
+  const header = importStubs(source);
   const footer = `
 export function __reset(policy, spentToday, balance) {
   state.policy = structuredClone(policy);
