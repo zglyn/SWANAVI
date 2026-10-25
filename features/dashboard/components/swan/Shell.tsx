@@ -46,13 +46,3 @@ export function SwanShell({
   );
 }
 
-export function phasePath(id: string, phase: string) {
-  if (phase === "waiting_attractions") return `/plan/${id}/attractions`;
-  if (phase === "waiting_flights") return `/plan/${id}/flights`;
-  if (phase === "waiting_hotels") return `/plan/${id}/hotels`;
-  return `/plan/${id}/overview`;
-}
-
-export function planningPath(id: string, phase: string) {
-  return `/plan/${id}/planning?next=${encodeURIComponent(phasePath(id, phase))}`;
-}

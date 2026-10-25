@@ -17,7 +17,7 @@ export default function SignInPage() {
 
   async function send() {
     await client.magicLink(email);
-    router.push("/onboarding");
+    router.push("/");
   }
 
   return (

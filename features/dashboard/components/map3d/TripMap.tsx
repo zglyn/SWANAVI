@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { mapboxPublicToken } from "@/lib/mapboxToken";
 
 export interface MapStop {
   id: string;
@@ -9,6 +10,7 @@ export interface MapStop {
   label: string;
   kind: "stop" | "hotel" | "merchant";
   badge?: string;
+  replaces?: string;
 }
 
 interface Arc {
@@ -67,23 +69,24 @@ export function TripMap({
     const inset = padding ?? { top: 72, bottom: 72, left: 72, right: 72 };
     (async () => {
       try {
-        const maplibre = await import("maplibre-gl");
-        await import("maplibre-gl/dist/maplibre-gl.css");
-        if (cancelled || !node) return;
-        const ink = getComputedStyle(node).getPropertyValue("--swan-fg").trim() || "black";
-        const map = new maplibre.Map({
-          container: node,
-          style: "https://tiles.openfreemap.org/styles/positron",
+        const token = mapboxPublicToken();
+        const opened = await openBasemap(node, token, {
           center: drawnStops[0] ? [drawnStops[0].lng, drawnStops[0].lat] : [135.77, 35.01],
           zoom: drawnStops.length ? 11 : 2,
           pitch: reduced || flat ? 0 : 48,
-          attributionControl: { compact: true },
         });
+        if (cancelled || !opened) {
+          opened?.map.remove();
+          return;
+        }
+        const { map, maplib, mapbox } = opened;
+        const ink = getComputedStyle(node).getPropertyValue("--swan-fg").trim() || "black";
         map.on("error", (event) => {
           const detail = event as { sourceId?: string; tile?: unknown; error?: Error };
           if (detail.sourceId || detail.tile) return;
           if (map.loaded()) return;
-          setFallback(detail.error?.message || "The map style did not load.");
+          const message = detail.error?.message || "The map style did not load.";
+          setFallback(mapbox && /token/i.test(message) ? "The map style did not load." : message);
         });
         map.on("webglcontextlost", () => setFallback("The browser dropped the map's graphics context."));
         const fit = () => map.resize();
@@ -91,28 +94,33 @@ export function TripMap({
         observer.observe(node);
         map.on("load", () => {
           fit();
-          addBuildings(map);
-          const line = (id: string, coordinates: [number, number][], dashed: boolean) => {
+          if (!mapbox) addBuildings(map as unknown as import("maplibre-gl").Map);
+          const line = (id: string, coordinates: [number, number][], dashed: boolean, color = ink) => {
             map.addSource(id, { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } } });
             map.addLayer({
               id,
               type: "line",
               source: id,
-              paint: { "line-color": ink, "line-width": 3, "line-dasharray": dashed ? [1.5, 1.5] : [1, 0] },
+              paint: { "line-color": color, "line-width": 3, "line-dasharray": dashed ? [1.5, 1.5] : [1, 0] },
             });
           };
           drawnArcs.forEach((arc, index) => line(`arc-${index}`, greatCircle(arc.from, arc.to), false));
-          const path = drawnStops.filter((stop) => stop.kind === "stop");
+          const path = drawnStops.filter((stop) => stop.kind === "stop" && !stop.replaces);
           if (route && path.length > 1) line("day", path.map((stop) => [stop.lng, stop.lat]), true);
+          const accent = getComputedStyle(node).getPropertyValue("--swan-beak").trim() || ink;
+          drawnStops.forEach((stop) => {
+            const replaced = stop.replaces && drawnStops.find((item) => item.id === stop.replaces);
+            if (replaced) line(`preview-${stop.id}`, [[replaced.lng, replaced.lat], [stop.lng, stop.lat]], true, accent);
+          });
           let number = 0;
           markers.current.clear();
           drawnStops.forEach((stop) => {
             const marker = document.createElement("button");
             marker.type = "button";
-            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}`;
+            marker.className = `swan-marker${stop.kind === "stop" && !stop.badge ? "" : " swan-marker-hotel"}${stop.replaces ? " swan-marker-ghost" : ""}`;
             const badge = document.createElement("span");
             badge.className = "swan-marker-badge";
-            badge.textContent = stop.badge ?? (stop.kind === "stop" ? String((number += 1)) : "H");
+            badge.textContent = stop.badge ?? (stop.replaces ? "?" : stop.kind === "stop" ? String((number += 1)) : "H");
             const text = document.createElement("span");
             text.className = "swan-marker-label";
             text.textContent = stop.label;
@@ -123,12 +131,12 @@ export function TripMap({
               onSelect?.(stop.id);
             };
             markers.current.set(stop.id, marker);
-            new maplibre.Marker({ element: marker, anchor: "left", offset: [-14, 0] }).setLngLat([stop.lng, stop.lat]).addTo(map);
+            new maplib.Marker({ element: marker, anchor: "left", offset: [-14, 0] }).setLngLat([stop.lng, stop.lat]).addTo(map);
           });
           const pitch = reduced || flat ? 0 : 48;
           const frame = (points: [number, number][], options: { pitch: number; maxZoom: number }) => {
             const unwrapped = unwrap(points);
-            const bounds = unwrapped.reduce((box, point) => box.extend(point), new maplibre.LngLatBounds(unwrapped[0], unwrapped[0]));
+            const bounds = unwrapped.reduce((box, point) => box.extend(point), new maplib.LngLatBounds(unwrapped[0], unwrapped[0]));
             map.fitBounds(bounds, { padding: inset, duration: reduced ? 0 : 1200, essential: true, ...options });
           };
           if (drawnStops.length > 1) {
@@ -144,7 +152,11 @@ export function TripMap({
         });
         mapRef.current = map;
         disconnectObserver = () => observer.disconnect();
-        if (cancelled) disconnectObserver();
+        if (cancelled) {
+          disconnectObserver();
+          map.remove();
+          mapRef.current = null;
+        }
       } catch (err) {
         if (!cancelled) setFallback(err instanceof Error ? err.message : "The map could not start.");
       }
@@ -175,7 +187,7 @@ export function TripMap({
         <ol className="mt-4 space-y-2">
           {stops.map((stop) => (
             <li key={stop.id} className="flex items-center gap-3">
-              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.kind === "stop" ? (number += 1) : "H")}</span>
+              <span className="swan-marker-badge" aria-hidden="true">{stop.badge ?? (stop.replaces ? "?" : stop.kind === "stop" ? (number += 1) : "H")}</span>
               <button type="button" className="text-left" onClick={() => { setActive(stop.id); onSelect?.(stop.id); }}>
                 {stop.label}
               </button>
@@ -198,6 +210,63 @@ export function TripMap({
       {selected ? <p className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1 text-sm text-black shadow">{selected.label}</p> : null}
     </div>
   );
+}
+
+interface LngLatBounds {
+  extend(point: [number, number]): LngLatBounds;
+}
+
+interface DrawMap {
+  on(type: string, listener: (event?: unknown) => void): void;
+  resize(): void;
+  loaded(): boolean;
+  addSource(id: string, source: object): void;
+  addLayer(layer: object, before?: string): void;
+  fitBounds(bounds: LngLatBounds, options: object): void;
+  jumpTo(options: object): void;
+  flyTo(options: object): void;
+  remove(): void;
+  setPitch(pitch: number): void;
+}
+
+interface DrawLib {
+  Map: new (options: object) => DrawMap;
+  Marker: new (options: { element: HTMLElement; anchor: string; offset: [number, number] }) => {
+    setLngLat(at: [number, number]): { addTo(map: DrawMap): void };
+  };
+  LngLatBounds: new (sw: [number, number], ne: [number, number]) => LngLatBounds;
+  accessToken?: string;
+}
+
+async function openBasemap(
+  container: HTMLElement,
+  token: string,
+  camera: { center: [number, number]; zoom: number; pitch: number },
+): Promise<{ map: DrawMap; maplib: DrawLib; mapbox: boolean } | null> {
+  const cameraOptions = { center: camera.center, zoom: camera.zoom, pitch: camera.pitch };
+  if (token.startsWith("pk.")) {
+    const loaded = await import("mapbox-gl");
+    await import("mapbox-gl/dist/mapbox-gl.css");
+    const mapboxgl = (loaded.default ?? loaded) as unknown as DrawLib;
+    mapboxgl.accessToken = token;
+    const map = new mapboxgl.Map({
+      container,
+      style: "mapbox://styles/mapbox/light-v11",
+      accessToken: token,
+      attributionControl: true,
+      ...cameraOptions,
+    });
+    return { map, maplib: mapboxgl, mapbox: true };
+  }
+  const maplibre = await import("maplibre-gl");
+  await import("maplibre-gl/dist/maplibre-gl.css");
+  const map = new maplibre.Map({
+    container,
+    style: "https://tiles.openfreemap.org/styles/positron",
+    attributionControl: { compact: true },
+    ...cameraOptions,
+  });
+  return { map: map as unknown as DrawMap, maplib: maplibre as unknown as DrawLib, mapbox: false };
 }
 
 function hasWebGL(): boolean {

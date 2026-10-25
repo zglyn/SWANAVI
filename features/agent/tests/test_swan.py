@@ -166,6 +166,17 @@ def test_autopilot_respects_wake_and_pauses_for_hotels():
     assert waiting.package.hotels[0].offer.id == chosen
 
 
+def test_dates_with_no_flights_still_get_a_hotel_and_days_in_kyoto_time():
+    request = _request().model_copy(update={"start_date": "2026-11-21", "end_date": "2026-11-24"})
+    trip = begin("demo", request, _profile())
+    package = trip.package
+    assert package is not None
+    assert package.outbound is None and package.return_flight is None
+    assert package.hotels
+    assert [day.date for day in package.itinerary.days] == ["2026-11-21", "2026-11-22", "2026-11-23", "2026-11-24"]
+    assert package.itinerary.brief.start_date.utcoffset() == timedelta(hours=9)
+
+
 def test_changing_outbound_shifts_only_day_one():
     trip = begin("demo", _request(), _profile())
     package = trip.package

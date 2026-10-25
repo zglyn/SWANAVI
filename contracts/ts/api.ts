@@ -121,10 +121,12 @@ export type EventType =
   | "guardrail.approved" | "guardrail.blocked" | "tx.signed.agent"
   | "batch.submitted" | "batch.validated" | "batch.failed"
   | "escrow.cancelled" | "escrow.finished"
-  | "booking.confirmed" | "booking.cancelled"
+  | "booking.confirmed" | "booking.cancelled" | "booking.failed" | "booking.needs_user"
   | "weather.alert" | "wallet.updated" | "system.reset"
   | "plan.tool_call" | "plan.candidates" | "plan.ready" | "plan.invalid" | "plan.failed"
-  | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready";
+  | "plan.flights_ready" | "plan.hotels_ready" | "plan.package_ready"
+  | "chat.delta" | "chat.message" | "brief.updated" | "proposal.ready"
+  | "suggestion.updated" | "itinerary.reflowed";
 
 export interface InspectorEvent {
   id: string;
@@ -162,6 +164,14 @@ export const API = {
   authVerify: "/api/auth/verify",
   authDemo: "/api/auth/demo",
   tripRequest: "/api/trips/request",
+  trips: "/api/trips",
+  trip: (id: string) => `/api/trips/${id}`,
+  tripMessages: (id: string) => `/api/trips/${id}/messages`,
+  tripPlan: (id: string) => `/api/trips/${id}/plan`,
+  tripAlternatives: (id: string, sid: string) => `/api/trips/${id}/suggestions/${sid}/alternatives`,
+  tripSuggestion: (id: string, sid: string) => `/api/trips/${id}/suggestions/${sid}`,
+  tripAcceptAll: (id: string) => `/api/trips/${id}/accept-all`,
+  tripBook: (id: string) => `/api/trips/${id}/book`,
   planFlights: (id: string) => `/api/plans/${id}/flights`,
   planHotels: (id: string) => `/api/plans/${id}/hotels`,
   planChoices: (id: string) => `/api/plans/${id}/choices`,
@@ -438,4 +448,98 @@ export interface SwanView {
   flights: FlightOffer[];
   hotels: HotelOffer[];
   package?: TravelPackage | null;
+}
+
+export type ConversationPhase = "chatting" | "planning" | "proposal" | "review" | "booked";
+export type ChatRole = "user" | "assistant";
+export type ControlType = "chips" | "date_range" | "stepper" | "slider" | "airport" | "tiles";
+export type SuggestionKind = "flight" | "hotel" | "attraction" | "transfer";
+export type SuggestionStatus = "proposed" | "accepted" | "modifying" | "rejected" | "replaced" | "booked";
+export type SuggestionActionName = "accept" | "reject" | "modify" | "undo";
+
+export interface Control {
+  slot: string;
+  type: ControlType;
+  options?: string[] | null;
+  min?: number | null;
+  max?: number | null;
+  value?: unknown;
+}
+export interface ChatAnswer { slot: string; value: unknown }
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  text: string;
+  controls: Control[];
+  answers?: ChatAnswer[] | null;
+  created_at: string;
+}
+export interface TripFacts {
+  destination?: string | null;
+  origin?: TripOrigin | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  outbound_window?: TimeOfDayWindow | null;
+  return_window?: TimeOfDayWindow | null;
+  travellers?: number | null;
+  budget?: Money | null;
+  pace?: Pace | null;
+  interests?: string[];
+  notes?: string | null;
+}
+export interface TripConversation {
+  trip_id: string;
+  phase: ConversationPhase;
+  messages: ChatMessage[];
+  brief: TripFacts;
+  missing: string[];
+}
+interface SuggestionBase {
+  id: string;
+  status: SuggestionStatus;
+  why: string[];
+  alternatives_available: boolean;
+  required: boolean;
+}
+export type Suggestion = SuggestionBase & (
+  | { kind: "flight"; item: FlightOffer }
+  | { kind: "hotel"; item: HotelStay }
+  | { kind: "attraction" | "transfer"; item: Stop }
+);
+export interface Proposal {
+  trip_id: string;
+  package: TravelPackage;
+  suggestions: Suggestion[];
+  totals: PackageTotals;
+}
+export interface SuggestionAction {
+  suggestion_id: string;
+  action: SuggestionActionName;
+  reason?: string | null;
+  alternative_id?: string | null;
+  constraints?: Record<string, unknown> | null;
+  text?: string | null;
+}
+export type BookingChannel = "wallet" | "external";
+interface BookingBase {
+  suggestion_id: string;
+  confirmation_code: string | null;
+  error: string | null;
+}
+export type BookingLine = BookingBase & (
+  | { channel: "wallet"; status: "booked" | "blocked" | "failed"; violations: Violation[] }
+  | { channel: "external"; status: "booked" | "failed" | "needs_user" }
+);
+export interface BookRequest {
+  channel: BookingChannel;
+  travellers?: string[];
+}
+export interface TripView {
+  conversation: TripConversation;
+  proposal?: Proposal | null;
+  bookings: BookingLine[];
+}
+export interface SuggestionResult {
+  proposal: Proposal;
+  alternatives: Suggestion[];
 }

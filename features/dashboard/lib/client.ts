@@ -1,5 +1,6 @@
 import type {
   AttractionSelection,
+  BookRequest,
   CheckoutResult,
   InspectorEvent,
   PackageChoices,
@@ -7,16 +8,22 @@ import type {
   PlanSelection,
   PlanView,
   PolicyConfig,
+  Proposal,
   ScenarioName,
+  Suggestion,
+  SuggestionAction,
+  SuggestionResult,
   SwanView,
   TravelPackage,
   TravelSegment,
   TripBrief,
   TripRequest,
+  TripView,
   UserProfile,
   WalletState,
 } from "@contracts/api";
 import { mockClient } from "./mock";
+import type { Constraints } from "./proposalOps";
 import { realClient } from "./real";
 
 export interface RoamClient {
@@ -44,6 +51,13 @@ export interface RoamClient {
   submitAttractions(id: string, selection: AttractionSelection): Promise<{ ok: boolean; phase: string }>;
   choosePackage(id: string, choices: PackageChoices): Promise<{ ok: boolean; phase: string }>;
   getPackage(id: string): Promise<TravelPackage>;
+  createTrip(message: string): Promise<{ trip_id: string }>;
+  getTrip(id: string): Promise<TripView>;
+  suggestionAlternatives(id: string, sid: string, constraints?: Constraints): Promise<Suggestion[]>;
+  actOnSuggestion(id: string, action: SuggestionAction): Promise<SuggestionResult>;
+  acceptAll(id: string): Promise<Proposal>;
+  /** Results arrive as booking and guardrail events; GET the trip for the settled lines. */
+  bookTrip(id: string, request: BookRequest): Promise<{ ok: boolean }>;
 }
 
 export function getClient(): RoamClient {

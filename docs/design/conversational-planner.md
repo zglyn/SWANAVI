@@ -10,7 +10,7 @@ follow-up questions until it knows enough, then proposes a complete trip: **flig
 can be **accepted, modified or rejected**. The whole itinerary is always visible on the existing **Mapbox trip map**.
 
 Visual style: an **Airbnb-inspired** layout (photo-led cards, a list beside a map, a sticky booking summary) with
-**search-engine simplicity** on the home page.
+**search-engine simplicity** on the home page, in a warm colour palette built around the **Swan logo**. Not black and white.
 
 ## 2. Goals and non-goals
 **Goals**
@@ -47,8 +47,26 @@ The page must never look like it *is* Airbnb.
 - On submit, the box **animates to the bottom** of the conversation view, so the conversation feels like it grows from the prompt.
 
 ### 3.3 Visual tokens
-- **Palette:** black and white (per the UI epic #41), one grey scale, and **no brand accent colour** by default. See open question Q1.
-- **Type:** one sans-serif family for everything, with large, bold headings. Use mono only for confirmation codes and ledger data.
+**The Swan logo sets the look.** The palette comes from a swan on a lake: white feathers, deep water, an orange beak.
+This **replaces the earlier black-and-white direction** (UI epic #41).
+
+| Token | Role | Starting value (tune in `/styleguide`) |
+|---|---|---|
+| `--swan-feather` | page background | `#FBFAF7` (warm off-white) |
+| `--swan-surface` | cards, sheets, prompt box | `#FFFFFF` |
+| `--swan-lake` | primary text, primary buttons, **the logo**, map routes | `#14324A` (deep lake blue) |
+| `--swan-lake-2` | secondary text | `#4A6275` |
+| `--swan-mist` | tints, selected states, chip backgrounds | `#E8F0F5` |
+| `--swan-beak` | **one accent:** "Accept", the "Book" button, the active day, map highlight | `#C2410C` (burnt orange; white text passes AA) |
+| `--swan-reed` | success ("accepted", "booked") | `#2F6B4F` |
+| `--swan-line` | dividers, card borders on hover | `#E4E1DA` |
+
+- **Logo:** the existing `SwanMark` silhouette in `--swan-lake` on light backgrounds and white on dark. An optional
+  two-tone version adds a small `--swan-beak` beak, used only at large sizes (home page, favicon, app icon).
+- **Accent discipline:** `--swan-beak` is used for **one primary action per screen** plus highlights, never for large areas.
+- **Dark mode:** later. Tokens make it possible, but it isn't in scope.
+- **Contrast:** every text/background pair must meet WCAG AA. Check the starting values in the styleguide before using them.
+- **Type:** one sans-serif family for everything, with large, bold headings in `--swan-lake`. Use mono only for confirmation codes and ledger data.
 - **Radius:** 12 px (cards), 16 px (sheets), 999 px (pills, the prompt box).
 - **Elevation:** one soft shadow for cards and sheets; a stronger one for the floating prompt box.
 - **Spacing:** 8 px grid; card gutters 16–24 px.
@@ -276,12 +294,12 @@ accept, one modify (hotel → cheaper alternative) and one reject (an attraction
 ## 11. Accessibility and quality
 - All actions are reachable by keyboard; the Modify sheet traps focus and closes with Esc; status changes are announced (`aria-live`).
 - Every map state has a list equivalent (the list *is* the accessible view of the map).
-- Status never relies on colour alone (icons + text, per #43).
+- Status never relies on colour alone: icons + text (✓ accepted, ✕ rejected, ✎ modifying), even with the colour palette.
 - Animations respect `prefers-reduced-motion` (no prompt-to-composer animation, no map fly-throughs).
 - Performance: home page interactive in under 1.5 s; the map loads lazily only on `/trip/[id]`.
 
 ## 12. Open questions
-1. **Colour:** stay strictly black and white (UI epic #41), or add one accent colour for primary actions, as Airbnb uses its brand colour? Default: B&W.
+1. ~~Colour~~ **Decided:** a Swan-logo palette (§3.3), not black and white.
 2. **Sign-in timing:** allow chatting signed out and ask at "Book" (default), or require sign-in first?
 3. **Required items:** must a trip always include flights and a hotel, or can users plan "activities only" (e.g. locals)?
 4. **Autonomy:** with "Swan decides" set for everything, should items arrive already `accepted`, or still need one "Accept all" tap? Default: still `proposed`, plus "Accept all remaining".

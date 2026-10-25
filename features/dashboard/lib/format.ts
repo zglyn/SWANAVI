@@ -1,4 +1,10 @@
-import type { FlightOffer, HotelOffer, Leg, TravelSegment } from "@contracts/api";
+import type { FlightOffer, HotelOffer, Leg, Suggestion, TravelSegment } from "@contracts/api";
+
+export function suggestionTitle(row: Suggestion): string {
+  if (row.kind === "flight") return flightLabel(row.item);
+  if (row.kind === "hotel") return row.item.offer.name;
+  return row.item.title;
+}
 
 export const fmt = (v: string | number | null | undefined, digits = 2) =>
   v === null || v === undefined ? "—" : Number(v).toFixed(digits);

@@ -22,6 +22,7 @@ from roam_contracts.models import (
 from roam_agent.plan import collect_candidates, plan as build_plan, revise
 from roam_agent.store import MemoryPlanStore, PlanRecord
 from roam_agent.swan_http import router as swan_router
+from roam_agent.trips_http import router as trips_router
 from roam_tools.flights import lookup_flight
 
 app = FastAPI(title="Swanavi gateway")
@@ -184,3 +185,4 @@ async def events():
 
 
 app.include_router(swan_router)
+app.include_router(trips_router)

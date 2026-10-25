@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, model_validator
 
 Currency = Literal["RLUSD", "XRP"]
 Money = Decimal  # serialized as string, e.g. "15.00"
@@ -440,8 +440,10 @@ EVENT_TYPES = (
     "batch.failed",        # data: {engine_result: str}
     "escrow.cancelled",    # data: {escrow: EscrowRef}
     "escrow.finished",     # data: {escrow: EscrowRef}
-    "booking.confirmed",   # data: {booking: Booking}
+    "booking.confirmed",   # data: {booking: Booking} from checkout, or {line: BookingLine} from a trip
     "booking.cancelled",   # data: {booking: Booking}
+    "booking.failed",      # data: {line: BookingLine}
+    "booking.needs_user",  # data: {line: BookingLine}
     "weather.alert",
     "wallet.updated",      # data: {wallet: WalletState}
     "system.reset",
@@ -453,6 +455,12 @@ EVENT_TYPES = (
     "plan.flights_ready",
     "plan.hotels_ready",
     "plan.package_ready",
+    "chat.delta",
+    "chat.message",
+    "brief.updated",
+    "proposal.ready",
+    "suggestion.updated",
+    "itinerary.reflowed",
 )
 
 # On-ledger conventions shared by ledger (writes), merchants and guardrail (read/verify).
@@ -728,3 +736,244 @@ class SwanView(BaseModel):
     flights: list[FlightOffer] = Field(default_factory=list)
     hotels: list[HotelOffer] = Field(default_factory=list)
     package: TravelPackage | None = None
+
+
+class ConversationPhase(str, Enum):
+    CHATTING = "chatting"
+    PLANNING = "planning"
+    PROPOSAL = "proposal"
+    REVIEW = "review"
+    BOOKED = "booked"
+
+
+class TripFacts(BaseModel):
+    destination: str | None = None
+    origin: TripOrigin | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    outbound_window: TimeOfDayWindow | None = None
+    return_window: TimeOfDayWindow | None = None
+    travellers: int | None = Field(default=None, ge=1)
+    budget: Money | None = None
+    pace: Pace | None = None
+    interests: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+    def missing_required(self) -> list[str]:
+        missing: list[str] = []
+        if not self.destination:
+            missing.append("destination")
+        if not self.start_date or not self.end_date:
+            missing.append("dates")
+        origin = self.origin
+        if origin is None or not (origin.airport_codes or origin.place):
+            missing.append("origin")
+        if self.travellers is None:
+            missing.append("travellers")
+        return missing
+
+    def to_request(self) -> TripRequest:
+        missing = self.missing_required()
+        if missing:
+            raise ValueError("missing " + ", ".join(missing))
+        assert self.destination and self.origin and self.start_date and self.end_date
+        assert self.travellers is not None
+        return TripRequest(
+            destination=self.destination,
+            origin=self.origin,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            outbound_window=self.outbound_window or TimeOfDayWindow.ANY,
+            return_window=self.return_window or TimeOfDayWindow.ANY,
+            travellers=self.travellers,
+            budget=self.budget,
+            notes=self.notes,
+        )
+
+
+class ChatRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ControlType(str, Enum):
+    CHIPS = "chips"
+    DATE_RANGE = "date_range"
+    STEPPER = "stepper"
+    SLIDER = "slider"
+    AIRPORT = "airport"
+    TILES = "tiles"
+
+
+class Control(BaseModel):
+    slot: str
+    type: ControlType
+    options: list[str] | None = None
+    min: float | None = None
+    max: float | None = None
+    value: Any | None = None
+
+
+class ChatAnswer(BaseModel):
+    slot: str
+    value: Any
+
+
+class ChatMessage(BaseModel):
+    id: str
+    role: ChatRole
+    text: str
+    controls: list[Control] = Field(default_factory=list)
+    answers: list[ChatAnswer] | None = None
+    created_at: datetime
+
+
+class TripConversation(BaseModel):
+    trip_id: str
+    phase: ConversationPhase
+    messages: list[ChatMessage] = Field(default_factory=list)
+    brief: TripFacts = Field(default_factory=TripFacts)
+
+    @computed_field
+    @property
+    def missing(self) -> list[str]:
+        return self.brief.missing_required()
+
+
+class SuggestionKind(str, Enum):
+    FLIGHT = "flight"
+    HOTEL = "hotel"
+    ATTRACTION = "attraction"
+    TRANSFER = "transfer"
+
+
+class SuggestionStatus(str, Enum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    MODIFYING = "modifying"
+    REJECTED = "rejected"
+    REPLACED = "replaced"
+    BOOKED = "booked"
+
+
+class Suggestion(BaseModel):
+    id: str
+    kind: SuggestionKind
+    status: SuggestionStatus = SuggestionStatus.PROPOSED
+    item: FlightOffer | HotelStay | Stop
+    why: list[str] = Field(default_factory=list)
+    alternatives_available: bool = False
+    required: bool = False
+
+    @model_validator(mode="after")
+    def item_matches_kind(self) -> Suggestion:
+        expected: type[BaseModel] = {
+            SuggestionKind.FLIGHT: FlightOffer,
+            SuggestionKind.HOTEL: HotelStay,
+            SuggestionKind.ATTRACTION: Stop,
+            SuggestionKind.TRANSFER: Stop,
+        }[self.kind]
+        if not isinstance(self.item, expected):
+            raise ValueError(f"{self.kind.value} suggestion item must be {expected.__name__}")
+        return self
+
+
+class Proposal(BaseModel):
+    trip_id: str
+    package: TravelPackage
+    suggestions: list[Suggestion]
+    totals: PackageTotals
+
+    @classmethod
+    def from_package(cls, trip_id: str, package: TravelPackage) -> Proposal:
+        rows: list[Suggestion] = []
+        for sid, flight in (("sug-out", package.outbound), ("sug-ret", package.return_flight)):
+            if flight is not None:
+                rows.append(Suggestion(
+                    id=sid, kind=SuggestionKind.FLIGHT, item=flight, why=list(flight.why),
+                    alternatives_available=True, required=True,
+                ))
+        for stay in package.hotels:
+            rows.append(Suggestion(
+                id=f"sug-hotel-{stay.offer.id}", kind=SuggestionKind.HOTEL, item=stay, why=list(stay.offer.why),
+                alternatives_available=True, required=True,
+            ))
+        for day in package.itinerary.days:
+            for stop in day.stops:
+                if stop.kind != StopKind.ATTRACTION:
+                    continue
+                rows.append(Suggestion(
+                    id=f"sug-stop-{stop.id}", kind=SuggestionKind.ATTRACTION, item=stop,
+                    why=[stop.attraction.category] if stop.attraction is not None else [],
+                    alternatives_available=True,
+                ))
+        return cls(trip_id=trip_id, package=package, suggestions=rows, totals=package.totals)
+
+
+class SuggestionActionName(str, Enum):
+    ACCEPT = "accept"
+    REJECT = "reject"
+    MODIFY = "modify"
+    UNDO = "undo"
+
+
+class SuggestionAction(BaseModel):
+    suggestion_id: str
+    action: SuggestionActionName
+    reason: str | None = None
+    alternative_id: str | None = None
+    constraints: dict[str, Any] | None = None
+    text: str | None = None
+
+
+BookingChannel = Literal["wallet", "external"]
+BOOKING_STATUSES: dict[str, set[str]] = {
+    "wallet": {"booked", "blocked", "failed"},
+    "external": {"booked", "failed", "needs_user"},
+}
+
+
+class BookingLine(BaseModel):
+    suggestion_id: str
+    channel: BookingChannel
+    status: Literal["booked", "blocked", "failed", "needs_user"]
+    confirmation_code: str | None = None
+    error: str | None = None
+    violations: list[Violation] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def status_matches_channel(self) -> BookingLine:
+        if self.status not in BOOKING_STATUSES[self.channel]:
+            raise ValueError(f"a {self.channel} booking cannot be {self.status}")
+        if self.violations and self.channel != "wallet":
+            raise ValueError("only wallet bookings carry guardrail violations")
+        return self
+
+
+class BookRequest(BaseModel):
+    channel: BookingChannel
+    travellers: list[str] = Field(default_factory=list)
+
+
+class TripView(BaseModel):
+    conversation: TripConversation
+    proposal: Proposal | None = None
+    bookings: list[BookingLine] = Field(default_factory=list)
+
+
+class SuggestionResult(BaseModel):
+    proposal: Proposal
+    alternatives: list[Suggestion] = Field(default_factory=list)
+
+
+class ScriptedChange(BaseModel):
+    action: SuggestionAction
+    proposal: Proposal
+
+
+class ConversationFixture(BaseModel):
+    conversation: TripConversation
+    proposal: Proposal
+    accept: ScriptedChange
+    modify: ScriptedChange
+    reject: ScriptedChange

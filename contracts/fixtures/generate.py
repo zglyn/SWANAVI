@@ -203,5 +203,8 @@ if __name__ == "__main__":
     from swan_data import write_swan
 
     write_swan(OUT, PLAN_ID)
+    from conversation_data import write_conversation
+
+    write_conversation(OUT)
     print("plan fixture", PLAN_ID)
     print("fixtures written to", OUT)

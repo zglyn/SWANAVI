@@ -55,8 +55,8 @@ In `checkout`, the refusal is the early return on `!decision.approved`. Change t
 | Decision | `evaluate` in `features/dashboard/lib/mock.ts` |
 | Submission and wallet | `checkout` in the same file |
 | Rules in the property | `max_per_item`, `max_daily_budget`, `verified_credential`, `category` |
-| Sync commit | `82567e7460b32c002446ba195aa6572cce920fb7` |
-| `mock.ts` sha256 at that commit | `2e0043d94693a928c01002e4f6156987f076879e82bcf8736928688936e599fe` |
+| Sync commit | `8fc0239b70588f2e06a4f599de00f8b842b96582` |
+| `mock.ts` sha256 at that commit | `6d40954c1d5055a8a59f7ff9c36232dcbf295e1597a979e32d68b40c5e206aff` |
 
 `check.mjs` prints `source_sha256` of `mock.ts` on every run. If that hash differs from the one above, the covered file has changed since the sync commit. Move the sync commit forward only after you confirm that `evaluate`, `checkout`, and this harness still describe that file at the new commit. A green run on a stale harness is not a confirmation.
 
@@ -70,7 +70,7 @@ The check calls the real functions on one checkout at a time.
 - `merchant_verified` is `true`, `false`, or `null`. The oracle treats anything other than `true` as unverified when the policy requires a credential. That matches `!q.merchant_verified` in `evaluate`.
 - Category values in the grid are `activity`, `food`, and `shopping`.
 - The money oracle is integer cents. A separate numeric sweep checks that `Number` on cent strings from `0.00` through `200.00` agrees with those integers for a single value, a sum of two values, and budget minus spent. The sweep is there so a float false-approve inside that range fails this check instead of hiding in the grid.
-- The harness deletes the Next.js import lines and resolves the fixture JSON itself. It replaces the demo `sleep` with an already-resolved promise. Step order inside one `checkout` call stays the same.
+- The harness deletes the Next.js import lines. Each `@fixtures/` import becomes its JSON. Every other value import becomes a stub that returns an empty object, so `evaluate` and `checkout` must not read from another module. It replaces the demo `sleep` with an already-resolved promise. Step order inside one `checkout` call stays the same.
 - Wallet figures compared on a refusal are `state.balance`, `state.spentToday`, and the escrow map size. The starting balance in the check is `250`.
 
 ## What this does not cover

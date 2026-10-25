@@ -4,17 +4,21 @@ import json
 
 from roam_contracts.models import CandidateSet, Itinerary, PlanStatus, TripBrief
 
-from roam_agent.store import PlanRecord
+from roam_agent.store import PlanRecord, TripRecord
+
+
+def _client(client):
+    if client is not None:
+        return client
+    import boto3
+
+    return boto3.client("dynamodb")
 
 
 class DynamoPlanStore:
     def __init__(self, table_name: str, client=None) -> None:
         self.table_name = table_name
-        if client is None:
-            import boto3
-
-            client = boto3.client("dynamodb")
-        self.client = client
+        self.client = _client(client)
 
     def put(self, record: PlanRecord) -> None:
         self.client.put_item(
@@ -31,6 +35,23 @@ class DynamoPlanStore:
         if not item:
             return None
         return _load(item["payload"]["S"])
+
+
+class DynamoTripStore:
+    def __init__(self, table_name: str, client=None) -> None:
+        self.table_name = table_name
+        self.client = _client(client)
+
+    def put(self, record: TripRecord) -> None:
+        self.client.put_item(
+            TableName=self.table_name,
+            Item={"trip_id": {"S": record.trip_id}, "payload": {"S": record.model_dump_json()}},
+        )
+
+    def get(self, trip_id: str) -> TripRecord | None:
+        found = self.client.get_item(TableName=self.table_name, Key={"trip_id": {"S": trip_id}})
+        item = found.get("Item")
+        return None if not item else TripRecord.model_validate_json(item["payload"]["S"])
 
 
 def _dump(record: PlanRecord) -> str:

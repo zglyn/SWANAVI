@@ -6,7 +6,13 @@ export default function StyleGuidePage() {
     <main className="swan-app min-h-screen px-4 py-8">
       <Logo />
       <h1 className="mt-8 text-5xl">Swanavi</h1>
-      <p className="swan-muted mt-3 max-w-xl">Black primary buttons, white surfaces, 52px controls, one decision per screen. Sheets sit over the map on a phone and become a side panel on a desktop.</p>
+      <p className="swan-muted mt-3 max-w-xl">Lake text on a feather page, one beak-coloured action, and mist chips. Every pair below clears WCAG AA.</p>
+      <ul className="mt-6 flex flex-col gap-2 text-sm">
+        <li className="rounded-lg px-3 py-2" style={{ background: "var(--swan-feather)", color: "var(--swan-lake)" }}>Lake on feather, 12.7 to 1</li>
+        <li className="rounded-lg px-3 py-2" style={{ background: "var(--swan-feather)", color: "var(--swan-lake-2)" }}>Secondary on feather, 6.1 to 1</li>
+        <li className="rounded-lg px-3 py-2" style={{ background: "var(--swan-beak)", color: "var(--swan-surface)" }}>White on beak, 5.2 to 1</li>
+        <li className="rounded-lg px-3 py-2" style={{ background: "var(--swan-feather)", color: "var(--swan-reed)" }}>Reed on feather, 6.0 to 1</li>
+      </ul>
       <div className="mt-8 flex items-end gap-4">
         <SwanMark className="h-4 w-4" />
         <SwanMark className="h-8 w-8" />
