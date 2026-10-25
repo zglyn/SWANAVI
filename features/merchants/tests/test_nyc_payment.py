@@ -197,6 +197,23 @@ def test_one_escrow_cannot_confirm_another_new_york_booking(client):
     assert kept["settlement"] == "sandbox"
 
 
+def test_new_york_candidates_use_the_registry_mcp_url(client):
+    registry = client.get("/registry", params={"city": "New York"}).json()
+    shared = {row["mcp_url"] for row in registry}
+    assert len(shared) == 1
+    url = shared.pop()
+    assert urlparse(url).path == "/mcp"
+    payload = json.loads((ROOT / "contracts" / "fixtures" / "candidates_demo.json").read_text())
+    shops = [row["merchant"] for row in payload["candidates"] if row["kind"] == "merchant"]
+    assert {shop["merchant_id"] for shop in shops} >= {
+        "central-park-bikes",
+        "midtown-food-workshop",
+        "midtown-food-tasting",
+    }
+    assert {urlparse(shop["mcp_url"]).path for shop in shops} == {"/mcp"}
+    assert {shop["mcp_url"] for shop in shops} == {url}
+
+
 def test_discovery_tools_and_readme_share_one_mcp_mount(client):
     found = client.get("/registry", params={"city": "New York"}).json()
     urls = {row["mcp_url"] for row in found}

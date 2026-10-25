@@ -73,15 +73,18 @@ Keep the data in one `catalog.py`/`catalog.json`. The demo date comes from env `
 If `x402-xrpl` works, use its `require_payment` decorator for the 402 envelope and keep this verification as the
 custom check. If it doesn't work by Hour 4, hand-roll it. The contract above doesn't change.
 
-### 5.2 MCP (per merchant, `fastmcp`, mounted at `/m/{id}/mcp`)
+### 5.2 MCP
+
+One FastMCP app serves every shop at `http://127.0.0.1:8001/mcp`. `ROAM_MERCHANTS_MCP_URL` overrides that address. `find_merchants` and `GET /registry` return that same URL on each shop. `POST /m/{merchant_id}/book` is the booking route.
+
+The mount exposes these tools.
 
 | Tool | Args | Returns |
 |---|---|---|
-| `search_catalog` | `query?: str`, `date?: str` | `CatalogItem[]` as JSON |
-| `get_quote` | `sku: str`, `slot_start: str` | `Quote` JSON (calls the 402 endpoint internally) |
-| `merchant_info` | — | `MerchantProfile` JSON |
-
-Tool descriptions are what the LLM reads, so write them well. The trap shop's descriptions are where the injection lives.
+| `find_merchants` | `city`, optional `category`, `near`, `radius_km`, `open_at` | `MerchantProfile` JSON list, closest first |
+| `search_catalog` | `merchant_id`, optional `date` | `CatalogItem` JSON list |
+| `get_quote` | `merchant_id`, `sku`, `slot_start` | signed `Quote` JSON |
+| `book` | `merchant_id`, `sku`, `slot_start`, optional `payment_proof` | `payment_required` plus the quote, or a confirmed booking |
 
 ### 5.3 Python (`roam_merchants.client`)
 

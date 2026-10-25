@@ -89,7 +89,7 @@
           "lng": -73.976
         },
         "xrpl_address": "rcentralparkbikesPLACEHOLDER",
-        "mcp_url": "http://localhost:8001/m/central-park-bikes/mcp",
+        "mcp_url": "http://127.0.0.1:8001/mcp",
         "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
         "city": "New York",
         "country": "US"
@@ -131,7 +131,7 @@
           "lng": -73.984
         },
         "xrpl_address": "rmidtownfoodworkshopPLACEHOLDER",
-        "mcp_url": "http://localhost:8001/m/midtown-food-workshop/mcp",
+        "mcp_url": "http://127.0.0.1:8001/mcp",
         "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
         "city": "New York",
         "country": "US"
@@ -173,7 +173,7 @@
           "lng": -73.983
         },
         "xrpl_address": "rmidtownfoodtastingPLACEHOLDER",
-        "mcp_url": "http://localhost:8001/m/midtown-food-tasting/mcp",
+        "mcp_url": "http://127.0.0.1:8001/mcp",
         "pubkey_ed25519": "0000000000000000000000000000000000000000000000000000000000000000",
         "city": "New York",
         "country": "US"
