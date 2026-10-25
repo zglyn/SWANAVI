@@ -11,7 +11,7 @@ import unittest
 
 from booking.progress import AGENTCORE_TOOL, TOOL_SPEC, handler, trip_progress
 from booking.progress import progress as progress_mod
-from booking.progress.progress import ISSUE_EMAIL, ISSUE_REBOOK
+from booking.progress.progress import ISSUE_CANCELLED, ISSUE_EMAIL, ISSUE_ENDED_EARLY, ISSUE_ENDED_LATE, ISSUE_REBOOK
 
 PLAN = {
     "tripId": "sample-kyoto",
@@ -168,7 +168,7 @@ class TripProgressTests(unittest.TestCase):
             self.assertIsInstance(result["onTrack"], bool)
             self.assertIsInstance(result["updates"], list)
             for update in result["updates"]:
-                self.assertIn(update["action"], {"none", "rebook", "verify_email"})
+                self.assertIn(update["action"], {"none", "rebook", "verify_email", "replan"})
 
     def test_tool_spec_is_trip_progress(self) -> None:
         self.assertEqual(TOOL_SPEC["name"], "trip_progress")
@@ -176,7 +176,7 @@ class TripProgressTests(unittest.TestCase):
         self.assertEqual(TOOL_SPEC["outputSchema"]["properties"]["phase"]["enum"], ["pre_trip", "in_progress", "done"])
         self.assertEqual(
             TOOL_SPEC["outputSchema"]["properties"]["updates"]["items"]["properties"]["action"]["enum"],
-            ["none", "rebook", "verify_email"],
+            ["none", "rebook", "verify_email", "replan"],
         )
         self.assertIn("AgentCore", TOOL_SPEC["description"])
         self.assertIn("does not run that loop", TOOL_SPEC["description"])
@@ -190,6 +190,93 @@ class TripProgressTests(unittest.TestCase):
     def test_handler_calls_trip_progress(self) -> None:
         payload = {"plan": PLAN, "results": _booked_results(), "now": DURING}
         self.assertEqual(handler(payload), trip_progress(PLAN, _booked_results(), DURING))
+
+    def test_cancelled_signal_needs_replan(self) -> None:
+        result = trip_progress(
+            PLAN,
+            _booked_results(),
+            DURING,
+            signals=[{"segmentId": "flight-1", "event": "cancelled", "deltaMinutes": 0}],
+        )
+
+        self.assertEqual(result["phase"], "in_progress")
+        self.assertTrue(result["onTrack"])
+        self.assertEqual(
+            result["updates"],
+            [
+                {
+                    "segmentId": "flight-1",
+                    "kind": "flight",
+                    "issue": ISSUE_CANCELLED,
+                    "event": "cancelled",
+                    "deltaMinutes": 0,
+                    "action": "replan",
+                }
+            ],
+        )
+
+    def test_ended_early_signal_needs_replan(self) -> None:
+        result = handler(
+            {
+                "plan": PLAN,
+                "results": _booked_results(),
+                "now": DURING,
+                "signals": [{"segmentId": "hotel-1", "event": "ended_early", "deltaMinutes": 30}],
+            }
+        )
+
+        self.assertTrue(result["onTrack"])
+        self.assertEqual(
+            result["updates"],
+            [
+                {
+                    "segmentId": "hotel-1",
+                    "kind": "hotel",
+                    "issue": ISSUE_ENDED_EARLY,
+                    "event": "ended_early",
+                    "deltaMinutes": 30,
+                    "action": "replan",
+                }
+            ],
+        )
+
+    def test_ended_late_signal_needs_replan(self) -> None:
+        result = trip_progress(
+            PLAN,
+            _booked_results(),
+            DURING,
+            [{"segmentId": "attraction-1", "event": "ended_late", "deltaMinutes": 15}],
+        )
+
+        self.assertTrue(result["onTrack"])
+        self.assertEqual(
+            result["updates"],
+            [
+                {
+                    "segmentId": "attraction-1",
+                    "kind": "attraction",
+                    "issue": ISSUE_ENDED_LATE,
+                    "event": "ended_late",
+                    "deltaMinutes": 15,
+                    "action": "replan",
+                }
+            ],
+        )
+
+    def test_clock_rule_stays_rebook_beside_a_signal(self) -> None:
+        result = trip_progress(
+            PLAN,
+            _booked_results(),
+            ATTRACTION_OVERDUE,
+            signals=[{"segmentId": "flight-1", "event": "cancelled", "deltaMinutes": 10}],
+        )
+
+        self.assertFalse(result["onTrack"])
+        self.assertEqual(result["updates"][0]["action"], "rebook")
+        self.assertEqual(result["updates"][0]["segmentId"], "attraction-1")
+        self.assertNotIn("event", result["updates"][0])
+        self.assertEqual(result["updates"][1]["action"], "replan")
+        self.assertEqual(result["updates"][1]["event"], "cancelled")
 
     def test_does_not_read_the_wall_clock(self) -> None:
         source = inspect.getsource(progress_mod)
